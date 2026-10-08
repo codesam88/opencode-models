@@ -107,6 +107,67 @@ class CliTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("no data", out.lower())
 
+    def test_list_source_sorted_by_score_per_price(self):
+        import modelpareto.sources as sources
+
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_sample(Path(tmp))
+            orig = sources.load_source
+            sources.load_source = lambda name: {"m1", "m2", "m3"}
+            try:
+                code, out = self._run(
+                    "--data", tmp, "list", "--source", "zen", "--benchmark", "TB",
+                )
+            finally:
+                sources.load_source = orig
+        self.assertEqual(code, 0)
+        # m1: 50/1=50, m2: 90/3=30, m3: 40/9≈4.4 → that order
+        self.assertLess(out.index("M1"), out.index("M2"))
+        self.assertLess(out.index("M2"), out.index("M3"))
+
+    def test_list_filters_to_source_members_only(self):
+        import modelpareto.sources as sources
+
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_sample(Path(tmp))
+            orig = sources.load_source
+            sources.load_source = lambda name: {"a/m1"}
+            try:
+                code, out = self._run(
+                    "--data", tmp, "list", "--source", "zen",
+                    "--benchmark", "TB",
+                )
+            finally:
+                sources.load_source = orig
+        self.assertEqual(code, 0)
+        self.assertIn("M1", out)
+        self.assertNotIn("M2", out)
+
+    def test_list_shows_score_price_and_ratio_columns(self):
+        import modelpareto.sources as sources
+
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_sample(Path(tmp))
+            orig = sources.load_source
+            sources.load_source = lambda name: {"m1"}
+            try:
+                code, out = self._run(
+                    "--data", tmp, "list", "--source", "zen", "--benchmark", "TB",
+                )
+            finally:
+                sources.load_source = orig
+        self.assertEqual(code, 0)
+        self.assertIn("50", out)   # score
+        self.assertIn("1", out)    # price
+        self.assertIn("50.0", out) # ratio score/price
+
+    def test_list_unknown_source_errors(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_sample(Path(tmp))
+            code, out = self._run("--data", tmp, "list", "--source", "nope")
+        self.assertEqual(code, 1)
+        self.assertIn("zen", out)
+
 
 if __name__ == "__main__":
     unittest.main()

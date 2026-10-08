@@ -18,7 +18,9 @@ from pathlib import Path
 from .benchmarks import available
 from .data import load_models
 from .fetch import http_get, refresh
+from .ranking import by_score_per_price
 from .render import render_html
+from . import sources
 
 DEFAULT_DATA = Path(__file__).resolve().parent.parent / "data"
 DEFAULT_OUT = Path(__file__).resolve().parent.parent / "pareto.html"
@@ -64,6 +66,42 @@ def _cmd_fetch(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_list(args: argparse.Namespace) -> int:
+    data_dir = Path(args.data)
+    if not data_dir.is_dir():
+        return _fail(f"no data directory at {data_dir} — run `fetch` first")
+    try:
+        slugs = sources.load_source(args.source)
+    except KeyError:
+        return _fail(
+            f"unknown source {args.source!r} — available: "
+            f"{', '.join(sources.available_sources())}"
+        )
+    models = load_models(data_dir)
+    in_tier = [
+        m for m in models
+        if m.model_id.split("/")[-1] in slugs or m.model_id in slugs
+    ]
+    choices = dict(available(in_tier))
+    benchmark = args.benchmark or (max(choices, key=choices.get) if choices else None)
+    if benchmark is None:
+        return _fail(f"no {args.source} model in {data_dir} has benchmark scores")
+    if benchmark not in choices:
+        listing = ", ".join(f"{n} ({c})" for n, c in list(available(in_tier))[:10])
+        return _fail(f"unknown benchmark {benchmark!r} — available: {listing}")
+    ranked = by_score_per_price(in_tier, benchmark)
+    matched = len(in_tier)
+    print(f"{args.source}: {matched}/{len(slugs)} models in catalog · "
+          f"benchmark {benchmark} · sorted by score per $ input")
+    print(f"{'score':>6}  {'$/1M':>7}  {'score/$':>8}  model")
+    for m in ranked:
+        score = m.scores[benchmark]
+        ratio = "free" if m.price_input == 0 else f"{score / m.price_input:.1f}"
+        price = "0" if m.price_input == 0 else f"{m.price_input:g}"
+        print(f"{score:>6g}  {price:>7}  {ratio:>8}  {m.name}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="modelpareto",
@@ -83,11 +121,21 @@ def main(argv: list[str] | None = None) -> int:
     p_render.add_argument("--out", default=str(DEFAULT_OUT),
                           help="output HTML path (default: %(default)s)")
 
+    p_list = sub.add_parser(
+        "list", help="text table of a Console tier (zen/go), best value first"
+    )
+    p_list.add_argument("--source", required=True,
+                        help="tier to list (zen or go)")
+    p_list.add_argument("--benchmark",
+                        help="benchmark to rank on (default: best coverage "
+                             "within the tier)")
+
     args = parser.parse_args(argv)
     return {
         "fetch": _cmd_fetch,
         "benchmarks": _cmd_benchmarks,
         "render": _cmd_render,
+        "list": _cmd_list,
     }[args.command](args)
 
 

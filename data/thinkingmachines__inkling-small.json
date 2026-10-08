@@ -1,0 +1,43 @@
+{
+  "page": "https://opencode.ai/data/thinkingmachines/inkling-small",
+  "updatedAt": null,
+  "summary": "Inkling Small costs $0.50 per 1M input tokens and $1.20 per 1M output tokens.",
+  "model": {
+    "id": "thinkingmachines/inkling-small",
+    "name": "Inkling Small",
+    "lab": "thinkingmachines",
+    "labName": "Thinking Machines",
+    "family": "ling",
+    "description": "Multimodal MoE reasoning model (276B total, 12B active) for text, image, and audio",
+    "releaseDate": "2026-07-30",
+    "lastUpdated": "2026-07-30",
+    "knowledgeCutoff": null,
+    "contextTokens": 1048576,
+    "outputTokens": 1048576,
+    "inputModalities": [
+      "text",
+      "image",
+      "audio"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/thinkingmachines/Inkling-Small"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.5,
+      "output": 1.2,
+      "cachedInput": 0.1,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

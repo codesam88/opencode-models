@@ -1,0 +1,42 @@
+{
+  "page": "https://opencode.ai/data/google/gemma-4-12b-it",
+  "updatedAt": null,
+  "summary": "Gemma 4 12B IT costs $0.25 per 1M input tokens and $0.25 per 1M output tokens.",
+  "model": {
+    "id": "google/gemma-4-12b-it",
+    "name": "Gemma 4 12B IT",
+    "lab": "google",
+    "labName": "Google",
+    "family": "gemma",
+    "description": "Compact Gemma 4 instruction model for open, self-hosted chat and reasoning",
+    "releaseDate": "2026-06-09",
+    "lastUpdated": "2026-06-09",
+    "knowledgeCutoff": null,
+    "contextTokens": 262144,
+    "outputTokens": 32768,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/google/gemma-4-12B-it"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.25,
+      "output": 0.25,
+      "cachedInput": 0.25,
+      "cacheWrite": 0.25
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

@@ -1,0 +1,37 @@
+{
+  "page": "https://opencode.ai/data/cohere/c4ai-aya-vision-8b",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "cohere/c4ai-aya-vision-8b",
+    "name": "Aya Vision 8B",
+    "lab": "cohere",
+    "labName": "Cohere",
+    "family": null,
+    "description": "Compact open multilingual vision model for OCR and visual question answering",
+    "releaseDate": "2025-03-04",
+    "lastUpdated": "2025-05-14",
+    "knowledgeCutoff": null,
+    "contextTokens": 16000,
+    "outputTokens": 4000,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": false,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/CohereLabs/aya-vision-8b"
+      }
+    ],
+    "priceUsdPer1M": null,
+    "benchmarks": []
+  },
+  "usage": null
+}

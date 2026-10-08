@@ -1,0 +1,39 @@
+{
+  "page": "https://opencode.ai/data/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+  "updatedAt": null,
+  "summary": "Nemotron 3 Nano Omni 30B A3B Reasoning costs $0.00 per 1M input tokens and $0.00 per 1M output tokens.",
+  "model": {
+    "id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+    "name": "Nemotron 3 Nano Omni 30B A3B Reasoning",
+    "lab": "nvidia",
+    "labName": "NVIDIA",
+    "family": "nemotron",
+    "description": "Open Nemotron omni model combining reasoning with text, vision, and audio",
+    "releaseDate": "2026-04-28",
+    "lastUpdated": "2026-04-28",
+    "knowledgeCutoff": null,
+    "contextTokens": 256000,
+    "outputTokens": 65536,
+    "inputModalities": [
+      "text",
+      "image",
+      "video",
+      "audio"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 0,
+      "output": 0,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

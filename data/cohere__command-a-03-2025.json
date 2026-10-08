@@ -1,0 +1,48 @@
+{
+  "page": "https://opencode.ai/data/cohere/command-a-03-2025",
+  "updatedAt": null,
+  "summary": "Command A costs $2.50 per 1M input tokens and $10.00 per 1M output tokens.",
+  "model": {
+    "id": "cohere/command-a-03-2025",
+    "name": "Command A",
+    "lab": "cohere",
+    "labName": "Cohere",
+    "family": "command-a",
+    "description": "Cohere command model for multilingual enterprise agents, tools, and chat",
+    "releaseDate": "2025-03-13",
+    "lastUpdated": "2025-03-13",
+    "knowledgeCutoff": "2024-06-01",
+    "contextTokens": 256000,
+    "outputTokens": 8000,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/CohereLabs/c4ai-command-a-03-2025"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 2.5,
+      "output": 10,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": [
+      {
+        "name": "Aider Polyglot",
+        "score": 12,
+        "metric": "percent correct",
+        "source": "https://aider.chat/docs/leaderboards/"
+      }
+    ]
+  },
+  "usage": null
+}

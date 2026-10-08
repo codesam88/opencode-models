@@ -1,0 +1,37 @@
+{
+  "page": "https://opencode.ai/data/openai/o4-mini-deep-research",
+  "updatedAt": null,
+  "summary": "o4-mini-deep-research costs $1.80 per 1M input tokens and $7.20 per 1M output tokens.",
+  "model": {
+    "id": "openai/o4-mini-deep-research",
+    "name": "o4-mini-deep-research",
+    "lab": "openai",
+    "labName": "OpenAI",
+    "family": "o-mini",
+    "description": "Research model for long-horizon investigation, synthesis, and analytical reports",
+    "releaseDate": "2024-06-26",
+    "lastUpdated": "2024-06-26",
+    "knowledgeCutoff": "2024-05",
+    "contextTokens": 200000,
+    "outputTokens": 100000,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 1.8,
+      "output": 7.2,
+      "cachedInput": 0.45,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

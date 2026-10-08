@@ -1,0 +1,41 @@
+{
+  "page": "https://opencode.ai/data/motif-technologies/motif-3",
+  "updatedAt": null,
+  "summary": "Motif 3 costs $0.50 per 1M input tokens and $2.00 per 1M output tokens.",
+  "model": {
+    "id": "motif-technologies/motif-3",
+    "name": "Motif 3",
+    "lab": "motif-technologies",
+    "labName": "Motif Technologies",
+    "family": "motif",
+    "description": "Motif 3 is a large-scale, decoder-only Mixture-of-Experts (MoE) language model with 314 billion total parameters and 13.2 billion parameters activated per token.",
+    "releaseDate": "2026-08-07",
+    "lastUpdated": "2026-08-07",
+    "knowledgeCutoff": null,
+    "contextTokens": 262144,
+    "outputTokens": 262144,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Model weights",
+        "url": "https://huggingface.co/Motif-Technologies/Motif-3"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.5,
+      "output": 2,
+      "cachedInput": 0.2,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

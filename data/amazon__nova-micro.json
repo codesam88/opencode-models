@@ -1,0 +1,36 @@
+{
+  "page": "https://opencode.ai/data/amazon/nova-micro",
+  "updatedAt": null,
+  "summary": "Nova Micro costs $0.04 per 1M input tokens and $0.14 per 1M output tokens.",
+  "model": {
+    "id": "amazon/nova-micro",
+    "name": "Nova Micro",
+    "lab": "amazon",
+    "labName": "Amazon",
+    "family": "nova-micro",
+    "description": "Efficient model for low-latency assistance, extraction, and routine automation",
+    "releaseDate": "2024-12-03",
+    "lastUpdated": "2024-12-03",
+    "knowledgeCutoff": "2024-10",
+    "contextTokens": 128000,
+    "outputTokens": 10000,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 0.035,
+      "output": 0.14,
+      "cachedInput": 0.00875,
+      "cacheWrite": 0.035
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

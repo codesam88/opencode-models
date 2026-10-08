@@ -1,0 +1,43 @@
+{
+  "page": "https://opencode.ai/data/openai/o3-mini",
+  "updatedAt": null,
+  "summary": "o3-mini costs $1.10 per 1M input tokens and $4.40 per 1M output tokens.",
+  "model": {
+    "id": "openai/o3-mini",
+    "name": "o3-mini",
+    "lab": "openai",
+    "labName": "OpenAI",
+    "family": "o-mini",
+    "description": "Smaller o-series reasoner for economical coding, math, and planning tasks",
+    "releaseDate": "2024-12-20",
+    "lastUpdated": "2025-01-29",
+    "knowledgeCutoff": "2024-05",
+    "contextTokens": 200000,
+    "outputTokens": 100000,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 1.1,
+      "output": 4.4,
+      "cachedInput": 0.55,
+      "cacheWrite": null
+    },
+    "benchmarks": [
+      {
+        "name": "Aider Polyglot",
+        "score": 60.4,
+        "metric": "percent correct",
+        "source": "https://aider.chat/docs/leaderboards/"
+      }
+    ]
+  },
+  "usage": null
+}

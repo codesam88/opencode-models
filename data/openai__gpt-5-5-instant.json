@@ -1,0 +1,38 @@
+{
+  "page": "https://opencode.ai/data/openai/gpt-5-5-instant",
+  "updatedAt": null,
+  "summary": "GPT-5.5 Instant costs $5.00 per 1M input tokens and $30.00 per 1M output tokens.",
+  "model": {
+    "id": "openai/gpt-5.5-instant",
+    "name": "GPT-5.5 Instant",
+    "lab": "openai",
+    "labName": "OpenAI",
+    "family": null,
+    "description": "Compact GPT model for low-latency assistance and high-volume workloads",
+    "releaseDate": "2026-05-05",
+    "lastUpdated": "2026-05-28",
+    "knowledgeCutoff": "2025-12-01",
+    "contextTokens": 400000,
+    "outputTokens": 128000,
+    "inputModalities": [
+      "text",
+      "image",
+      "pdf"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 5,
+      "output": 30,
+      "cachedInput": 0.5,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

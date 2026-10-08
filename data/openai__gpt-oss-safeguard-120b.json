@@ -1,0 +1,41 @@
+{
+  "page": "https://opencode.ai/data/openai/gpt-oss-safeguard-120b",
+  "updatedAt": null,
+  "summary": "GPT OSS Safeguard 120B costs $0.15 per 1M input tokens and $0.60 per 1M output tokens.",
+  "model": {
+    "id": "openai/gpt-oss-safeguard-120b",
+    "name": "GPT OSS Safeguard 120B",
+    "lab": "openai",
+    "labName": "OpenAI",
+    "family": "gpt-oss",
+    "description": "Safety model for policy screening, moderation, and risk-aware routing workflows",
+    "releaseDate": "2025-10-29",
+    "lastUpdated": "2025-10-29",
+    "knowledgeCutoff": null,
+    "contextTokens": 131072,
+    "outputTokens": 32768,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/openai/gpt-oss-safeguard-120b"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.15,
+      "output": 0.6,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

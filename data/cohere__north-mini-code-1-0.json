@@ -1,0 +1,75 @@
+{
+  "page": "https://opencode.ai/data/cohere/north-mini-code-1-0",
+  "updatedAt": null,
+  "summary": "North Mini Code costs $0.00 per 1M input tokens and $0.00 per 1M output tokens.",
+  "model": {
+    "id": "cohere/north-mini-code-1-0",
+    "name": "North Mini Code",
+    "lab": "cohere",
+    "labName": "Cohere",
+    "family": "north",
+    "description": "Cohere coding model for practical software engineering and agentic edits",
+    "releaseDate": "2026-06-09",
+    "lastUpdated": "2026-06-09",
+    "knowledgeCutoff": "2025-09-23",
+    "contextTokens": 256000,
+    "outputTokens": 64000,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 0,
+      "output": 0,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": [
+      {
+        "name": "SWE-Bench Verified",
+        "score": 67.6,
+        "metric": "resolved",
+        "harness": "SWE-agent",
+        "source": "https://huggingface.co/CohereLabs/North-Mini-Code-1.0"
+      },
+      {
+        "name": "SWE-Bench Pro",
+        "score": 40.2,
+        "metric": "resolve rate",
+        "harness": "SWE-agent",
+        "source": "https://huggingface.co/CohereLabs/North-Mini-Code-1.0"
+      },
+      {
+        "name": "Artificial Analysis Intelligence Index",
+        "score": 27.6,
+        "metric": "index score",
+        "source": "https://artificialanalysis.ai/articles/north-mini-code-cohere-s-small-coding-focused-moe-model"
+      },
+      {
+        "name": "Artificial Analysis Coding Index",
+        "score": 33.4,
+        "metric": "index score",
+        "source": "https://artificialanalysis.ai/articles/north-mini-code-cohere-s-small-coding-focused-moe-model"
+      },
+      {
+        "name": "GDPval-AA",
+        "score": 14,
+        "metric": "win rate",
+        "source": "https://artificialanalysis.ai/articles/north-mini-code-cohere-s-small-coding-focused-moe-model"
+      },
+      {
+        "name": "τ²-Bench Telecom",
+        "score": 37,
+        "metric": "success rate",
+        "source": "https://artificialanalysis.ai/articles/north-mini-code-cohere-s-small-coding-focused-moe-model"
+      }
+    ]
+  },
+  "usage": null
+}

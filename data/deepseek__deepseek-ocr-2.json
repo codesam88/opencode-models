@@ -1,0 +1,37 @@
+{
+  "page": "https://opencode.ai/data/deepseek/deepseek-ocr-2",
+  "updatedAt": null,
+  "summary": "DeepSeek OCR 2 costs $0.03 per 1M input tokens and $0.03 per 1M output tokens.",
+  "model": {
+    "id": "deepseek/deepseek-ocr-2",
+    "name": "DeepSeek OCR 2",
+    "lab": "deepseek",
+    "labName": "DeepSeek",
+    "family": null,
+    "description": "High-accuracy OCR model for extracting text from documents, screenshots, receipts, and natural scenes",
+    "releaseDate": "2026-01-27",
+    "lastUpdated": "2026-01-27",
+    "knowledgeCutoff": null,
+    "contextTokens": 8192,
+    "outputTokens": 8192,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": false,
+    "openWeights": true,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 0.03,
+      "output": 0.03,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

@@ -1,0 +1,98 @@
+{
+  "page": "https://opencode.ai/data/sakana/fugu-ultra",
+  "updatedAt": null,
+  "summary": "Fugu Ultra costs $5.00 per 1M input tokens and $30.00 per 1M output tokens.",
+  "model": {
+    "id": "sakana/fugu-ultra",
+    "name": "Fugu Ultra",
+    "lab": "sakana",
+    "labName": "Sakana",
+    "family": "fugu",
+    "description": "Quality-first multi-agent model for hard research, analysis, and competitions",
+    "releaseDate": "2026-06-15",
+    "lastUpdated": "2026-06-15",
+    "knowledgeCutoff": null,
+    "contextTokens": 1000000,
+    "outputTokens": null,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 5,
+      "output": 30,
+      "cachedInput": 0.5,
+      "cacheWrite": 5
+    },
+    "benchmarks": [
+      {
+        "name": "SWE Bench Pro",
+        "score": 73.7,
+        "source": "https://console.sakana.ai/models"
+      },
+      {
+        "name": "Terminal Bench 2.1",
+        "score": 82.1,
+        "source": "https://console.sakana.ai/models"
+      },
+      {
+        "name": "LiveCodeBench",
+        "score": 93.2,
+        "source": "https://console.sakana.ai/models"
+      },
+      {
+        "name": "LiveCodeBench Pro",
+        "score": 90.8,
+        "source": "https://console.sakana.ai/models"
+      },
+      {
+        "name": "Humanity’s Last Exam",
+        "score": 50,
+        "source": "https://console.sakana.ai/models"
+      },
+      {
+        "name": "CharXiv Reasoning",
+        "score": 86.6,
+        "source": "https://console.sakana.ai/models"
+      },
+      {
+        "name": "GPQA Diamond",
+        "score": 95.5,
+        "source": "https://console.sakana.ai/models"
+      },
+      {
+        "name": "SciCode",
+        "score": 58.7,
+        "source": "https://console.sakana.ai/models"
+      },
+      {
+        "name": "τ3 Banking",
+        "score": 20.6,
+        "source": "https://console.sakana.ai/models"
+      },
+      {
+        "name": "Long Context Reasoning",
+        "score": 73.3,
+        "source": "https://console.sakana.ai/models"
+      },
+      {
+        "name": "MRCRv2",
+        "score": 93.6,
+        "source": "https://console.sakana.ai/models"
+      },
+      {
+        "name": "CTI-REALM",
+        "score": 69.4,
+        "source": "https://console.sakana.ai/models"
+      }
+    ]
+  },
+  "usage": null
+}

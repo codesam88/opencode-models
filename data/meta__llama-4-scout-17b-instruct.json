@@ -1,0 +1,42 @@
+{
+  "page": "https://opencode.ai/data/meta/llama-4-scout-17b-instruct",
+  "updatedAt": null,
+  "summary": "Llama 4 Scout 17B Instruct costs $0.18 per 1M input tokens and $0.59 per 1M output tokens.",
+  "model": {
+    "id": "meta/llama-4-scout-17b-instruct",
+    "name": "Llama 4 Scout 17B Instruct",
+    "lab": "meta",
+    "labName": "Meta",
+    "family": "llama",
+    "description": "Open Llama with long-context vision for efficient multimodal agents",
+    "releaseDate": "2025-04-05",
+    "lastUpdated": "2025-04-05",
+    "knowledgeCutoff": "2024-08",
+    "contextTokens": 10000000,
+    "outputTokens": 16384,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/meta-llama/Llama-4-Scout-17B-16E-Instruct"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.18,
+      "output": 0.59,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

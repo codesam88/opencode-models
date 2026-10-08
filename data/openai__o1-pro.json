@@ -1,0 +1,37 @@
+{
+  "page": "https://opencode.ai/data/openai/o1-pro",
+  "updatedAt": null,
+  "summary": "o1-pro costs $150.00 per 1M input tokens and $600.00 per 1M output tokens.",
+  "model": {
+    "id": "openai/o1-pro",
+    "name": "o1-pro",
+    "lab": "openai",
+    "labName": "OpenAI",
+    "family": "o-pro",
+    "description": "O-series reasoning model for hard analysis, math, coding, and planning",
+    "releaseDate": "2025-03-19",
+    "lastUpdated": "2025-03-19",
+    "knowledgeCutoff": "2023-09",
+    "contextTokens": 200000,
+    "outputTokens": 100000,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 150,
+      "output": 600,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

@@ -1,0 +1,43 @@
+{
+  "page": "https://opencode.ai/data/zhipuai/glm-4-6v",
+  "updatedAt": null,
+  "summary": "GLM-4.6V costs $0.30 per 1M input tokens and $0.90 per 1M output tokens.",
+  "model": {
+    "id": "zhipuai/glm-4.6v",
+    "name": "GLM-4.6V",
+    "lab": "zhipuai",
+    "labName": "Zhipu",
+    "family": "glm",
+    "description": "GLM vision model for visual reasoning, documents, and multimodal agents",
+    "releaseDate": "2025-12-08",
+    "lastUpdated": "2025-12-08",
+    "knowledgeCutoff": "2025-04",
+    "contextTokens": 128000,
+    "outputTokens": 32768,
+    "inputModalities": [
+      "text",
+      "image",
+      "video"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/zai-org/GLM-4.6V"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.3,
+      "output": 0.9,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

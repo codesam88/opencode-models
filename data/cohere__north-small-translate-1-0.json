@@ -1,0 +1,36 @@
+{
+  "page": "https://opencode.ai/data/cohere/north-small-translate-1-0",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "cohere/north-small-translate-1-0",
+    "name": "North Small Translate",
+    "lab": "cohere",
+    "labName": "Cohere",
+    "family": "north",
+    "description": "Open-weight translation model for more than 50 languages and locale variants",
+    "releaseDate": "2026-09-09",
+    "lastUpdated": "2026-09-09",
+    "knowledgeCutoff": null,
+    "contextTokens": 16000,
+    "outputTokens": 16000,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": false,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/CohereLabs/North-Small-Translate-1.0"
+      }
+    ],
+    "priceUsdPer1M": null,
+    "benchmarks": []
+  },
+  "usage": null
+}

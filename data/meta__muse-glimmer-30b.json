@@ -1,0 +1,100 @@
+{
+  "page": "https://opencode.ai/data/meta/muse-glimmer-30b",
+  "updatedAt": null,
+  "summary": "Muse Glimmer 30B costs $0.00 per 1M input tokens and $0.00 per 1M output tokens.",
+  "model": {
+    "id": "meta/muse-glimmer-30b",
+    "name": "Muse Glimmer 30B",
+    "lab": "meta",
+    "labName": "Meta",
+    "family": "muse",
+    "description": "Muse Glimmer is a 30-billion-parameter open-weight multimodal model from Meta Superintelligence Labs, distilled from Muse Spark for always-on local agents, tool use, coding, and image understanding.",
+    "releaseDate": "2026-08-10",
+    "lastUpdated": "2026-08-10",
+    "knowledgeCutoff": "2026-01-04",
+    "contextTokens": 131072,
+    "outputTokens": 131072,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/meta-models/Muse-Glimmer-30B"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0,
+      "output": 0,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": [
+      {
+        "name": "MCP Atlas",
+        "score": 75.5,
+        "metric": "success rate",
+        "variant": "public",
+        "source": "https://huggingface.co/meta-models/Muse-Glimmer-30B"
+      },
+      {
+        "name": "DeepSearch QA",
+        "score": 74.6,
+        "source": "https://huggingface.co/meta-models/Muse-Glimmer-30B"
+      },
+      {
+        "name": "SWE-Bench Pro",
+        "score": 51.2,
+        "metric": "resolve rate",
+        "source": "https://huggingface.co/meta-models/Muse-Glimmer-30B"
+      },
+      {
+        "name": "SWE-Bench Verified",
+        "score": 76,
+        "metric": "resolve rate",
+        "source": "https://huggingface.co/meta-models/Muse-Glimmer-30B"
+      },
+      {
+        "name": "Terminal-Bench",
+        "score": 51.7,
+        "metric": "success rate",
+        "variant": "with terminus2",
+        "version": "2.1",
+        "source": "https://huggingface.co/meta-models/Muse-Glimmer-30B"
+      },
+      {
+        "name": "OSWorld-Verified",
+        "score": 65.9,
+        "metric": "success rate",
+        "source": "https://huggingface.co/meta-models/Muse-Glimmer-30B"
+      },
+      {
+        "name": "AIME 2026",
+        "score": 94.7,
+        "metric": "accuracy",
+        "source": "https://huggingface.co/meta-models/Muse-Glimmer-30B"
+      },
+      {
+        "name": "GPQA Diamond",
+        "score": 83.5,
+        "metric": "accuracy",
+        "variant": "AA",
+        "source": "https://huggingface.co/meta-models/Muse-Glimmer-30B"
+      },
+      {
+        "name": "CharXiv Reasoning",
+        "score": 78.8,
+        "metric": "accuracy",
+        "source": "https://huggingface.co/meta-models/Muse-Glimmer-30B"
+      }
+    ]
+  },
+  "usage": null
+}

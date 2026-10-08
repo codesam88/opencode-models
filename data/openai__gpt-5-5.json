@@ -1,0 +1,747 @@
+{
+  "page": "https://opencode.ai/data/openai/gpt-5-5",
+  "updatedAt": "2026-09-28T12:09:39.000Z",
+  "summary": "GPT-5.5 costs $5.00 per 1M input tokens and $30.00 per 1M output tokens.",
+  "model": {
+    "id": "openai/gpt-5.5",
+    "name": "GPT-5.5",
+    "lab": "openai",
+    "labName": "OpenAI",
+    "family": "gpt",
+    "description": "Default frontier GPT for coding, computer use, research, and knowledge work",
+    "releaseDate": "2026-04-23",
+    "lastUpdated": "2026-04-23",
+    "knowledgeCutoff": "2025-12-01",
+    "contextTokens": 1050000,
+    "outputTokens": 128000,
+    "inputModalities": [
+      "text",
+      "image",
+      "pdf"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 5,
+      "output": 30,
+      "cachedInput": 0.5,
+      "cacheWrite": 5
+    },
+    "benchmarks": [
+      {
+        "name": "SWE-Bench Pro",
+        "score": 58.6,
+        "metric": "resolve rate",
+        "source": "https://www.anthropic.com/news/claude-opus-4-8"
+      },
+      {
+        "name": "Terminal-Bench",
+        "score": 78.2,
+        "metric": "success rate",
+        "harness": "Terminus-2",
+        "version": "2.1",
+        "source": "https://www.anthropic.com/news/claude-opus-4-8"
+      },
+      {
+        "name": "SWE-Atlas Codebase QnA",
+        "score": 45.43,
+        "metric": "score",
+        "harness": "Codex",
+        "source": "https://labs.scale.com/leaderboard/sweatlas-qna"
+      },
+      {
+        "name": "SWE-Atlas Refactoring",
+        "score": 44.79,
+        "metric": "score",
+        "harness": "Codex",
+        "source": "https://labs.scale.com/leaderboard/sweatlas-refactoring"
+      },
+      {
+        "name": "SWE-Atlas Test Writing",
+        "score": 42.59,
+        "metric": "score",
+        "harness": "Codex",
+        "source": "https://labs.scale.com/leaderboard/sweatlas-tw"
+      },
+      {
+        "name": "Artificial Analysis Coding Agent Index",
+        "score": 65.3,
+        "metric": "average pass@1",
+        "harness": "Codex",
+        "variant": "xhigh",
+        "source": "https://artificialanalysis.ai/agents/coding-agents"
+      },
+      {
+        "name": "SWE-Atlas Codebase QnA",
+        "score": 80.8,
+        "metric": "pass@1",
+        "harness": "Codex",
+        "variant": "xhigh",
+        "source": "https://artificialanalysis.ai/agents/coding-agents"
+      },
+      {
+        "name": "SWE-Bench Pro",
+        "score": 30.9,
+        "metric": "pass@1",
+        "harness": "Codex",
+        "variant": "xhigh",
+        "dataset": "hard-aa",
+        "source": "https://artificialanalysis.ai/agents/coding-agents"
+      },
+      {
+        "name": "Terminal-Bench",
+        "score": 84.1,
+        "metric": "pass@1",
+        "harness": "Codex",
+        "variant": "xhigh",
+        "version": "2.1",
+        "source": "https://artificialanalysis.ai/agents/coding-agents"
+      },
+      {
+        "name": "Artificial Analysis Coding Agent Index",
+        "score": 60.4,
+        "metric": "average pass@1",
+        "harness": "Codex",
+        "variant": "medium",
+        "source": "https://artificialanalysis.ai/agents/coding-agents"
+      },
+      {
+        "name": "SWE-Atlas Codebase QnA",
+        "score": 79.1,
+        "metric": "pass@1",
+        "harness": "Codex",
+        "variant": "medium",
+        "source": "https://artificialanalysis.ai/agents/coding-agents"
+      },
+      {
+        "name": "SWE-Bench Pro",
+        "score": 26.2,
+        "metric": "pass@1",
+        "harness": "Codex",
+        "variant": "medium",
+        "dataset": "hard-aa",
+        "source": "https://artificialanalysis.ai/agents/coding-agents"
+      },
+      {
+        "name": "Terminal-Bench",
+        "score": 75.8,
+        "metric": "pass@1",
+        "harness": "Codex",
+        "variant": "medium",
+        "version": "2.1",
+        "source": "https://artificialanalysis.ai/agents/coding-agents"
+      },
+      {
+        "name": "Artificial Analysis Coding Agent Index",
+        "score": 57.8,
+        "metric": "average pass@1",
+        "harness": "Cursor CLI",
+        "variant": "medium",
+        "source": "https://artificialanalysis.ai/agents/coding-agents"
+      },
+      {
+        "name": "SWE-Atlas Codebase QnA",
+        "score": 75,
+        "metric": "pass@1",
+        "harness": "Cursor CLI",
+        "variant": "medium",
+        "source": "https://artificialanalysis.ai/agents/coding-agents"
+      },
+      {
+        "name": "SWE-Bench Pro",
+        "score": 24.9,
+        "metric": "pass@1",
+        "harness": "Cursor CLI",
+        "variant": "medium",
+        "dataset": "hard-aa",
+        "source": "https://artificialanalysis.ai/agents/coding-agents"
+      },
+      {
+        "name": "Terminal-Bench",
+        "score": 73.4,
+        "metric": "pass@1",
+        "harness": "Cursor CLI",
+        "variant": "medium",
+        "version": "2.1",
+        "source": "https://artificialanalysis.ai/agents/coding-agents"
+      },
+      {
+        "name": "Terminal-Bench",
+        "score": 82.7,
+        "metric": "success rate",
+        "version": "2.0",
+        "source": "https://openai.com/index/introducing-gpt-5-5/"
+      },
+      {
+        "name": "GPQA Diamond",
+        "score": 93.6,
+        "metric": "accuracy",
+        "source": "https://openai.com/index/introducing-gpt-5-5/"
+      },
+      {
+        "name": "Humanity's Last Exam",
+        "score": 41.4,
+        "metric": "accuracy",
+        "variant": "no tools",
+        "source": "https://openai.com/index/introducing-gpt-5-5/"
+      },
+      {
+        "name": "Humanity's Last Exam",
+        "score": 52.2,
+        "metric": "accuracy",
+        "variant": "with tools",
+        "source": "https://openai.com/index/introducing-gpt-5-5/"
+      },
+      {
+        "name": "OSWorld-Verified",
+        "score": 78.7,
+        "metric": "success rate",
+        "source": "https://openai.com/index/introducing-gpt-5-5/"
+      },
+      {
+        "name": "BrowseComp",
+        "score": 84.4,
+        "metric": "accuracy",
+        "source": "https://openai.com/index/introducing-gpt-5-5/"
+      },
+      {
+        "name": "MMMU Pro",
+        "score": 81.2,
+        "metric": "accuracy",
+        "variant": "no tools",
+        "source": "https://openai.com/index/introducing-gpt-5-5/"
+      },
+      {
+        "name": "ARC-AGI-2",
+        "score": 85,
+        "metric": "accuracy",
+        "variant": "Verified",
+        "source": "https://openai.com/index/introducing-gpt-5-5/"
+      },
+      {
+        "name": "FrontierMath",
+        "score": 51.7,
+        "metric": "accuracy",
+        "dataset": "Tier 1-3",
+        "source": "https://openai.com/index/introducing-gpt-5-5/"
+      },
+      {
+        "name": "FrontierMath",
+        "score": 35.4,
+        "metric": "accuracy",
+        "dataset": "Tier 4",
+        "source": "https://openai.com/index/introducing-gpt-5-5/"
+      },
+      {
+        "name": "GDPval",
+        "score": 84.9,
+        "metric": "wins or ties",
+        "source": "https://openai.com/index/introducing-gpt-5-5/"
+      },
+      {
+        "name": "MCP Atlas",
+        "score": 75.3,
+        "metric": "success rate",
+        "source": "https://openai.com/index/introducing-gpt-5-5/"
+      },
+      {
+        "name": "Toolathlon",
+        "score": 55.6,
+        "metric": "success rate",
+        "source": "https://openai.com/index/introducing-gpt-5-5/"
+      },
+      {
+        "name": "τ²-Bench Telecom",
+        "score": 98,
+        "metric": "success rate",
+        "variant": "original prompts",
+        "source": "https://openai.com/index/introducing-gpt-5-5/"
+      }
+    ]
+  },
+  "usage": {
+    "rankLastWeek": null,
+    "tokens": 0,
+    "sharePercent": 0,
+    "changePercent": 0,
+    "uniqueUsers": 0,
+    "sessions": 25,
+    "tokensPerSession": 0,
+    "costPerSessionUsd": 0,
+    "costUsd": 0,
+    "cachedInputPercent": 0,
+    "weeklyRetentionPercent": null,
+    "daily": [
+      {
+        "date": "2026-08-14",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-15",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-16",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-17",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-18",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-19",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-20",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-21",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-22",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-23",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-24",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-25",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-26",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-27",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-28",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-29",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-30",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-31",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-01",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-02",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-03",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-04",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-05",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-06",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-07",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-08",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-09",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-10",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-11",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-12",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-13",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-14",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-15",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-16",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-17",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 7,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-18",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 4,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-19",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 9,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-20",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 5,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-21",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-22",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-23",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-24",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-25",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-26",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-27",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-28",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-29",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2025-09-30",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2025-10-01",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2025-10-02",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2025-10-03",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2025-10-04",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2025-10-05",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2025-10-06",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2025-10-07",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2025-10-08",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      }
+    ],
+    "countries": [],
+    "peers": [
+      {
+        "rank": 1,
+        "model": "space-bunny",
+        "lab": "unknown",
+        "page": "https://opencode.ai/data/unknown/space-bunny",
+        "tokens": 49209686291516
+      },
+      {
+        "rank": 2,
+        "model": "muse-spark-1.3-contributor",
+        "lab": "meta",
+        "page": "https://opencode.ai/data/meta/muse-spark-1-3-contributor",
+        "tokens": 37310578208005
+      },
+      {
+        "rank": 3,
+        "model": "deepseek-v4.1-flash",
+        "lab": "deepseek",
+        "page": "https://opencode.ai/data/deepseek/deepseek-v4-1-flash",
+        "tokens": 35981936889841
+      },
+      {
+        "rank": 4,
+        "model": "mimo-v2.6-flash",
+        "lab": "xiaomi",
+        "page": "https://opencode.ai/data/xiaomi/mimo-v2-6-flash",
+        "tokens": 12337617240975
+      },
+      {
+        "rank": 5,
+        "model": "deepseek-v4-flash",
+        "lab": "deepseek",
+        "page": "https://opencode.ai/data/deepseek/deepseek-v4-flash",
+        "tokens": 4548225529750
+      },
+      {
+        "rank": 6,
+        "model": "nemotron-3-ultra",
+        "lab": "nvidia",
+        "page": "https://opencode.ai/data/nvidia/nemotron-3-ultra",
+        "tokens": 3944830242727
+      },
+      {
+        "rank": 7,
+        "model": "longcat-2.5-preview",
+        "lab": "meituan",
+        "page": "https://opencode.ai/data/meituan/longcat-2-5-preview",
+        "tokens": 2221654430549
+      },
+      {
+        "rank": 8,
+        "model": "fledge-alpha",
+        "lab": "unknown",
+        "page": "https://opencode.ai/data/unknown/fledge-alpha",
+        "tokens": 2187492662573
+      },
+      {
+        "rank": 9,
+        "model": "glm-5.3-flash",
+        "lab": "zhipu",
+        "page": "https://opencode.ai/data/zhipuai/glm-5-3-flash",
+        "tokens": 1947901441211
+      },
+      {
+        "rank": 10,
+        "model": "mimo-v2.5",
+        "lab": "xiaomi",
+        "page": "https://opencode.ai/data/xiaomi/mimo-v2-5",
+        "tokens": 627281886797
+      }
+    ]
+  }
+}

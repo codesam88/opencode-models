@@ -1,0 +1,32 @@
+{
+  "page": "https://opencode.ai/data/xai/grok-imagine-video-1-5-lite",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "xai/grok-imagine-video-1.5-lite",
+    "name": "Grok Imagine Video 1.5 Lite",
+    "lab": "xai",
+    "labName": "xAI",
+    "family": "grok",
+    "description": "Cost-efficient video model for text-to-video and image-to-video generation",
+    "releaseDate": "2026-10-01",
+    "lastUpdated": "2026-10-01",
+    "knowledgeCutoff": null,
+    "contextTokens": 1024,
+    "outputTokens": 0,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "video"
+    ],
+    "reasoning": false,
+    "toolCall": false,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": null,
+    "benchmarks": []
+  },
+  "usage": null
+}

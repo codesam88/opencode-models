@@ -1,0 +1,38 @@
+{
+  "page": "https://opencode.ai/data/xai/grok-4-20-0309-reasoning",
+  "updatedAt": null,
+  "summary": "Grok 4.20 (Reasoning) costs $1.25 per 1M input tokens and $2.50 per 1M output tokens.",
+  "model": {
+    "id": "xai/grok-4.20-0309-reasoning",
+    "name": "Grok 4.20 (Reasoning)",
+    "lab": "xai",
+    "labName": "xAI",
+    "family": "grok",
+    "description": "Reasoning Grok for document-heavy analysis and long-horizon tool use",
+    "releaseDate": "2026-03-09",
+    "lastUpdated": "2026-03-09",
+    "knowledgeCutoff": null,
+    "contextTokens": 1000000,
+    "outputTokens": 30000,
+    "inputModalities": [
+      "text",
+      "image",
+      "pdf"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 1.25,
+      "output": 2.5,
+      "cachedInput": 0.2,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

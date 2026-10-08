@@ -1,0 +1,36 @@
+{
+  "page": "https://opencode.ai/data/swiss-ai/apertus-8b",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "swiss-ai/apertus-8b",
+    "name": "Apertus 8B",
+    "lab": "swiss-ai",
+    "labName": "Swiss AI",
+    "family": null,
+    "description": "Fully open 8B multilingual LLM supporting 1800+ languages with 65K context. Trained on compliant open data. Apache 2.0, EU AI Act compliant.",
+    "releaseDate": "2025-09-02",
+    "lastUpdated": "2025-09-02",
+    "knowledgeCutoff": "2025-09",
+    "contextTokens": 65536,
+    "outputTokens": 8192,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/swiss-ai/Apertus-8B-Instruct-2509"
+      }
+    ],
+    "priceUsdPer1M": null,
+    "benchmarks": []
+  },
+  "usage": null
+}

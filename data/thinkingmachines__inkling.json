@@ -1,0 +1,43 @@
+{
+  "page": "https://opencode.ai/data/thinkingmachines/inkling",
+  "updatedAt": null,
+  "summary": "Inkling costs $1.00 per 1M input tokens and $4.05 per 1M output tokens.",
+  "model": {
+    "id": "thinkingmachines/inkling",
+    "name": "Inkling",
+    "lab": "thinkingmachines",
+    "labName": "Thinking Machines",
+    "family": "ling",
+    "description": "Multimodal MoE reasoning model (975B total, 41B active) for text, image, and audio",
+    "releaseDate": "2026-07-15",
+    "lastUpdated": "2026-07-15",
+    "knowledgeCutoff": null,
+    "contextTokens": 1048576,
+    "outputTokens": 1048576,
+    "inputModalities": [
+      "text",
+      "image",
+      "audio"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/thinkingmachines/Inkling"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 1,
+      "output": 4.05,
+      "cachedInput": 0.17,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

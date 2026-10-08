@@ -1,0 +1,39 @@
+{
+  "page": "https://opencode.ai/data/openai/gpt-realtime-2-1",
+  "updatedAt": null,
+  "summary": "GPT-Realtime-2.1 costs $4.00 per 1M input tokens and $24.00 per 1M output tokens.",
+  "model": {
+    "id": "openai/gpt-realtime-2.1",
+    "name": "GPT-Realtime-2.1",
+    "lab": "openai",
+    "labName": "OpenAI",
+    "family": "gpt",
+    "description": "Realtime speech-to-speech model with configurable reasoning, tool use, and robust voice-agent behavior",
+    "releaseDate": "2026-07-06",
+    "lastUpdated": "2026-07-06",
+    "knowledgeCutoff": "2024-09-30",
+    "contextTokens": 128000,
+    "outputTokens": 32000,
+    "inputModalities": [
+      "text",
+      "audio",
+      "image"
+    ],
+    "outputModalities": [
+      "text",
+      "audio"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 4,
+      "output": 24,
+      "cachedInput": 0.4,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

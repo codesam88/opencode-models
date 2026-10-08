@@ -1,0 +1,36 @@
+{
+  "page": "https://opencode.ai/data/meta/llama-guard-3-8b",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "meta/llama-guard-3-8b",
+    "name": "Llama-Guard-3-8B",
+    "lab": "meta",
+    "labName": "Meta",
+    "family": "llama",
+    "description": "Llama 3.1-based safety classifier for moderating prompts and model responses",
+    "releaseDate": "2024-07-23",
+    "lastUpdated": "2024-07-23",
+    "knowledgeCutoff": "2023-12",
+    "contextTokens": 128000,
+    "outputTokens": 4096,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": false,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/meta-llama/Llama-Guard-3-8B"
+      }
+    ],
+    "priceUsdPer1M": null,
+    "benchmarks": []
+  },
+  "usage": null
+}

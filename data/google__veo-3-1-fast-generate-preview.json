@@ -1,0 +1,33 @@
+{
+  "page": "https://opencode.ai/data/google/veo-3-1-fast-generate-preview",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "google/veo-3.1-fast-generate-preview",
+    "name": "Veo 3.1 Fast Preview",
+    "lab": "google",
+    "labName": "Google",
+    "family": "veo",
+    "description": "Video model for prompt-guided generation, editing, and motion workflows",
+    "releaseDate": "2025-10-15",
+    "lastUpdated": "2026-01-01",
+    "knowledgeCutoff": null,
+    "contextTokens": 1024,
+    "outputTokens": 0,
+    "inputModalities": [
+      "text",
+      "image",
+      "video"
+    ],
+    "outputModalities": [
+      "video"
+    ],
+    "reasoning": false,
+    "toolCall": false,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": null,
+    "benchmarks": []
+  },
+  "usage": null
+}

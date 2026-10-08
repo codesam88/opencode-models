@@ -1,0 +1,45 @@
+{
+  "page": "https://opencode.ai/data/openai/o3",
+  "updatedAt": null,
+  "summary": "o3 costs $2.00 per 1M input tokens and $8.00 per 1M output tokens.",
+  "model": {
+    "id": "openai/o3",
+    "name": "o3",
+    "lab": "openai",
+    "labName": "OpenAI",
+    "family": "o",
+    "description": "Deliberate o-series reasoner for hard math, coding, and multi-step analysis",
+    "releaseDate": "2025-04-16",
+    "lastUpdated": "2025-04-16",
+    "knowledgeCutoff": "2024-05",
+    "contextTokens": 200000,
+    "outputTokens": 100000,
+    "inputModalities": [
+      "text",
+      "image",
+      "pdf"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 2,
+      "output": 8,
+      "cachedInput": 0.5,
+      "cacheWrite": null
+    },
+    "benchmarks": [
+      {
+        "name": "Aider Polyglot",
+        "score": 81.3,
+        "metric": "percent correct",
+        "source": "https://aider.chat/docs/leaderboards/"
+      }
+    ]
+  },
+  "usage": null
+}

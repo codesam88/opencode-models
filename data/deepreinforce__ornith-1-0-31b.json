@@ -1,0 +1,32 @@
+{
+  "page": "https://opencode.ai/data/deepreinforce/ornith-1-0-31b",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "deepreinforce/ornith-1.0-31b",
+    "name": "Ornith 1.0 31B",
+    "lab": "deepreinforce",
+    "labName": "DeepReinforce",
+    "family": "ornith",
+    "description": "Open coding-reasoning model for repository tasks and self-improving agents",
+    "releaseDate": "2026-06-25",
+    "lastUpdated": "2026-06-25",
+    "knowledgeCutoff": null,
+    "contextTokens": 262144,
+    "outputTokens": null,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [],
+    "priceUsdPer1M": null,
+    "benchmarks": []
+  },
+  "usage": null
+}

@@ -1,0 +1,93 @@
+{
+  "page": "https://opencode.ai/data/sakana/fugu",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "sakana/fugu",
+    "name": "Fugu",
+    "lab": "sakana",
+    "labName": "Sakana",
+    "family": "fugu",
+    "description": "Multi-agent model for routing expert agents across complex analytical tasks",
+    "releaseDate": "2026-06-15",
+    "lastUpdated": "2026-06-15",
+    "knowledgeCutoff": null,
+    "contextTokens": 1000000,
+    "outputTokens": null,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": null,
+    "benchmarks": [
+      {
+        "name": "SWE Bench Pro",
+        "score": 59,
+        "source": "https://console.sakana.ai/models"
+      },
+      {
+        "name": "Terminal Bench 2.1",
+        "score": 80.2,
+        "source": "https://console.sakana.ai/models"
+      },
+      {
+        "name": "LiveCodeBench",
+        "score": 92.9,
+        "source": "https://console.sakana.ai/models"
+      },
+      {
+        "name": "LiveCodeBench Pro",
+        "score": 87.8,
+        "source": "https://console.sakana.ai/models"
+      },
+      {
+        "name": "Humanity’s Last Exam",
+        "score": 47.2,
+        "source": "https://console.sakana.ai/models"
+      },
+      {
+        "name": "CharXiv Reasoning",
+        "score": 85.1,
+        "source": "https://console.sakana.ai/models"
+      },
+      {
+        "name": "GPQA Diamond",
+        "score": 95.5,
+        "source": "https://console.sakana.ai/models"
+      },
+      {
+        "name": "SciCode",
+        "score": 60.1,
+        "source": "https://console.sakana.ai/models"
+      },
+      {
+        "name": "τ3 Banking",
+        "score": 21.7,
+        "source": "https://console.sakana.ai/models"
+      },
+      {
+        "name": "Long Context Reasoning",
+        "score": 74.7,
+        "source": "https://console.sakana.ai/models"
+      },
+      {
+        "name": "MRCRv2",
+        "score": 86.6,
+        "source": "https://console.sakana.ai/models"
+      },
+      {
+        "name": "CTI-REALM",
+        "score": 67.5,
+        "source": "https://console.sakana.ai/models"
+      }
+    ]
+  },
+  "usage": null
+}

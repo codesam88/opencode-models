@@ -1,0 +1,43 @@
+{
+  "page": "https://opencode.ai/data/zhipuai/glm-4-6v-flash",
+  "updatedAt": null,
+  "summary": "GLM-4.6V-Flash costs $0.00 per 1M input tokens and $0.00 per 1M output tokens.",
+  "model": {
+    "id": "zhipuai/glm-4.6v-flash",
+    "name": "GLM-4.6V-Flash",
+    "lab": "zhipuai",
+    "labName": "Zhipu",
+    "family": "glm-flash",
+    "description": "Lightweight GLM vision model for visual reasoning, documents, and multimodal agents",
+    "releaseDate": "2025-12-08",
+    "lastUpdated": "2025-12-08",
+    "knowledgeCutoff": null,
+    "contextTokens": 128000,
+    "outputTokens": 32768,
+    "inputModalities": [
+      "text",
+      "image",
+      "video"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/zai-org/GLM-4.6V-Flash"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0,
+      "output": 0,
+      "cachedInput": 0,
+      "cacheWrite": 0
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

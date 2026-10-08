@@ -1,0 +1,36 @@
+{
+  "page": "https://opencode.ai/data/upstage/solar-pro2",
+  "updatedAt": null,
+  "summary": "Solar Pro 2 costs $0.25 per 1M input tokens and $0.25 per 1M output tokens.",
+  "model": {
+    "id": "upstage/solar-pro2",
+    "name": "Solar Pro 2",
+    "lab": "upstage",
+    "labName": "Upstage",
+    "family": "solar-pro",
+    "description": "Flagship model for demanding analysis, coding, and production agent workflows",
+    "releaseDate": "2025-05-20",
+    "lastUpdated": "2025-05-20",
+    "knowledgeCutoff": "2025-03",
+    "contextTokens": 65536,
+    "outputTokens": 8192,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 0.25,
+      "output": 0.25,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

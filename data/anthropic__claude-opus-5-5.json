@@ -1,0 +1,109 @@
+{
+  "page": "https://opencode.ai/data/anthropic/claude-opus-5-5",
+  "updatedAt": null,
+  "summary": "Claude Opus 5.5 costs $4.00 per 1M input tokens and $20.00 per 1M output tokens.",
+  "model": {
+    "id": "anthropic/claude-opus-5-5",
+    "name": "Claude Opus 5.5",
+    "lab": "anthropic",
+    "labName": "Anthropic",
+    "family": "claude-opus",
+    "description": "Claude model for long-running agentic coding and knowledge work",
+    "releaseDate": "2026-09-22",
+    "lastUpdated": "2026-09-22",
+    "knowledgeCutoff": "2026-06",
+    "contextTokens": 1000000,
+    "outputTokens": 128000,
+    "inputModalities": [
+      "text",
+      "image",
+      "pdf"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 4,
+      "output": 20,
+      "cachedInput": 0.2,
+      "cacheWrite": 5
+    },
+    "benchmarks": [
+      {
+        "name": "Terminal-Bench",
+        "score": 66.4,
+        "metric": "score",
+        "variant": "xhigh effort; production safeguards with fallback",
+        "version": "4.0",
+        "source": "https://www.anthropic.com/claude-opus-5-5"
+      },
+      {
+        "name": "FrontierCode",
+        "score": 54.4,
+        "metric": "score",
+        "variant": "max effort; production safeguards with fallback",
+        "dataset": "Main",
+        "version": "1.1",
+        "source": "https://www.anthropic.com/claude-opus-5-5"
+      },
+      {
+        "name": "CursorBench",
+        "score": 57.8,
+        "metric": "score",
+        "variant": "max effort; production safeguards with fallback",
+        "version": "4.0",
+        "source": "https://www.anthropic.com/claude-opus-5-5"
+      },
+      {
+        "name": "GDPval-AA",
+        "score": 1846,
+        "metric": "Elo",
+        "variant": "max effort; production safeguards with fallback",
+        "version": "2.1",
+        "source": "https://www.anthropic.com/claude-opus-5-5"
+      },
+      {
+        "name": "AutomationBench",
+        "score": 40,
+        "metric": "pass rate",
+        "variant": "max effort; production safeguards; no fallback",
+        "source": "https://www.anthropic.com/claude-opus-5-5"
+      },
+      {
+        "name": "Humanity's Last Exam",
+        "score": 67.7,
+        "metric": "score",
+        "variant": "max effort; with tools; production safeguards with fallback",
+        "source": "https://www.anthropic.com/claude-opus-5-5"
+      },
+      {
+        "name": "Terminal-Bench-Science",
+        "score": 58.7,
+        "metric": "score",
+        "variant": "max effort; production safeguards with fallback",
+        "version": "0.1",
+        "source": "https://www.anthropic.com/claude-opus-5-5"
+      },
+      {
+        "name": "OSWorld",
+        "score": 81.8,
+        "metric": "partial score",
+        "variant": "max effort; production safeguards with fallback",
+        "version": "2.0",
+        "source": "https://www.anthropic.com/claude-opus-5-5"
+      },
+      {
+        "name": "Chartography",
+        "score": 89,
+        "metric": "score",
+        "variant": "max effort; with tools; production safeguards with fallback",
+        "source": "https://www.anthropic.com/claude-opus-5-5"
+      }
+    ]
+  },
+  "usage": null
+}

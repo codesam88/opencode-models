@@ -1,0 +1,51 @@
+{
+  "page": "https://opencode.ai/data/alibaba/qwen3-6-27b",
+  "updatedAt": null,
+  "summary": "Qwen3.6 27B costs $0.60 per 1M input tokens and $3.60 per 1M output tokens.",
+  "model": {
+    "id": "alibaba/qwen3.6-27b",
+    "name": "Qwen3.6 27B",
+    "lab": "alibaba",
+    "labName": "Alibaba",
+    "family": "qwen",
+    "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
+    "releaseDate": "2026-04-22",
+    "lastUpdated": "2026-04-22",
+    "knowledgeCutoff": null,
+    "contextTokens": 262144,
+    "outputTokens": 65536,
+    "inputModalities": [
+      "text",
+      "image",
+      "video",
+      "audio"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/Qwen/Qwen3.6-27B"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.6,
+      "output": 3.6,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": [
+      {
+        "name": "SWE-Bench Verified",
+        "score": 77.2,
+        "metric": "resolved",
+        "source": "https://huggingface.co/Qwen/Qwen3.6-27B"
+      }
+    ]
+  },
+  "usage": null
+}

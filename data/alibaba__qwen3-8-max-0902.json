@@ -1,0 +1,39 @@
+{
+  "page": "https://opencode.ai/data/alibaba/qwen3-8-max-0902",
+  "updatedAt": null,
+  "summary": "Qwen3.8 Max 0902 costs $2.00 per 1M input tokens and $6.00 per 1M output tokens.",
+  "model": {
+    "id": "alibaba/qwen3.8-max-0902",
+    "name": "Qwen3.8 Max 0902",
+    "lab": "alibaba",
+    "labName": "Alibaba",
+    "family": "qwen",
+    "description": "2026-09-02 upgraded snapshot of Qwen3.8 Max with stronger coding, collaborative agents, and multimodal document understanding",
+    "releaseDate": "2026-09-02",
+    "lastUpdated": "2026-09-02",
+    "knowledgeCutoff": null,
+    "contextTokens": 1000000,
+    "outputTokens": 131072,
+    "inputModalities": [
+      "text",
+      "image",
+      "video",
+      "pdf"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 2,
+      "output": 6,
+      "cachedInput": 0.25,
+      "cacheWrite": 2.5
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

@@ -1,0 +1,36 @@
+{
+  "page": "https://opencode.ai/data/nvidia/nemotron-content-safety-reasoning-4b",
+  "updatedAt": null,
+  "summary": "Nemotron Content Safety Reasoning 4B costs $0.00 per 1M input tokens and $0.00 per 1M output tokens.",
+  "model": {
+    "id": "nvidia/nemotron-content-safety-reasoning-4b",
+    "name": "Nemotron Content Safety Reasoning 4B",
+    "lab": "nvidia",
+    "labName": "NVIDIA",
+    "family": "nemotron",
+    "description": "Safety model for policy screening, moderation, and risk-aware routing workflows",
+    "releaseDate": "2026-01-22",
+    "lastUpdated": "2026-01-22",
+    "knowledgeCutoff": null,
+    "contextTokens": 128000,
+    "outputTokens": 4096,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": false,
+    "openWeights": true,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 0,
+      "output": 0,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

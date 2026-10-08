@@ -1,0 +1,83 @@
+{
+  "page": "https://opencode.ai/data/anthropic/claude-sonnet-5-5",
+  "updatedAt": null,
+  "summary": "Claude Sonnet 5.5 costs $2.00 per 1M input tokens and $10.00 per 1M output tokens.",
+  "model": {
+    "id": "anthropic/claude-sonnet-5-5",
+    "name": "Claude Sonnet 5.5",
+    "lab": "anthropic",
+    "labName": "Anthropic",
+    "family": "claude-sonnet",
+    "description": "Fast Claude model for everyday coding, agents, and knowledge work",
+    "releaseDate": "2026-09-28",
+    "lastUpdated": "2026-09-28",
+    "knowledgeCutoff": "2026-06",
+    "contextTokens": 1000000,
+    "outputTokens": 128000,
+    "inputModalities": [
+      "text",
+      "image",
+      "pdf"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 2,
+      "output": 10,
+      "cachedInput": 0.1,
+      "cacheWrite": 2.5
+    },
+    "benchmarks": [
+      {
+        "name": "Terminal-Bench",
+        "score": 70.6,
+        "metric": "score",
+        "version": "4.0",
+        "source": "https://www.anthropic.com/claude-sonnet-5-5"
+      },
+      {
+        "name": "FrontierCode",
+        "score": 46.2,
+        "metric": "score",
+        "variant": "max effort",
+        "dataset": "Main",
+        "version": "1.1",
+        "source": "https://www.anthropic.com/claude-sonnet-5-5"
+      },
+      {
+        "name": "CursorBench",
+        "score": 55.5,
+        "metric": "score",
+        "version": "4.0",
+        "source": "https://www.anthropic.com/claude-sonnet-5-5"
+      },
+      {
+        "name": "GDPval-AA",
+        "score": 1844,
+        "metric": "Elo",
+        "version": "2.1",
+        "source": "https://www.anthropic.com/claude-sonnet-5-5"
+      },
+      {
+        "name": "Humanity's Last Exam",
+        "score": 64.5,
+        "metric": "score",
+        "variant": "with tools",
+        "source": "https://www.anthropic.com/claude-sonnet-5-5"
+      },
+      {
+        "name": "OSWorld",
+        "score": 80.1,
+        "metric": "partial score",
+        "version": "2.1",
+        "source": "https://www.anthropic.com/claude-sonnet-5-5"
+      }
+    ]
+  },
+  "usage": null
+}

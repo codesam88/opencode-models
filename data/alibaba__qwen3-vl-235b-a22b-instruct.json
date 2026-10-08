@@ -1,0 +1,42 @@
+{
+  "page": "https://opencode.ai/data/alibaba/qwen3-vl-235b-a22b-instruct",
+  "updatedAt": null,
+  "summary": "Qwen3 VL 235B A22B Instruct costs $0.40 per 1M input tokens and $1.60 per 1M output tokens.",
+  "model": {
+    "id": "alibaba/qwen3-vl-235b-a22b-instruct",
+    "name": "Qwen3 VL 235B A22B Instruct",
+    "lab": "alibaba",
+    "labName": "Alibaba",
+    "family": "qwen",
+    "description": "Qwen vision-language instruct model for visual reasoning, documents, and agent tasks",
+    "releaseDate": "2025-09-23",
+    "lastUpdated": "2025-09-23",
+    "knowledgeCutoff": "2025-03-31",
+    "contextTokens": 131072,
+    "outputTokens": 32768,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/Qwen/Qwen3-VL-235B-A22B-Instruct"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.4,
+      "output": 1.6,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

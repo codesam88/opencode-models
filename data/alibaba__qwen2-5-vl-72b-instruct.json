@@ -1,0 +1,42 @@
+{
+  "page": "https://opencode.ai/data/alibaba/qwen2-5-vl-72b-instruct",
+  "updatedAt": null,
+  "summary": "Qwen2.5-VL 72B Instruct costs $2.80 per 1M input tokens and $8.40 per 1M output tokens.",
+  "model": {
+    "id": "alibaba/qwen2-5-vl-72b-instruct",
+    "name": "Qwen2.5-VL 72B Instruct",
+    "lab": "alibaba",
+    "labName": "Alibaba",
+    "family": "qwen",
+    "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
+    "releaseDate": "2024-09",
+    "lastUpdated": "2024-09",
+    "knowledgeCutoff": "2024-04",
+    "contextTokens": 131072,
+    "outputTokens": 8192,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/Qwen/Qwen2.5-VL-72B-Instruct"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 2.8,
+      "output": 8.4,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

@@ -1,0 +1,38 @@
+{
+  "page": "https://opencode.ai/data/minimax/minimax-m3-1-flash-preview",
+  "updatedAt": null,
+  "summary": "MiniMax-M3.1-Flash-Preview costs $0.00 per 1M input tokens and $0.00 per 1M output tokens.",
+  "model": {
+    "id": "minimax/MiniMax-M3.1-Flash-Preview",
+    "name": "MiniMax-M3.1-Flash-Preview",
+    "lab": "minimax",
+    "labName": "MiniMax",
+    "family": "minimax",
+    "description": "Frontier multimodal coding model with 1M context window and tunable thinking depth",
+    "releaseDate": "2026-09-27",
+    "lastUpdated": "2026-09-27",
+    "knowledgeCutoff": null,
+    "contextTokens": 1000000,
+    "outputTokens": 512000,
+    "inputModalities": [
+      "text",
+      "image",
+      "video"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 0,
+      "output": 0,
+      "cachedInput": 0,
+      "cacheWrite": 0
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

@@ -1,0 +1,37 @@
+{
+  "page": "https://opencode.ai/data/microsoft/mai-code-1-1-flash",
+  "updatedAt": null,
+  "summary": "MAI-Code-1.1-Flash costs $0.20 per 1M input tokens and $1.20 per 1M output tokens.",
+  "model": {
+    "id": "microsoft/mai-code-1.1-flash",
+    "name": "MAI-Code-1.1-Flash",
+    "lab": "microsoft",
+    "labName": "Microsoft",
+    "family": "mai",
+    "description": "Microsoft coding model with native vision support, optimized for fast and efficient software development",
+    "releaseDate": "2026-08-11",
+    "lastUpdated": "2026-08-11",
+    "knowledgeCutoff": null,
+    "contextTokens": 256000,
+    "outputTokens": 128000,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 0.2,
+      "output": 1.2,
+      "cachedInput": 0.02,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

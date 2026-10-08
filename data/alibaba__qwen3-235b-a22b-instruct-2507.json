@@ -1,0 +1,41 @@
+{
+  "page": "https://opencode.ai/data/alibaba/qwen3-235b-a22b-instruct-2507",
+  "updatedAt": null,
+  "summary": "Qwen3 235B-A22B Instruct 2507 costs $0.20 per 1M input tokens and $0.60 per 1M output tokens.",
+  "model": {
+    "id": "alibaba/qwen3-235b-a22b-instruct-2507",
+    "name": "Qwen3 235B-A22B Instruct 2507",
+    "lab": "alibaba",
+    "labName": "Alibaba",
+    "family": "qwen",
+    "description": "Updated large open Qwen3 MoE instruct model for multilingual chat, coding, and tool use",
+    "releaseDate": "2025-07-21",
+    "lastUpdated": "2025-07-21",
+    "knowledgeCutoff": null,
+    "contextTokens": 262144,
+    "outputTokens": 16384,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/Qwen/Qwen3-235B-A22B-Instruct-2507"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.199,
+      "output": 0.598,
+      "cachedInput": 0.018,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

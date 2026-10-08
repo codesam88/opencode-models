@@ -1,0 +1,49 @@
+{
+  "page": "https://opencode.ai/data/mistral/mistral-medium-latest",
+  "updatedAt": null,
+  "summary": "Mistral Medium (latest) costs $1.50 per 1M input tokens and $7.50 per 1M output tokens.",
+  "model": {
+    "id": "mistral/mistral-medium-latest",
+    "name": "Mistral Medium (latest)",
+    "lab": "mistral",
+    "labName": "Mistral",
+    "family": "mistral-medium",
+    "description": "Balanced Mistral model for enterprise assistants, multilingual work, and tools",
+    "releaseDate": "2026-04-29",
+    "lastUpdated": "2026-04-29",
+    "knowledgeCutoff": null,
+    "contextTokens": 262144,
+    "outputTokens": 262144,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/mistralai/Mistral-Medium-3.5-128B"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 1.5,
+      "output": 7.5,
+      "cachedInput": 0.15,
+      "cacheWrite": null
+    },
+    "benchmarks": [
+      {
+        "name": "SWE-Bench Verified",
+        "score": 77.6,
+        "metric": "resolved",
+        "source": "https://huggingface.co/mistralai/Mistral-Medium-3.5-128B"
+      }
+    ]
+  },
+  "usage": null
+}

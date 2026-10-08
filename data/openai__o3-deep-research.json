@@ -1,0 +1,37 @@
+{
+  "page": "https://opencode.ai/data/openai/o3-deep-research",
+  "updatedAt": null,
+  "summary": "o3-deep-research costs $9.00 per 1M input tokens and $36.00 per 1M output tokens.",
+  "model": {
+    "id": "openai/o3-deep-research",
+    "name": "o3-deep-research",
+    "lab": "openai",
+    "labName": "OpenAI",
+    "family": "o",
+    "description": "Research model for long-horizon investigation, synthesis, and analytical reports",
+    "releaseDate": "2024-06-26",
+    "lastUpdated": "2024-06-26",
+    "knowledgeCutoff": "2024-05",
+    "contextTokens": 200000,
+    "outputTokens": 100000,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 9,
+      "output": 36,
+      "cachedInput": 2.2,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

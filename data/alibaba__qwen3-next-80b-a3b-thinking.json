@@ -1,0 +1,41 @@
+{
+  "page": "https://opencode.ai/data/alibaba/qwen3-next-80b-a3b-thinking",
+  "updatedAt": null,
+  "summary": "Qwen3-Next 80B-A3B (Thinking) costs $0.15 per 1M input tokens and $1.20 per 1M output tokens.",
+  "model": {
+    "id": "alibaba/qwen3-next-80b-a3b-thinking",
+    "name": "Qwen3-Next 80B-A3B (Thinking)",
+    "lab": "alibaba",
+    "labName": "Alibaba",
+    "family": "qwen",
+    "description": "Efficient Qwen thinking model for local reasoning, math, and coding agents",
+    "releaseDate": "2025-09",
+    "lastUpdated": "2025-09",
+    "knowledgeCutoff": "2025-04",
+    "contextTokens": 131072,
+    "outputTokens": 32768,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/Qwen/Qwen3-Next-80B-A3B-Thinking"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.15,
+      "output": 1.2,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

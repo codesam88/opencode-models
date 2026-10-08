@@ -1,0 +1,110 @@
+{
+  "page": "https://opencode.ai/data/meta/muse-spark-1-1",
+  "updatedAt": null,
+  "summary": "Muse Spark 1.1 costs $1.25 per 1M input tokens and $4.25 per 1M output tokens.",
+  "model": {
+    "id": "meta/muse-spark-1.1",
+    "name": "Muse Spark 1.1",
+    "lab": "meta",
+    "labName": "Meta",
+    "family": "muse",
+    "description": "Muse Spark is a natively multimodal reasoning model with support for tool-use, visual chain of thought, and multi-agent orchestration.",
+    "releaseDate": "2026-04-08",
+    "lastUpdated": "2026-07-09",
+    "knowledgeCutoff": null,
+    "contextTokens": 1048576,
+    "outputTokens": 131072,
+    "inputModalities": [
+      "text",
+      "image",
+      "pdf",
+      "video"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 1.25,
+      "output": 4.25,
+      "cachedInput": 0.15,
+      "cacheWrite": 1.25
+    },
+    "benchmarks": [
+      {
+        "name": "SWE-Bench Pro",
+        "score": 61.5,
+        "metric": "resolve rate",
+        "source": "https://ai.meta.com/blog/introducing-muse-spark-meta-model-api/"
+      },
+      {
+        "name": "Terminal-Bench",
+        "score": 80,
+        "metric": "success rate",
+        "version": "2.1",
+        "source": "https://ai.meta.com/blog/introducing-muse-spark-meta-model-api/"
+      },
+      {
+        "name": "DeepSWE",
+        "score": 53.3,
+        "metric": "resolve rate",
+        "version": "1.1",
+        "source": "https://ai.meta.com/blog/introducing-muse-spark-meta-model-api/"
+      },
+      {
+        "name": "MCP Atlas",
+        "score": 88.1,
+        "metric": "success rate",
+        "source": "https://ai.meta.com/blog/introducing-muse-spark-meta-model-api/"
+      },
+      {
+        "name": "JobBench",
+        "score": 54.7,
+        "metric": "success rate",
+        "source": "https://ai.meta.com/blog/introducing-muse-spark-meta-model-api/"
+      },
+      {
+        "name": "Toolathlon-Verified",
+        "score": 75.6,
+        "metric": "success rate",
+        "source": "https://ai.meta.com/blog/introducing-muse-spark-meta-model-api/"
+      },
+      {
+        "name": "Humanity's Last Exam",
+        "score": 62.1,
+        "metric": "accuracy",
+        "variant": "with tools",
+        "source": "https://ai.meta.com/blog/introducing-muse-spark-meta-model-api/"
+      },
+      {
+        "name": "OSWorld-Verified",
+        "score": 80.8,
+        "metric": "success rate",
+        "source": "https://ai.meta.com/blog/introducing-muse-spark-meta-model-api/"
+      },
+      {
+        "name": "Finance Agent",
+        "score": 57.2,
+        "metric": "accuracy",
+        "version": "v2",
+        "source": "https://ai.meta.com/blog/introducing-muse-spark-meta-model-api/"
+      },
+      {
+        "name": "CharXiv Reasoning",
+        "score": 88.4,
+        "metric": "accuracy",
+        "source": "https://ai.meta.com/blog/introducing-muse-spark-meta-model-api/"
+      },
+      {
+        "name": "BabyVision",
+        "score": 76.3,
+        "metric": "accuracy",
+        "source": "https://ai.meta.com/blog/introducing-muse-spark-meta-model-api/"
+      }
+    ]
+  },
+  "usage": null
+}

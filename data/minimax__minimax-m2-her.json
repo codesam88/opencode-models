@@ -1,0 +1,36 @@
+{
+  "page": "https://opencode.ai/data/minimax/minimax-m2-her",
+  "updatedAt": null,
+  "summary": "MiniMax-M2 Her costs $0.30 per 1M input tokens and $1.20 per 1M output tokens.",
+  "model": {
+    "id": "minimax/MiniMax-M2-Her",
+    "name": "MiniMax-M2 Her",
+    "lab": "minimax",
+    "labName": "MiniMax",
+    "family": "minimax",
+    "description": "MiniMax M2 variant tuned for conversational and character-driven agent interactions",
+    "releaseDate": "2026-01-23",
+    "lastUpdated": "2026-01-23",
+    "knowledgeCutoff": null,
+    "contextTokens": 65536,
+    "outputTokens": 2048,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 0.3,
+      "output": 1.2,
+      "cachedInput": 0.03,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

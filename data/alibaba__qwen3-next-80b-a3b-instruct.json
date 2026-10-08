@@ -1,0 +1,41 @@
+{
+  "page": "https://opencode.ai/data/alibaba/qwen3-next-80b-a3b-instruct",
+  "updatedAt": null,
+  "summary": "Qwen3-Next 80B-A3B Instruct costs $0.15 per 1M input tokens and $1.20 per 1M output tokens.",
+  "model": {
+    "id": "alibaba/qwen3-next-80b-a3b-instruct",
+    "name": "Qwen3-Next 80B-A3B Instruct",
+    "lab": "alibaba",
+    "labName": "Alibaba",
+    "family": "qwen",
+    "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
+    "releaseDate": "2025-09",
+    "lastUpdated": "2025-09",
+    "knowledgeCutoff": "2025-04",
+    "contextTokens": 131072,
+    "outputTokens": 32768,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/Qwen/Qwen3-Next-80B-A3B-Instruct"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.15,
+      "output": 1.2,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

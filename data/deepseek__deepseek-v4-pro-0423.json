@@ -1,0 +1,36 @@
+{
+  "page": "https://opencode.ai/data/deepseek/deepseek-v4-pro-0423",
+  "updatedAt": null,
+  "summary": "DeepSeek V4 Pro 0423 costs $1.65 per 1M input tokens and $3.30 per 1M output tokens.",
+  "model": {
+    "id": "deepseek/deepseek-v4-pro-0423",
+    "name": "DeepSeek V4 Pro 0423",
+    "lab": "deepseek",
+    "labName": "DeepSeek",
+    "family": "deepseek-thinking",
+    "description": "DeepSeek V4 Pro initial snapshot with million-token context and support for thinking and non-thinking modes",
+    "releaseDate": "2026-04-23",
+    "lastUpdated": "2026-04-23",
+    "knowledgeCutoff": "2025-05",
+    "contextTokens": 1000000,
+    "outputTokens": 384000,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 1.65,
+      "output": 3.3,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

@@ -1,0 +1,42 @@
+{
+  "page": "https://opencode.ai/data/mistral/mistral-small-latest",
+  "updatedAt": null,
+  "summary": "Mistral Small (latest) costs $0.15 per 1M input tokens and $0.60 per 1M output tokens.",
+  "model": {
+    "id": "mistral/mistral-small-latest",
+    "name": "Mistral Small (latest)",
+    "lab": "mistral",
+    "labName": "Mistral",
+    "family": "mistral-small",
+    "description": "Efficient Mistral model for fast chat, extraction, and production assistants",
+    "releaseDate": "2026-03-16",
+    "lastUpdated": "2026-03-16",
+    "knowledgeCutoff": "2025-06",
+    "contextTokens": 256000,
+    "outputTokens": 256000,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/mistralai/Mistral-Small-4-119B-2603"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.15,
+      "output": 0.6,
+      "cachedInput": 0.015,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

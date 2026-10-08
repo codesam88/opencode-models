@@ -1,0 +1,41 @@
+{
+  "page": "https://opencode.ai/data/alibaba/qwen3-coder-next",
+  "updatedAt": null,
+  "summary": "Qwen3 Coder Next costs $0.50 per 1M input tokens and $1.20 per 1M output tokens.",
+  "model": {
+    "id": "alibaba/qwen3-coder-next",
+    "name": "Qwen3 Coder Next",
+    "lab": "alibaba",
+    "labName": "Alibaba",
+    "family": "qwen",
+    "description": "Open-weight Qwen coding model for agents, repository edits, and multi-turn tool use",
+    "releaseDate": "2026-02-03",
+    "lastUpdated": "2026-02-03",
+    "knowledgeCutoff": "2025-09",
+    "contextTokens": 262144,
+    "outputTokens": 65536,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/Qwen/Qwen3-Coder-Next"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.5,
+      "output": 1.2,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

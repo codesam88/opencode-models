@@ -1,0 +1,41 @@
+{
+  "page": "https://opencode.ai/data/mistral/devstral-medium-latest",
+  "updatedAt": null,
+  "summary": "Devstral 2 (latest) costs $0.40 per 1M input tokens and $2.00 per 1M output tokens.",
+  "model": {
+    "id": "mistral/devstral-medium-latest",
+    "name": "Devstral 2 (latest)",
+    "lab": "mistral",
+    "labName": "Mistral",
+    "family": "devstral",
+    "description": "Mistral coding agent model for repository tasks and software engineering workflows",
+    "releaseDate": "2025-12-02",
+    "lastUpdated": "2025-12-02",
+    "knowledgeCutoff": "2025-12",
+    "contextTokens": 262144,
+    "outputTokens": 262144,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/mistralai/Devstral-2-123B-Instruct-2512"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.4,
+      "output": 2,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

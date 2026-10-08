@@ -1,0 +1,60 @@
+{
+  "page": "https://opencode.ai/data/mistral/devstral-2512",
+  "updatedAt": null,
+  "summary": "Devstral 2 costs $0.40 per 1M input tokens and $2.00 per 1M output tokens.",
+  "model": {
+    "id": "mistral/devstral-2512",
+    "name": "Devstral 2",
+    "lab": "mistral",
+    "labName": "Mistral",
+    "family": "devstral",
+    "description": "Mistral's coding-agent model for repository work, terminal tasks, and software fixes",
+    "releaseDate": "2025-12-09",
+    "lastUpdated": "2025-12-09",
+    "knowledgeCutoff": "2025-12",
+    "contextTokens": 262144,
+    "outputTokens": 262144,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/mistralai/Devstral-2-123B-Instruct-2512"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.4,
+      "output": 2,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": [
+      {
+        "name": "Artificial Analysis Coding Index",
+        "score": 23.7,
+        "metric": "index",
+        "source": "https://openrouter.ai/mistralai/devstral-2512/benchmarks"
+      },
+      {
+        "name": "SciCode",
+        "score": 33.1,
+        "metric": "percent correct",
+        "source": "https://openrouter.ai/mistralai/devstral-2512/benchmarks"
+      },
+      {
+        "name": "Terminal-Bench Hard",
+        "score": 18.9,
+        "metric": "success rate",
+        "source": "https://openrouter.ai/mistralai/devstral-2512/benchmarks"
+      }
+    ]
+  },
+  "usage": null
+}

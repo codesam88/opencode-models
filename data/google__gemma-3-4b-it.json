@@ -1,0 +1,42 @@
+{
+  "page": "https://opencode.ai/data/google/gemma-3-4b-it",
+  "updatedAt": null,
+  "summary": "Gemma 3 4B IT costs $0.00 per 1M input tokens and $0.00 per 1M output tokens.",
+  "model": {
+    "id": "google/gemma-3-4b-it",
+    "name": "Gemma 3 4B IT",
+    "lab": "google",
+    "labName": "Google",
+    "family": "gemma",
+    "description": "Open multimodal Gemma instruction model for efficient text generation and image understanding",
+    "releaseDate": "2025-03-12",
+    "lastUpdated": "2025-03-12",
+    "knowledgeCutoff": "2024-08",
+    "contextTokens": 131072,
+    "outputTokens": 131072,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/google/gemma-3-4b-it"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0,
+      "output": 0,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

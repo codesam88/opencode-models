@@ -1,0 +1,55 @@
+{
+  "page": "https://opencode.ai/data/alibaba/qwen3-max",
+  "updatedAt": null,
+  "summary": "Qwen3 Max costs $1.20 per 1M input tokens and $6.00 per 1M output tokens.",
+  "model": {
+    "id": "alibaba/qwen3-max",
+    "name": "Qwen3 Max",
+    "lab": "alibaba",
+    "labName": "Alibaba",
+    "family": "qwen",
+    "description": "Flagship Qwen3 model for coding agents, complex reasoning, and tool use",
+    "releaseDate": "2025-09-23",
+    "lastUpdated": "2025-09-23",
+    "knowledgeCutoff": "2025-04",
+    "contextTokens": 262144,
+    "outputTokens": 65536,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 1.2,
+      "output": 6,
+      "cachedInput": 0.24,
+      "cacheWrite": null
+    },
+    "benchmarks": [
+      {
+        "name": "Artificial Analysis Coding Index",
+        "score": 26.4,
+        "metric": "index",
+        "source": "https://openrouter.ai/qwen/qwen3-max/benchmarks"
+      },
+      {
+        "name": "SciCode",
+        "score": 38.3,
+        "metric": "percent correct",
+        "source": "https://openrouter.ai/qwen/qwen3-max/benchmarks"
+      },
+      {
+        "name": "Terminal-Bench Hard",
+        "score": 20.5,
+        "metric": "success rate",
+        "source": "https://openrouter.ai/qwen/qwen3-max/benchmarks"
+      }
+    ]
+  },
+  "usage": null
+}

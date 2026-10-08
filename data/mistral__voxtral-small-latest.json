@@ -1,0 +1,37 @@
+{
+  "page": "https://opencode.ai/data/mistral/voxtral-small-latest",
+  "updatedAt": null,
+  "summary": "Voxtral Small (latest) costs $0.10 per 1M input tokens and $0.30 per 1M output tokens.",
+  "model": {
+    "id": "mistral/voxtral-small-latest",
+    "name": "Voxtral Small (latest)",
+    "lab": "mistral",
+    "labName": "Mistral",
+    "family": "voxtral",
+    "description": "Instruct model with native audio input for speech understanding and tool use",
+    "releaseDate": "2025-07-15",
+    "lastUpdated": "2025-07-15",
+    "knowledgeCutoff": null,
+    "contextTokens": 32000,
+    "outputTokens": 32000,
+    "inputModalities": [
+      "text",
+      "audio"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 0.1,
+      "output": 0.3,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

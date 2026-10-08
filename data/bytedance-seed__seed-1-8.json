@@ -1,0 +1,37 @@
+{
+  "page": "https://opencode.ai/data/bytedance-seed/seed-1-8",
+  "updatedAt": null,
+  "summary": "Seed 1.8 costs $0.25 per 1M input tokens and $2.00 per 1M output tokens.",
+  "model": {
+    "id": "bytedance-seed/seed-1-8",
+    "name": "Seed 1.8",
+    "lab": "bytedance-seed",
+    "labName": "ByteDance Seed",
+    "family": "seed",
+    "description": "ByteDance Seed model for multimodal reasoning, long-context analysis, and agent workflows",
+    "releaseDate": "2025-12-28",
+    "lastUpdated": "2025-12-28",
+    "knowledgeCutoff": null,
+    "contextTokens": 256000,
+    "outputTokens": 64000,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 0.25,
+      "output": 2,
+      "cachedInput": 0.05,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

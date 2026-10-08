@@ -1,0 +1,38 @@
+{
+  "page": "https://opencode.ai/data/bytedance-seed/seed-2-0-lite",
+  "updatedAt": null,
+  "summary": "Seed 2.0 Lite costs $0.25 per 1M input tokens and $2.00 per 1M output tokens.",
+  "model": {
+    "id": "bytedance-seed/seed-2.0-lite",
+    "name": "Seed 2.0 Lite",
+    "lab": "bytedance-seed",
+    "labName": "ByteDance Seed",
+    "family": "seed",
+    "description": "Cost-efficient ByteDance Seed 2.0 model for production chat, analysis, and structured generation",
+    "releaseDate": "2026-02-14",
+    "lastUpdated": "2026-02-14",
+    "knowledgeCutoff": null,
+    "contextTokens": 256000,
+    "outputTokens": 32000,
+    "inputModalities": [
+      "text",
+      "image",
+      "video"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 0.25,
+      "output": 2,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

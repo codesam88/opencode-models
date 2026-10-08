@@ -1,0 +1,43 @@
+{
+  "page": "https://opencode.ai/data/google/gemma-4-e4b-it",
+  "updatedAt": null,
+  "summary": "Gemma 4 E4B IT costs $0.20 per 1M input tokens and $0.20 per 1M output tokens.",
+  "model": {
+    "id": "google/gemma-4-E4B-it",
+    "name": "Gemma 4 E4B IT",
+    "lab": "google",
+    "labName": "Google",
+    "family": "gemma",
+    "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
+    "releaseDate": "2026-04-02",
+    "lastUpdated": "2026-04-02",
+    "knowledgeCutoff": null,
+    "contextTokens": 131072,
+    "outputTokens": 8192,
+    "inputModalities": [
+      "text",
+      "image",
+      "audio"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/google/gemma-4-E4B-it"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.2,
+      "output": 0.2,
+      "cachedInput": 0.2,
+      "cacheWrite": 0.2
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

@@ -1,0 +1,37 @@
+{
+  "page": "https://opencode.ai/data/mistral/pixtral-large-2502",
+  "updatedAt": null,
+  "summary": "Pixtral Large (25.02) costs $1.99 per 1M input tokens and $5.98 per 1M output tokens.",
+  "model": {
+    "id": "mistral/pixtral-large-2502",
+    "name": "Pixtral Large (25.02)",
+    "lab": "mistral",
+    "labName": "Mistral",
+    "family": "pixtral",
+    "description": "Mistral vision-language model for image understanding and multimodal chat",
+    "releaseDate": "2025-04-08",
+    "lastUpdated": "2025-04-08",
+    "knowledgeCutoff": null,
+    "contextTokens": 128000,
+    "outputTokens": 8192,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 1.993,
+      "output": 5.978,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

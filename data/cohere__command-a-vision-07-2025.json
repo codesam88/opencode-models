@@ -1,0 +1,42 @@
+{
+  "page": "https://opencode.ai/data/cohere/command-a-vision-07-2025",
+  "updatedAt": null,
+  "summary": "Command A Vision costs $2.50 per 1M input tokens and $10.00 per 1M output tokens.",
+  "model": {
+    "id": "cohere/command-a-vision-07-2025",
+    "name": "Command A Vision",
+    "lab": "cohere",
+    "labName": "Cohere",
+    "family": "command-a",
+    "description": "Cohere vision model for multilingual document analysis, OCR, and image understanding",
+    "releaseDate": "2025-07-31",
+    "lastUpdated": "2025-07-31",
+    "knowledgeCutoff": "2024-06-01",
+    "contextTokens": 128000,
+    "outputTokens": 8000,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": false,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/CohereLabs/c4ai-command-a-vision-07-2025"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 2.5,
+      "output": 10,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

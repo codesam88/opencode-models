@@ -1,0 +1,40 @@
+{
+  "page": "https://opencode.ai/data/vispark/vision-medium",
+  "updatedAt": null,
+  "summary": "Vision Medium costs $4.21 per 1M input tokens and $12.63 per 1M output tokens.",
+  "model": {
+    "id": "vispark/vision-medium",
+    "name": "Vision Medium",
+    "lab": "vispark",
+    "labName": "Vispark",
+    "family": null,
+    "description": "Balanced multimodal model pairing a 1M-token context window with deeper reasoning for analysis, content creation, and tool use across text, image, audio, video, and PDF inputs.",
+    "releaseDate": "2024-05-15",
+    "lastUpdated": "2026-09",
+    "knowledgeCutoff": null,
+    "contextTokens": 1000000,
+    "outputTokens": 65536,
+    "inputModalities": [
+      "text",
+      "image",
+      "audio",
+      "video",
+      "pdf"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 4.21,
+      "output": 12.63,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

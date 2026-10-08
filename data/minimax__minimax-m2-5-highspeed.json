@@ -1,0 +1,41 @@
+{
+  "page": "https://opencode.ai/data/minimax/minimax-m2-5-highspeed",
+  "updatedAt": null,
+  "summary": "MiniMax-M2.5-highspeed costs $0.60 per 1M input tokens and $2.40 per 1M output tokens.",
+  "model": {
+    "id": "minimax/MiniMax-M2.5-highspeed",
+    "name": "MiniMax-M2.5-highspeed",
+    "lab": "minimax",
+    "labName": "MiniMax",
+    "family": "minimax",
+    "description": "High-speed MiniMax model for low-latency coding and agent workflows",
+    "releaseDate": "2026-02-13",
+    "lastUpdated": "2026-02-13",
+    "knowledgeCutoff": null,
+    "contextTokens": 204800,
+    "outputTokens": 131072,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/MiniMaxAI/MiniMax-M2.5"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.6,
+      "output": 2.4,
+      "cachedInput": 0.03,
+      "cacheWrite": 0.375
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

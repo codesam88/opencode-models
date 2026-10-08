@@ -1,0 +1,38 @@
+{
+  "page": "https://opencode.ai/data/bytedance-seed/seed-2-0-code",
+  "updatedAt": null,
+  "summary": "Seed 2.0 Code costs $0.50 per 1M input tokens and $3.00 per 1M output tokens.",
+  "model": {
+    "id": "bytedance-seed/seed-2.0-code",
+    "name": "Seed 2.0 Code",
+    "lab": "bytedance-seed",
+    "labName": "ByteDance Seed",
+    "family": "seed",
+    "description": "ByteDance Seed coding model for multimodal software engineering and long-running agents",
+    "releaseDate": "2026-02-14",
+    "lastUpdated": "2026-02-14",
+    "knowledgeCutoff": null,
+    "contextTokens": 262144,
+    "outputTokens": 131072,
+    "inputModalities": [
+      "text",
+      "image",
+      "video"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 0.5,
+      "output": 3,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

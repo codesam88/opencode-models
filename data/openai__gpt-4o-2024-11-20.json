@@ -1,0 +1,62 @@
+{
+  "page": "https://opencode.ai/data/openai/gpt-4o-2024-11-20",
+  "updatedAt": null,
+  "summary": "GPT-4o (2024-11-20) costs $2.50 per 1M input tokens and $10.00 per 1M output tokens.",
+  "model": {
+    "id": "openai/gpt-4o-2024-11-20",
+    "name": "GPT-4o (2024-11-20)",
+    "lab": "openai",
+    "labName": "OpenAI",
+    "family": "gpt",
+    "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
+    "releaseDate": "2024-11-20",
+    "lastUpdated": "2024-11-20",
+    "knowledgeCutoff": "2023-09",
+    "contextTokens": 128000,
+    "outputTokens": 16384,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 2.5,
+      "output": 10,
+      "cachedInput": 1.25,
+      "cacheWrite": null
+    },
+    "benchmarks": [
+      {
+        "name": "Aider Polyglot",
+        "score": 18.2,
+        "metric": "percent correct",
+        "source": "https://aider.chat/docs/leaderboards/"
+      },
+      {
+        "name": "Artificial Analysis Coding Index",
+        "score": 16.7,
+        "metric": "index",
+        "source": "https://openrouter.ai/openai/gpt-4o-2024-11-20/benchmarks"
+      },
+      {
+        "name": "SciCode",
+        "score": 33.3,
+        "metric": "percent correct",
+        "source": "https://openrouter.ai/openai/gpt-4o-2024-11-20/benchmarks"
+      },
+      {
+        "name": "Terminal-Bench Hard",
+        "score": 8.3,
+        "metric": "success rate",
+        "source": "https://openrouter.ai/openai/gpt-4o-2024-11-20/benchmarks"
+      }
+    ]
+  },
+  "usage": null
+}

@@ -1,0 +1,56 @@
+{
+  "page": "https://opencode.ai/data/meta/llama-4-maverick-17b-instruct",
+  "updatedAt": null,
+  "summary": "Llama 4 Maverick 17B Instruct costs $0.27 per 1M input tokens and $0.85 per 1M output tokens.",
+  "model": {
+    "id": "meta/llama-4-maverick-17b-instruct",
+    "name": "Llama 4 Maverick 17B Instruct",
+    "lab": "meta",
+    "labName": "Meta",
+    "family": "llama",
+    "description": "Open multimodal Llama for strong reasoning with efficient everyday serving",
+    "releaseDate": "2025-04-05",
+    "lastUpdated": "2025-04-05",
+    "knowledgeCutoff": "2024-08",
+    "contextTokens": 1000000,
+    "outputTokens": 16384,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/meta-llama/Llama-4-Maverick-17B-128E-Instruct"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.27,
+      "output": 0.85,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": [
+      {
+        "name": "Aider Polyglot",
+        "score": 15.6,
+        "metric": "percent correct",
+        "source": "https://aider.chat/docs/leaderboards/"
+      },
+      {
+        "name": "SWE-Bench Pro",
+        "score": 5.24,
+        "metric": "resolve rate",
+        "dataset": "public",
+        "source": "https://labs.scale.com/leaderboard/swe_bench_pro_public"
+      }
+    ]
+  },
+  "usage": null
+}

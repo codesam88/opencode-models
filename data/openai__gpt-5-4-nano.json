@@ -1,0 +1,633 @@
+{
+  "page": "https://opencode.ai/data/openai/gpt-5-4-nano",
+  "updatedAt": "2026-09-28T12:09:39.000Z",
+  "summary": "GPT-5.4 nano costs $0.20 per 1M input tokens and $1.25 per 1M output tokens.",
+  "model": {
+    "id": "openai/gpt-5.4-nano",
+    "name": "GPT-5.4 nano",
+    "lab": "openai",
+    "labName": "OpenAI",
+    "family": "gpt-nano",
+    "description": "Cheapest GPT-5.4 lane for simple routing, extraction, and bulk automation",
+    "releaseDate": "2026-03-17",
+    "lastUpdated": "2026-03-17",
+    "knowledgeCutoff": "2025-08-31",
+    "contextTokens": 400000,
+    "outputTokens": 128000,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 0.2,
+      "output": 1.25,
+      "cachedInput": 0.02,
+      "cacheWrite": 0.2
+    },
+    "benchmarks": [
+      {
+        "name": "SWE-Bench Pro",
+        "score": 52.4,
+        "metric": "resolve rate",
+        "variant": "reasoning effort xhigh",
+        "source": "https://openai.com/index/introducing-gpt-5-4-mini-and-nano/"
+      },
+      {
+        "name": "Terminal-Bench",
+        "score": 46.3,
+        "metric": "accuracy",
+        "variant": "reasoning effort xhigh",
+        "version": "2.0",
+        "source": "https://openai.com/index/introducing-gpt-5-4-mini-and-nano/"
+      },
+      {
+        "name": "MCP Atlas",
+        "score": 56.1,
+        "metric": "score",
+        "variant": "reasoning effort xhigh",
+        "source": "https://openai.com/index/introducing-gpt-5-4-mini-and-nano/"
+      },
+      {
+        "name": "Toolathlon",
+        "score": 35.5,
+        "metric": "score",
+        "variant": "reasoning effort xhigh",
+        "source": "https://openai.com/index/introducing-gpt-5-4-mini-and-nano/"
+      },
+      {
+        "name": "τ²-Bench Telecom",
+        "score": 92.5,
+        "metric": "accuracy",
+        "variant": "reasoning effort xhigh",
+        "source": "https://openai.com/index/introducing-gpt-5-4-mini-and-nano/"
+      },
+      {
+        "name": "GPQA Diamond",
+        "score": 82.8,
+        "metric": "accuracy",
+        "variant": "reasoning effort xhigh",
+        "source": "https://openai.com/index/introducing-gpt-5-4-mini-and-nano/"
+      },
+      {
+        "name": "Humanity's Last Exam",
+        "score": 37.7,
+        "metric": "accuracy",
+        "variant": "with tools",
+        "source": "https://openai.com/index/introducing-gpt-5-4-mini-and-nano/"
+      },
+      {
+        "name": "Humanity's Last Exam",
+        "score": 24.3,
+        "metric": "accuracy",
+        "variant": "without tools",
+        "source": "https://openai.com/index/introducing-gpt-5-4-mini-and-nano/"
+      },
+      {
+        "name": "OSWorld-Verified",
+        "score": 39,
+        "metric": "success rate",
+        "variant": "reasoning effort xhigh",
+        "source": "https://openai.com/index/introducing-gpt-5-4-mini-and-nano/"
+      },
+      {
+        "name": "MMMU Pro",
+        "score": 69.5,
+        "metric": "accuracy",
+        "variant": "with Python",
+        "source": "https://openai.com/index/introducing-gpt-5-4-mini-and-nano/"
+      },
+      {
+        "name": "MMMU Pro",
+        "score": 66.1,
+        "metric": "accuracy",
+        "variant": "without tools",
+        "source": "https://openai.com/index/introducing-gpt-5-4-mini-and-nano/"
+      },
+      {
+        "name": "OmniDocBench",
+        "score": 0.2419,
+        "metric": "overall edit distance",
+        "variant": "reasoning effort none",
+        "version": "1.5",
+        "source": "https://openai.com/index/introducing-gpt-5-4-mini-and-nano/"
+      },
+      {
+        "name": "OpenAI MRCR",
+        "score": 44.2,
+        "metric": "accuracy",
+        "variant": "8-needle, 64K-128K",
+        "version": "v2",
+        "source": "https://openai.com/index/introducing-gpt-5-4-mini-and-nano/"
+      },
+      {
+        "name": "OpenAI MRCR",
+        "score": 33.1,
+        "metric": "accuracy",
+        "variant": "8-needle, 128K-256K",
+        "version": "v2",
+        "source": "https://openai.com/index/introducing-gpt-5-4-mini-and-nano/"
+      },
+      {
+        "name": "Graphwalks",
+        "score": 73.4,
+        "metric": "accuracy",
+        "variant": "BFS, 0-128K",
+        "source": "https://openai.com/index/introducing-gpt-5-4-mini-and-nano/"
+      },
+      {
+        "name": "Graphwalks",
+        "score": 50.8,
+        "metric": "accuracy",
+        "variant": "parents, 0-128K",
+        "source": "https://openai.com/index/introducing-gpt-5-4-mini-and-nano/"
+      }
+    ]
+  },
+  "usage": {
+    "rankLastWeek": null,
+    "tokens": 0,
+    "sharePercent": 0,
+    "changePercent": 0,
+    "uniqueUsers": 0,
+    "sessions": 75,
+    "tokensPerSession": 0,
+    "costPerSessionUsd": 0,
+    "costUsd": 0,
+    "cachedInputPercent": 0,
+    "weeklyRetentionPercent": null,
+    "daily": [
+      {
+        "date": "2026-08-14",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-15",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-16",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-17",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-18",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-19",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-20",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-21",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-22",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-23",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-24",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-25",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-26",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-27",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-28",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-29",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-30",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-31",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-01",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-02",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-03",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-04",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-05",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-06",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-07",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-08",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-09",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-10",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-11",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-12",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-13",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-14",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-15",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-16",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 5,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-17",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 10,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-18",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 2,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-19",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 20,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-20",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 38,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-21",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-22",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-23",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-24",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-25",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-26",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-27",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-28",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-29",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2025-09-30",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2025-10-01",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2025-10-02",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2025-10-03",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2025-10-04",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2025-10-05",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2025-10-06",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2025-10-07",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2025-10-08",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      }
+    ],
+    "countries": [],
+    "peers": [
+      {
+        "rank": 1,
+        "model": "space-bunny",
+        "lab": "unknown",
+        "page": "https://opencode.ai/data/unknown/space-bunny",
+        "tokens": 49209686291516
+      },
+      {
+        "rank": 2,
+        "model": "muse-spark-1.3-contributor",
+        "lab": "meta",
+        "page": "https://opencode.ai/data/meta/muse-spark-1-3-contributor",
+        "tokens": 37310578208005
+      },
+      {
+        "rank": 3,
+        "model": "deepseek-v4.1-flash",
+        "lab": "deepseek",
+        "page": "https://opencode.ai/data/deepseek/deepseek-v4-1-flash",
+        "tokens": 35981936889841
+      },
+      {
+        "rank": 4,
+        "model": "mimo-v2.6-flash",
+        "lab": "xiaomi",
+        "page": "https://opencode.ai/data/xiaomi/mimo-v2-6-flash",
+        "tokens": 12337617240975
+      },
+      {
+        "rank": 5,
+        "model": "deepseek-v4-flash",
+        "lab": "deepseek",
+        "page": "https://opencode.ai/data/deepseek/deepseek-v4-flash",
+        "tokens": 4548225529750
+      },
+      {
+        "rank": 6,
+        "model": "nemotron-3-ultra",
+        "lab": "nvidia",
+        "page": "https://opencode.ai/data/nvidia/nemotron-3-ultra",
+        "tokens": 3944830242727
+      },
+      {
+        "rank": 7,
+        "model": "longcat-2.5-preview",
+        "lab": "meituan",
+        "page": "https://opencode.ai/data/meituan/longcat-2-5-preview",
+        "tokens": 2221654430549
+      },
+      {
+        "rank": 8,
+        "model": "fledge-alpha",
+        "lab": "unknown",
+        "page": "https://opencode.ai/data/unknown/fledge-alpha",
+        "tokens": 2187492662573
+      },
+      {
+        "rank": 9,
+        "model": "glm-5.3-flash",
+        "lab": "zhipu",
+        "page": "https://opencode.ai/data/zhipuai/glm-5-3-flash",
+        "tokens": 1947901441211
+      },
+      {
+        "rank": 10,
+        "model": "mimo-v2.5",
+        "lab": "xiaomi",
+        "page": "https://opencode.ai/data/xiaomi/mimo-v2-5",
+        "tokens": 627281886797
+      }
+    ]
+  }
+}

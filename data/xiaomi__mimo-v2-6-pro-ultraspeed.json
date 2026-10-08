@@ -1,0 +1,44 @@
+{
+  "page": "https://opencode.ai/data/xiaomi/mimo-v2-6-pro-ultraspeed",
+  "updatedAt": null,
+  "summary": "MiMo-V2.6-Pro-UltraSpeed costs $4.35 per 1M input tokens and $8.70 per 1M output tokens.",
+  "model": {
+    "id": "xiaomi/mimo-v2.6-pro-ultraspeed",
+    "name": "MiMo-V2.6-Pro-UltraSpeed",
+    "lab": "xiaomi",
+    "labName": "Xiaomi",
+    "family": "mimo",
+    "description": "MiMo pro model for strong multimodal reasoning and agent execution",
+    "releaseDate": "2026-09-21",
+    "lastUpdated": "2026-09-21",
+    "knowledgeCutoff": null,
+    "contextTokens": 1048576,
+    "outputTokens": 131072,
+    "inputModalities": [
+      "text",
+      "image",
+      "audio",
+      "video"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/XiaomiMiMo/MiMo-V2.6-Pro-RL"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 4.35,
+      "output": 8.7,
+      "cachedInput": 0.036,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

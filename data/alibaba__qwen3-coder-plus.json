@@ -1,0 +1,36 @@
+{
+  "page": "https://opencode.ai/data/alibaba/qwen3-coder-plus",
+  "updatedAt": null,
+  "summary": "Qwen3 Coder Plus costs $1.00 per 1M input tokens and $5.00 per 1M output tokens.",
+  "model": {
+    "id": "alibaba/qwen3-coder-plus",
+    "name": "Qwen3 Coder Plus",
+    "lab": "alibaba",
+    "labName": "Alibaba",
+    "family": "qwen",
+    "description": "Hosted Qwen coder for software agents, repo edits, and long-context code",
+    "releaseDate": "2025-07-23",
+    "lastUpdated": "2025-07-23",
+    "knowledgeCutoff": "2025-04",
+    "contextTokens": 1048576,
+    "outputTokens": 65536,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 1,
+      "output": 5,
+      "cachedInput": 0.2,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

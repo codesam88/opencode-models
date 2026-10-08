@@ -1,0 +1,39 @@
+{
+  "page": "https://opencode.ai/data/google/gemini-robotics-er-1-6-preview",
+  "updatedAt": null,
+  "summary": "Gemini Robotics-ER 1.6 Preview costs $1.00 per 1M input tokens and $5.00 per 1M output tokens.",
+  "model": {
+    "id": "google/gemini-robotics-er-1.6-preview",
+    "name": "Gemini Robotics-ER 1.6 Preview",
+    "lab": "google",
+    "labName": "Google",
+    "family": "gemini",
+    "description": "Vision-language model for embodied reasoning: spatial understanding, task planning, and physical-world agentic robotics",
+    "releaseDate": "2026-04-14",
+    "lastUpdated": "2026-04-14",
+    "knowledgeCutoff": "2025-01",
+    "contextTokens": 131072,
+    "outputTokens": 65536,
+    "inputModalities": [
+      "text",
+      "image",
+      "video",
+      "audio"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 1,
+      "output": 5,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

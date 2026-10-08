@@ -1,0 +1,36 @@
+{
+  "page": "https://opencode.ai/data/poolside/laguna-m-1",
+  "updatedAt": null,
+  "summary": "Laguna M.1 costs $0.00 per 1M input tokens and $0.00 per 1M output tokens.",
+  "model": {
+    "id": "poolside/laguna-m.1",
+    "name": "Laguna M.1",
+    "lab": "poolside",
+    "labName": "Poolside",
+    "family": "laguna",
+    "description": "Poolside's open-weight model for agentic coding and long-horizon work",
+    "releaseDate": "2026-04-28",
+    "lastUpdated": "2026-06-13",
+    "knowledgeCutoff": null,
+    "contextTokens": 262144,
+    "outputTokens": 32768,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 0,
+      "output": 0,
+      "cachedInput": 0,
+      "cacheWrite": 0
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

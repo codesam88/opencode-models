@@ -1,0 +1,40 @@
+{
+  "page": "https://opencode.ai/data/vispark/vision-small",
+  "updatedAt": null,
+  "summary": "Vision Small costs $1.05 per 1M input tokens and $3.16 per 1M output tokens.",
+  "model": {
+    "id": "vispark/vision-small",
+    "name": "Vision Small",
+    "lab": "vispark",
+    "labName": "Vispark",
+    "family": null,
+    "description": "Fast, low-cost multimodal model for understanding text, images, audio, video, and PDFs, with tool calling and a 1M-token context window.",
+    "releaseDate": "2024-05-15",
+    "lastUpdated": "2026-09",
+    "knowledgeCutoff": null,
+    "contextTokens": 1000000,
+    "outputTokens": 65536,
+    "inputModalities": [
+      "text",
+      "image",
+      "audio",
+      "video",
+      "pdf"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 1.05,
+      "output": 3.16,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

@@ -1,0 +1,44 @@
+{
+  "page": "https://opencode.ai/data/openai/o3-pro",
+  "updatedAt": null,
+  "summary": "o3-pro costs $20.00 per 1M input tokens and $80.00 per 1M output tokens.",
+  "model": {
+    "id": "openai/o3-pro",
+    "name": "o3-pro",
+    "lab": "openai",
+    "labName": "OpenAI",
+    "family": "o-pro",
+    "description": "High-effort o3 tier for difficult technical reasoning and careful answers",
+    "releaseDate": "2025-06-10",
+    "lastUpdated": "2025-06-10",
+    "knowledgeCutoff": "2024-05",
+    "contextTokens": 200000,
+    "outputTokens": 100000,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 20,
+      "output": 80,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": [
+      {
+        "name": "Aider Polyglot",
+        "score": 84.9,
+        "metric": "percent correct",
+        "source": "https://aider.chat/docs/leaderboards/"
+      }
+    ]
+  },
+  "usage": null
+}

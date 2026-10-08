@@ -1,0 +1,1931 @@
+{
+  "page": "https://opencode.ai/data/zhipuai/glm-5-3-flash",
+  "updatedAt": "2026-10-08T21:48:16.000Z",
+  "summary": "GLM-5.3-Flash ranked #9 by tokens across OpenCode last week, with 6.5% of tokens over the past two months. GLM-5.3-Flash costs $0.15 per 1M input tokens and $0.50 per 1M output tokens.",
+  "model": {
+    "id": "zhipuai/glm-5.3-flash",
+    "name": "GLM-5.3-Flash",
+    "lab": "zhipuai",
+    "labName": "Zhipu",
+    "family": "glm-flash",
+    "description": "Native multimodal GLM model for efficient coding and long-horizon agent tasks",
+    "releaseDate": "2026-08-26",
+    "lastUpdated": "2026-08-26",
+    "knowledgeCutoff": null,
+    "contextTokens": 1000000,
+    "outputTokens": 131072,
+    "inputModalities": [
+      "text",
+      "image",
+      "video",
+      "pdf"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 0.15,
+      "output": 0.5,
+      "cachedInput": 0.03,
+      "cacheWrite": 0
+    },
+    "benchmarks": [
+      {
+        "name": "Terminal-Bench",
+        "score": 84.3,
+        "metric": "pass@1",
+        "harness": "Claude Code 2.1.207",
+        "variant": "max effort",
+        "version": "2.1",
+        "source": "https://huggingface.co/zai-org/GLM-5.3-Flash"
+      },
+      {
+        "name": "DeepSWE",
+        "score": 63.4,
+        "metric": "resolved",
+        "harness": "mini-swe-agent",
+        "variant": "max effort",
+        "version": "1.1",
+        "source": "https://huggingface.co/zai-org/GLM-5.3-Flash"
+      },
+      {
+        "name": "Agents' Last Exam",
+        "score": 26.3,
+        "metric": "score",
+        "variant": "max effort",
+        "source": "https://huggingface.co/zai-org/GLM-5.3-Flash"
+      },
+      {
+        "name": "AutomationBench",
+        "score": 48.8,
+        "metric": "pass@1",
+        "variant": "max effort",
+        "version": "1.0.6",
+        "source": "https://huggingface.co/zai-org/GLM-5.3-Flash"
+      },
+      {
+        "name": "Humanity's Last Exam",
+        "score": 55.3,
+        "metric": "accuracy",
+        "variant": "max effort; with tools",
+        "dataset": "full set",
+        "source": "https://huggingface.co/zai-org/GLM-5.3-Flash"
+      },
+      {
+        "name": "GDPval-AA",
+        "score": 1773,
+        "metric": "Elo",
+        "variant": "max effort",
+        "version": "2",
+        "source": "https://huggingface.co/zai-org/GLM-5.3-Flash"
+      }
+    ]
+  },
+  "usage": {
+    "rankLastWeek": 9,
+    "tokens": 63120520831840,
+    "sharePercent": 6.55,
+    "changePercent": 100,
+    "uniqueUsers": 1201775,
+    "sessions": 18941433,
+    "tokensPerSession": 3332405,
+    "costPerSessionUsd": 0.0408,
+    "costUsd": 773265.62,
+    "cachedInputPercent": 93.2,
+    "weeklyRetentionPercent": 61.6,
+    "daily": [
+      {
+        "date": "2026-08-14",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-15",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-16",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-17",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-18",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-19",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 0,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-20",
+        "tokens": 73748466960,
+        "uniqueUsers": 4083,
+        "sessions": 50924,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-21",
+        "tokens": 4099447403955,
+        "uniqueUsers": 67007,
+        "sessions": 1406605,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-22",
+        "tokens": 6632968141796,
+        "uniqueUsers": 74781,
+        "sessions": 1785651,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-23",
+        "tokens": 8445995065146,
+        "uniqueUsers": 75939,
+        "sessions": 2778237,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-24",
+        "tokens": 9781135969970,
+        "uniqueUsers": 97972,
+        "sessions": 2896914,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-25",
+        "tokens": 8970579694800,
+        "uniqueUsers": 92068,
+        "sessions": 2590151,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-08-26",
+        "tokens": 6338385473990,
+        "uniqueUsers": 78192,
+        "sessions": 1623018,
+        "costUsd": 6185.74
+      },
+      {
+        "date": "2026-08-27",
+        "tokens": 633508055322,
+        "uniqueUsers": 22117,
+        "sessions": 57923,
+        "costUsd": 23624.42
+      },
+      {
+        "date": "2026-08-28",
+        "tokens": 619662817481,
+        "uniqueUsers": 21858,
+        "sessions": 66955,
+        "costUsd": 23888.26
+      },
+      {
+        "date": "2026-08-29",
+        "tokens": 452855540583,
+        "uniqueUsers": 16773,
+        "sessions": 55204,
+        "costUsd": 17498.11
+      },
+      {
+        "date": "2026-08-30",
+        "tokens": 442185977587,
+        "uniqueUsers": 16481,
+        "sessions": 56194,
+        "costUsd": 16890.84
+      },
+      {
+        "date": "2026-08-31",
+        "tokens": 669329776772,
+        "uniqueUsers": 23670,
+        "sessions": 82095,
+        "costUsd": 26008.09
+      },
+      {
+        "date": "2026-09-01",
+        "tokens": 694978984659,
+        "uniqueUsers": 24186,
+        "sessions": 77305,
+        "costUsd": 28395.06
+      },
+      {
+        "date": "2026-09-02",
+        "tokens": 581196633649,
+        "uniqueUsers": 23232,
+        "sessions": 76663,
+        "costUsd": 22898.46
+      },
+      {
+        "date": "2026-09-03",
+        "tokens": 537694055688,
+        "uniqueUsers": 23868,
+        "sessions": 75809,
+        "costUsd": 21211.21
+      },
+      {
+        "date": "2026-09-04",
+        "tokens": 485116235406,
+        "uniqueUsers": 22094,
+        "sessions": 74543,
+        "costUsd": 19333.2
+      },
+      {
+        "date": "2026-09-05",
+        "tokens": 363746712152,
+        "uniqueUsers": 15528,
+        "sessions": 58544,
+        "costUsd": 15137.07
+      },
+      {
+        "date": "2026-09-06",
+        "tokens": 343082741167,
+        "uniqueUsers": 15108,
+        "sessions": 67995,
+        "costUsd": 14302.3
+      },
+      {
+        "date": "2026-09-07",
+        "tokens": 516192378105,
+        "uniqueUsers": 20780,
+        "sessions": 109473,
+        "costUsd": 21425.68
+      },
+      {
+        "date": "2026-09-08",
+        "tokens": 506167807231,
+        "uniqueUsers": 20600,
+        "sessions": 121654,
+        "costUsd": 21153
+      },
+      {
+        "date": "2026-09-09",
+        "tokens": 545451997307,
+        "uniqueUsers": 19673,
+        "sessions": 116485,
+        "costUsd": 22208.68
+      },
+      {
+        "date": "2026-09-10",
+        "tokens": 602769341564,
+        "uniqueUsers": 20514,
+        "sessions": 135736,
+        "costUsd": 23587.06
+      },
+      {
+        "date": "2026-09-11",
+        "tokens": 467802950383,
+        "uniqueUsers": 17073,
+        "sessions": 221265,
+        "costUsd": 18220.68
+      },
+      {
+        "date": "2026-09-12",
+        "tokens": 399479951979,
+        "uniqueUsers": 12821,
+        "sessions": 160174,
+        "costUsd": 15518.59
+      },
+      {
+        "date": "2026-09-13",
+        "tokens": 403318385456,
+        "uniqueUsers": 12427,
+        "sessions": 107615,
+        "costUsd": 15723.75
+      },
+      {
+        "date": "2026-09-14",
+        "tokens": 623850960322,
+        "uniqueUsers": 19897,
+        "sessions": 151947,
+        "costUsd": 25303.51
+      },
+      {
+        "date": "2026-09-15",
+        "tokens": 635397192602,
+        "uniqueUsers": 19740,
+        "sessions": 155049,
+        "costUsd": 25347.88
+      },
+      {
+        "date": "2026-09-16",
+        "tokens": 596313007780,
+        "uniqueUsers": 19227,
+        "sessions": 156656,
+        "costUsd": 24021.46
+      },
+      {
+        "date": "2026-09-17",
+        "tokens": 566106604939,
+        "uniqueUsers": 19604,
+        "sessions": 261420,
+        "costUsd": 23893.18
+      },
+      {
+        "date": "2026-09-18",
+        "tokens": 0,
+        "uniqueUsers": 0,
+        "sessions": 229,
+        "costUsd": 0
+      },
+      {
+        "date": "2026-09-19",
+        "tokens": 379650173464,
+        "uniqueUsers": 15378,
+        "sessions": 144044,
+        "costUsd": 16342.53
+      },
+      {
+        "date": "2026-09-20",
+        "tokens": 425729654458,
+        "uniqueUsers": 15885,
+        "sessions": 190569,
+        "costUsd": 18543.87
+      },
+      {
+        "date": "2026-09-21",
+        "tokens": 566010871266,
+        "uniqueUsers": 21324,
+        "sessions": 218287,
+        "costUsd": 24463.15
+      },
+      {
+        "date": "2026-09-22",
+        "tokens": 505971320582,
+        "uniqueUsers": 19103,
+        "sessions": 193739,
+        "costUsd": 22611.17
+      },
+      {
+        "date": "2026-09-23",
+        "tokens": 445587232063,
+        "uniqueUsers": 17563,
+        "sessions": 178369,
+        "costUsd": 20631.5
+      },
+      {
+        "date": "2026-09-24",
+        "tokens": 402340661962,
+        "uniqueUsers": 16014,
+        "sessions": 169472,
+        "costUsd": 18025.52
+      },
+      {
+        "date": "2026-09-25",
+        "tokens": 370347039258,
+        "uniqueUsers": 13327,
+        "sessions": 170292,
+        "costUsd": 14531.35
+      },
+      {
+        "date": "2026-09-26",
+        "tokens": 309243837409,
+        "uniqueUsers": 11622,
+        "sessions": 150745,
+        "costUsd": 12079.29
+      },
+      {
+        "date": "2026-09-27",
+        "tokens": 298573131905,
+        "uniqueUsers": 11516,
+        "sessions": 271641,
+        "costUsd": 11749.55
+      },
+      {
+        "date": "2026-09-28",
+        "tokens": 410252070692,
+        "uniqueUsers": 15333,
+        "sessions": 348061,
+        "costUsd": 16392.6
+      },
+      {
+        "date": "2026-09-29",
+        "tokens": 392504109480,
+        "uniqueUsers": 15308,
+        "sessions": 171684,
+        "costUsd": 15537.58
+      },
+      {
+        "date": "2026-09-30",
+        "tokens": 361696417029,
+        "uniqueUsers": 14412,
+        "sessions": 144338,
+        "costUsd": 14289.29
+      },
+      {
+        "date": "2026-10-01",
+        "tokens": 276244546310,
+        "uniqueUsers": 12741,
+        "sessions": 137476,
+        "costUsd": 12403.55
+      },
+      {
+        "date": "2026-10-02",
+        "tokens": 256107521065,
+        "uniqueUsers": 12195,
+        "sessions": 119101,
+        "costUsd": 11161.73
+      },
+      {
+        "date": "2026-10-03",
+        "tokens": 226560309615,
+        "uniqueUsers": 10282,
+        "sessions": 108422,
+        "costUsd": 9545.4
+      },
+      {
+        "date": "2026-10-04",
+        "tokens": 230838785987,
+        "uniqueUsers": 10145,
+        "sessions": 108046,
+        "costUsd": 9780.93
+      },
+      {
+        "date": "2026-10-05",
+        "tokens": 294005321265,
+        "uniqueUsers": 12450,
+        "sessions": 135047,
+        "costUsd": 12426.88
+      },
+      {
+        "date": "2026-10-06",
+        "tokens": 303346037110,
+        "uniqueUsers": 12923,
+        "sessions": 130617,
+        "costUsd": 13428.22
+      },
+      {
+        "date": "2026-10-07",
+        "tokens": 320363823833,
+        "uniqueUsers": 13085,
+        "sessions": 136192,
+        "costUsd": 13953.24
+      },
+      {
+        "date": "2026-10-08",
+        "tokens": 316679642336,
+        "uniqueUsers": 13856,
+        "sessions": 136858,
+        "costUsd": 13592.05
+      }
+    ],
+    "countries": [
+      {
+        "rank": 1,
+        "country": "CN",
+        "tokens": 9451700000000,
+        "sharePercent": 14.9
+      },
+      {
+        "rank": 2,
+        "country": "US",
+        "tokens": 8765400000000,
+        "sharePercent": 13.8
+      },
+      {
+        "rank": 3,
+        "country": "IN",
+        "tokens": 3743000000000,
+        "sharePercent": 5.9
+      },
+      {
+        "rank": 4,
+        "country": "DE",
+        "tokens": 3160900000000,
+        "sharePercent": 5
+      },
+      {
+        "rank": 5,
+        "country": "JP",
+        "tokens": 2500700000000,
+        "sharePercent": 3.9
+      },
+      {
+        "rank": 6,
+        "country": "BR",
+        "tokens": 2051800000000,
+        "sharePercent": 3.2
+      },
+      {
+        "rank": 7,
+        "country": "ID",
+        "tokens": 1638700000000,
+        "sharePercent": 2.6
+      },
+      {
+        "rank": 8,
+        "country": "FR",
+        "tokens": 1462800000000,
+        "sharePercent": 2.3
+      },
+      {
+        "rank": 9,
+        "country": "GB",
+        "tokens": 1427300000000,
+        "sharePercent": 2.2
+      },
+      {
+        "rank": 10,
+        "country": "SG",
+        "tokens": 1421400000000,
+        "sharePercent": 2.2
+      },
+      {
+        "rank": 11,
+        "country": "RU",
+        "tokens": 1397200000000,
+        "sharePercent": 2.2
+      },
+      {
+        "rank": 12,
+        "country": "HK",
+        "tokens": 1242200000000,
+        "sharePercent": 2
+      },
+      {
+        "rank": 13,
+        "country": "CA",
+        "tokens": 1225000000000,
+        "sharePercent": 1.9
+      },
+      {
+        "rank": 14,
+        "country": "NL",
+        "tokens": 1181500000000,
+        "sharePercent": 1.9
+      },
+      {
+        "rank": 15,
+        "country": "ES",
+        "tokens": 1161500000000,
+        "sharePercent": 1.8
+      },
+      {
+        "rank": 16,
+        "country": "VN",
+        "tokens": 1094300000000,
+        "sharePercent": 1.7
+      },
+      {
+        "rank": 17,
+        "country": "EG",
+        "tokens": 1078000000000,
+        "sharePercent": 1.7
+      },
+      {
+        "rank": 18,
+        "country": "KR",
+        "tokens": 1035100000000,
+        "sharePercent": 1.6
+      },
+      {
+        "rank": 19,
+        "country": "TR",
+        "tokens": 1014500000000,
+        "sharePercent": 1.6
+      },
+      {
+        "rank": 20,
+        "country": "PL",
+        "tokens": 859600000000,
+        "sharePercent": 1.4
+      },
+      {
+        "rank": 21,
+        "country": "AU",
+        "tokens": 775400000000,
+        "sharePercent": 1.2
+      },
+      {
+        "rank": 22,
+        "country": "IT",
+        "tokens": 679900000000,
+        "sharePercent": 1.1
+      },
+      {
+        "rank": 23,
+        "country": "TW",
+        "tokens": 633400000000,
+        "sharePercent": 1
+      },
+      {
+        "rank": 24,
+        "country": "AR",
+        "tokens": 606600000000,
+        "sharePercent": 1
+      },
+      {
+        "rank": 25,
+        "country": "FI",
+        "tokens": 529300000000,
+        "sharePercent": 0.8
+      },
+      {
+        "rank": 26,
+        "country": "PH",
+        "tokens": 524700000000,
+        "sharePercent": 0.8
+      },
+      {
+        "rank": 27,
+        "country": "MY",
+        "tokens": 516400000000,
+        "sharePercent": 0.8
+      },
+      {
+        "rank": 28,
+        "country": "MX",
+        "tokens": 494600000000,
+        "sharePercent": 0.8
+      },
+      {
+        "rank": 29,
+        "country": "CO",
+        "tokens": 478900000000,
+        "sharePercent": 0.8
+      },
+      {
+        "rank": 30,
+        "country": "SE",
+        "tokens": 446900000000,
+        "sharePercent": 0.7
+      },
+      {
+        "rank": 31,
+        "country": "PK",
+        "tokens": 424000000000,
+        "sharePercent": 0.7
+      },
+      {
+        "rank": 32,
+        "country": "UA",
+        "tokens": 341300000000,
+        "sharePercent": 0.5
+      },
+      {
+        "rank": 33,
+        "country": "BD",
+        "tokens": 337100000000,
+        "sharePercent": 0.5
+      },
+      {
+        "rank": 34,
+        "country": "AZ",
+        "tokens": 332000000000,
+        "sharePercent": 0.5
+      },
+      {
+        "rank": 35,
+        "country": "NG",
+        "tokens": 331900000000,
+        "sharePercent": 0.5
+      },
+      {
+        "rank": 36,
+        "country": "PT",
+        "tokens": 329800000000,
+        "sharePercent": 0.5
+      },
+      {
+        "rank": 37,
+        "country": "CH",
+        "tokens": 315700000000,
+        "sharePercent": 0.5
+      },
+      {
+        "rank": 38,
+        "country": "CL",
+        "tokens": 306300000000,
+        "sharePercent": 0.5
+      },
+      {
+        "rank": 39,
+        "country": "RO",
+        "tokens": 297400000000,
+        "sharePercent": 0.5
+      },
+      {
+        "rank": 40,
+        "country": "AT",
+        "tokens": 294800000000,
+        "sharePercent": 0.5
+      },
+      {
+        "rank": 41,
+        "country": "TH",
+        "tokens": 290800000000,
+        "sharePercent": 0.5
+      },
+      {
+        "rank": 42,
+        "country": "SA",
+        "tokens": 290100000000,
+        "sharePercent": 0.5
+      },
+      {
+        "rank": 43,
+        "country": "DZ",
+        "tokens": 283400000000,
+        "sharePercent": 0.4
+      },
+      {
+        "rank": 44,
+        "country": "MA",
+        "tokens": 276400000000,
+        "sharePercent": 0.4
+      },
+      {
+        "rank": 45,
+        "country": "PE",
+        "tokens": 272700000000,
+        "sharePercent": 0.4
+      },
+      {
+        "rank": 46,
+        "country": "ZA",
+        "tokens": 265700000000,
+        "sharePercent": 0.4
+      },
+      {
+        "rank": 47,
+        "country": "CZ",
+        "tokens": 230400000000,
+        "sharePercent": 0.4
+      },
+      {
+        "rank": 48,
+        "country": "AE",
+        "tokens": 202800000000,
+        "sharePercent": 0.3
+      },
+      {
+        "rank": 49,
+        "country": "IL",
+        "tokens": 200000000000,
+        "sharePercent": 0.3
+      },
+      {
+        "rank": 50,
+        "country": "BE",
+        "tokens": 195300000000,
+        "sharePercent": 0.3
+      },
+      {
+        "rank": 51,
+        "country": "KE",
+        "tokens": 194100000000,
+        "sharePercent": 0.3
+      },
+      {
+        "rank": 52,
+        "country": "NP",
+        "tokens": 190000000000,
+        "sharePercent": 0.3
+      },
+      {
+        "rank": 53,
+        "country": "NO",
+        "tokens": 174800000000,
+        "sharePercent": 0.3
+      },
+      {
+        "rank": 54,
+        "country": "BY",
+        "tokens": 165800000000,
+        "sharePercent": 0.3
+      },
+      {
+        "rank": 55,
+        "country": "VE",
+        "tokens": 161600000000,
+        "sharePercent": 0.3
+      },
+      {
+        "rank": 56,
+        "country": "NZ",
+        "tokens": 159400000000,
+        "sharePercent": 0.3
+      },
+      {
+        "rank": 57,
+        "country": "TN",
+        "tokens": 153500000000,
+        "sharePercent": 0.2
+      },
+      {
+        "rank": 58,
+        "country": "HU",
+        "tokens": 151100000000,
+        "sharePercent": 0.2
+      },
+      {
+        "rank": 59,
+        "country": "GR",
+        "tokens": 134000000000,
+        "sharePercent": 0.2
+      },
+      {
+        "rank": 60,
+        "country": "KZ",
+        "tokens": 131300000000,
+        "sharePercent": 0.2
+      },
+      {
+        "rank": 61,
+        "country": "DK",
+        "tokens": 127900000000,
+        "sharePercent": 0.2
+      },
+      {
+        "rank": 62,
+        "country": "BG",
+        "tokens": 124300000000,
+        "sharePercent": 0.2
+      },
+      {
+        "rank": 63,
+        "country": "IQ",
+        "tokens": 121900000000,
+        "sharePercent": 0.2
+      },
+      {
+        "rank": 64,
+        "country": "LT",
+        "tokens": 114200000000,
+        "sharePercent": 0.2
+      },
+      {
+        "rank": 65,
+        "country": "RS",
+        "tokens": 112300000000,
+        "sharePercent": 0.2
+      },
+      {
+        "rank": 66,
+        "country": "LV",
+        "tokens": 107600000000,
+        "sharePercent": 0.2
+      },
+      {
+        "rank": 67,
+        "country": "GH",
+        "tokens": 103900000000,
+        "sharePercent": 0.2
+      },
+      {
+        "rank": 68,
+        "country": "ET",
+        "tokens": 102100000000,
+        "sharePercent": 0.2
+      },
+      {
+        "rank": 69,
+        "country": "IE",
+        "tokens": 100700000000,
+        "sharePercent": 0.2
+      },
+      {
+        "rank": 70,
+        "country": "EC",
+        "tokens": 94400000000,
+        "sharePercent": 0.1
+      },
+      {
+        "rank": 71,
+        "country": "EE",
+        "tokens": 89400000000,
+        "sharePercent": 0.1
+      },
+      {
+        "rank": 72,
+        "country": "GE",
+        "tokens": 86400000000,
+        "sharePercent": 0.1
+      },
+      {
+        "rank": 73,
+        "country": "YE",
+        "tokens": 84800000000,
+        "sharePercent": 0.1
+      },
+      {
+        "rank": 74,
+        "country": "UY",
+        "tokens": 81800000000,
+        "sharePercent": 0.1
+      },
+      {
+        "rank": 75,
+        "country": "JO",
+        "tokens": 79300000000,
+        "sharePercent": 0.1
+      },
+      {
+        "rank": 76,
+        "country": "MD",
+        "tokens": 70500000000,
+        "sharePercent": 0.1
+      },
+      {
+        "rank": 77,
+        "country": "DO",
+        "tokens": 66200000000,
+        "sharePercent": 0.1
+      },
+      {
+        "rank": 78,
+        "country": "SK",
+        "tokens": 64500000000,
+        "sharePercent": 0.1
+      },
+      {
+        "rank": 79,
+        "country": "LK",
+        "tokens": 63600000000,
+        "sharePercent": 0.1
+      },
+      {
+        "rank": 80,
+        "country": "KH",
+        "tokens": 63100000000,
+        "sharePercent": 0.1
+      },
+      {
+        "rank": 81,
+        "country": "CR",
+        "tokens": 61600000000,
+        "sharePercent": 0.1
+      },
+      {
+        "rank": 82,
+        "country": "UZ",
+        "tokens": 57400000000,
+        "sharePercent": 0.1
+      },
+      {
+        "rank": 83,
+        "country": "HR",
+        "tokens": 56100000000,
+        "sharePercent": 0.1
+      },
+      {
+        "rank": 84,
+        "country": "BO",
+        "tokens": 55200000000,
+        "sharePercent": 0.1
+      },
+      {
+        "rank": 85,
+        "country": "CY",
+        "tokens": 49600000000,
+        "sharePercent": 0.1
+      },
+      {
+        "rank": 86,
+        "country": "MM",
+        "tokens": 48600000000,
+        "sharePercent": 0.1
+      },
+      {
+        "rank": 87,
+        "country": "PS",
+        "tokens": 44300000000,
+        "sharePercent": 0.1
+      },
+      {
+        "rank": 88,
+        "country": "GT",
+        "tokens": 42600000000,
+        "sharePercent": 0.1
+      },
+      {
+        "rank": 89,
+        "country": "TZ",
+        "tokens": 39700000000,
+        "sharePercent": 0.1
+      },
+      {
+        "rank": 90,
+        "country": "PY",
+        "tokens": 39600000000,
+        "sharePercent": 0.1
+      },
+      {
+        "rank": 91,
+        "country": "SI",
+        "tokens": 38400000000,
+        "sharePercent": 0.1
+      },
+      {
+        "rank": 92,
+        "country": "UG",
+        "tokens": 36600000000,
+        "sharePercent": 0.1
+      },
+      {
+        "rank": 93,
+        "country": "IR",
+        "tokens": 36400000000,
+        "sharePercent": 0.1
+      },
+      {
+        "rank": 94,
+        "country": "LB",
+        "tokens": 34300000000,
+        "sharePercent": 0.1
+      },
+      {
+        "rank": 95,
+        "country": "CM",
+        "tokens": 34100000000,
+        "sharePercent": 0.1
+      },
+      {
+        "rank": 96,
+        "country": "LY",
+        "tokens": 33200000000,
+        "sharePercent": 0.1
+      },
+      {
+        "rank": 97,
+        "country": "AM",
+        "tokens": 32900000000,
+        "sharePercent": 0.1
+      },
+      {
+        "rank": 98,
+        "country": "AL",
+        "tokens": 32300000000,
+        "sharePercent": 0.1
+      },
+      {
+        "rank": 99,
+        "country": "BJ",
+        "tokens": 32000000000,
+        "sharePercent": 0.1
+      },
+      {
+        "rank": 100,
+        "country": "OM",
+        "tokens": 30700000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 101,
+        "country": "CI",
+        "tokens": 30200000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 102,
+        "country": "QA",
+        "tokens": 29400000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 103,
+        "country": "MG",
+        "tokens": 27300000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 104,
+        "country": "SY",
+        "tokens": 27200000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 105,
+        "country": "PR",
+        "tokens": 26300000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 106,
+        "country": "PA",
+        "tokens": 26200000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 107,
+        "country": "LU",
+        "tokens": 25300000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 108,
+        "country": "MK",
+        "tokens": 24700000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 109,
+        "country": "SV",
+        "tokens": 24400000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 110,
+        "country": "RW",
+        "tokens": 24200000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 111,
+        "country": "KW",
+        "tokens": 22600000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 112,
+        "country": "BA",
+        "tokens": 22200000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 113,
+        "country": "ZW",
+        "tokens": 22000000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 114,
+        "country": "BH",
+        "tokens": 21800000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 115,
+        "country": "NI",
+        "tokens": 21100000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 116,
+        "country": "KG",
+        "tokens": 20200000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 117,
+        "country": "MN",
+        "tokens": 19900000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 118,
+        "country": "CU",
+        "tokens": 19200000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 119,
+        "country": "HN",
+        "tokens": 18600000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 120,
+        "country": "SN",
+        "tokens": 17600000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 121,
+        "country": "MO",
+        "tokens": 17300000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 122,
+        "country": "AO",
+        "tokens": 17000000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 123,
+        "country": "JM",
+        "tokens": 14700000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 124,
+        "country": "RE",
+        "tokens": 14100000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 125,
+        "country": "TG",
+        "tokens": 12000000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 126,
+        "country": "MU",
+        "tokens": 12000000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 127,
+        "country": "TT",
+        "tokens": 11700000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 128,
+        "country": "SD",
+        "tokens": 11600000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 129,
+        "country": "ZM",
+        "tokens": 11300000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 130,
+        "country": "AF",
+        "tokens": 10300000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 131,
+        "country": "ME",
+        "tokens": 9200000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 132,
+        "country": "MW",
+        "tokens": 9100000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 133,
+        "country": "SO",
+        "tokens": 9100000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 134,
+        "country": "LA",
+        "tokens": 9000000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 135,
+        "country": "MZ",
+        "tokens": 9000000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 136,
+        "country": "IS",
+        "tokens": 8800000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 137,
+        "country": "BF",
+        "tokens": 8400000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 138,
+        "country": "CD",
+        "tokens": 8400000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 139,
+        "country": "MT",
+        "tokens": 7800000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 140,
+        "country": "MV",
+        "tokens": 6400000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 141,
+        "country": "TJ",
+        "tokens": 6300000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 142,
+        "country": "ML",
+        "tokens": 6200000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 143,
+        "country": "NC",
+        "tokens": 5600000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 144,
+        "country": "CG",
+        "tokens": 5400000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 145,
+        "country": "BW",
+        "tokens": 5000000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 146,
+        "country": "BN",
+        "tokens": 4400000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 147,
+        "country": "AD",
+        "tokens": 3900000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 148,
+        "country": "NA",
+        "tokens": 3600000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 149,
+        "country": "SS",
+        "tokens": 3500000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 150,
+        "country": "BT",
+        "tokens": 3500000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 151,
+        "country": "SL",
+        "tokens": 3300000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 152,
+        "country": "NE",
+        "tokens": 3100000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 153,
+        "country": "LS",
+        "tokens": 2900000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 154,
+        "country": "FJ",
+        "tokens": 2900000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 155,
+        "country": "MR",
+        "tokens": 2700000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 156,
+        "country": "GN",
+        "tokens": 2700000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 157,
+        "country": "LR",
+        "tokens": 2600000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 158,
+        "country": "HT",
+        "tokens": 2400000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 159,
+        "country": "T1",
+        "tokens": 2200000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 160,
+        "country": "GA",
+        "tokens": 2200000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 161,
+        "country": "BB",
+        "tokens": 1900000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 162,
+        "country": "FO",
+        "tokens": 1700000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 163,
+        "country": "SZ",
+        "tokens": 1600000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 164,
+        "country": "PG",
+        "tokens": 1500000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 165,
+        "country": "KN",
+        "tokens": 1400000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 166,
+        "country": "AG",
+        "tokens": 1300000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 167,
+        "country": "PF",
+        "tokens": 1300000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 168,
+        "country": "TM",
+        "tokens": 1100000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 169,
+        "country": "MQ",
+        "tokens": 1100000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 170,
+        "country": "LC",
+        "tokens": 1100000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 171,
+        "country": "BI",
+        "tokens": 1100000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 172,
+        "country": "CV",
+        "tokens": 1100000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 173,
+        "country": "BZ",
+        "tokens": 1000000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 174,
+        "country": "SC",
+        "tokens": 900000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 175,
+        "country": "JE",
+        "tokens": 900000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 176,
+        "country": "VI",
+        "tokens": 900000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 177,
+        "country": "AW",
+        "tokens": 900000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 178,
+        "country": "GI",
+        "tokens": 800000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 179,
+        "country": "YT",
+        "tokens": 800000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 180,
+        "country": "AX",
+        "tokens": 800000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 181,
+        "country": "TL",
+        "tokens": 700000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 182,
+        "country": "TD",
+        "tokens": 700000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 183,
+        "country": "GY",
+        "tokens": 700000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 184,
+        "country": "SR",
+        "tokens": 600000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 185,
+        "country": "LI",
+        "tokens": 600000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 186,
+        "country": "BM",
+        "tokens": 600000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 187,
+        "country": "DM",
+        "tokens": 500000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 188,
+        "country": "CF",
+        "tokens": 400000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 189,
+        "country": "MC",
+        "tokens": 400000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 190,
+        "country": "CW",
+        "tokens": 400000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 191,
+        "country": "SM",
+        "tokens": 400000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 192,
+        "country": "IM",
+        "tokens": 400000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 193,
+        "country": "XK",
+        "tokens": 300000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 194,
+        "country": "BS",
+        "tokens": 300000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 195,
+        "country": "GF",
+        "tokens": 300000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 196,
+        "country": "KY",
+        "tokens": 300000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 197,
+        "country": "GP",
+        "tokens": 300000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 198,
+        "country": "GM",
+        "tokens": 300000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 199,
+        "country": "GQ",
+        "tokens": 200000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 200,
+        "country": "ER",
+        "tokens": 200000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 201,
+        "country": "SX",
+        "tokens": 200000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 202,
+        "country": "TC",
+        "tokens": 200000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 203,
+        "country": "DJ",
+        "tokens": 200000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 204,
+        "country": "KI",
+        "tokens": 200000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 205,
+        "country": "ST",
+        "tokens": 200000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 206,
+        "country": "VU",
+        "tokens": 100000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 207,
+        "country": "GG",
+        "tokens": 100000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 208,
+        "country": "PM",
+        "tokens": 100000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 209,
+        "country": "KM",
+        "tokens": 100000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 210,
+        "country": "SB",
+        "tokens": 100000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 211,
+        "country": "GW",
+        "tokens": 100000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 212,
+        "country": "WS",
+        "tokens": 100000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 213,
+        "country": "GL",
+        "tokens": 100000000,
+        "sharePercent": 0
+      },
+      {
+        "rank": 214,
+        "country": "MF",
+        "tokens": 0,
+        "sharePercent": 0
+      },
+      {
+        "rank": 215,
+        "country": "MH",
+        "tokens": 0,
+        "sharePercent": 0
+      },
+      {
+        "rank": 216,
+        "country": "VC",
+        "tokens": 0,
+        "sharePercent": 0
+      },
+      {
+        "rank": 217,
+        "country": "VA",
+        "tokens": 0,
+        "sharePercent": 0
+      },
+      {
+        "rank": 218,
+        "country": "BQ",
+        "tokens": 0,
+        "sharePercent": 0
+      },
+      {
+        "rank": 219,
+        "country": "AI",
+        "tokens": 0,
+        "sharePercent": 0
+      },
+      {
+        "rank": 220,
+        "country": "NU",
+        "tokens": 0,
+        "sharePercent": 0
+      },
+      {
+        "rank": 221,
+        "country": "MS",
+        "tokens": 0,
+        "sharePercent": 0
+      },
+      {
+        "rank": 222,
+        "country": "VG",
+        "tokens": 0,
+        "sharePercent": 0
+      },
+      {
+        "rank": 223,
+        "country": "TO",
+        "tokens": 0,
+        "sharePercent": 0
+      },
+      {
+        "rank": 224,
+        "country": "GU",
+        "tokens": 0,
+        "sharePercent": 0
+      },
+      {
+        "rank": 225,
+        "country": "WF",
+        "tokens": 0,
+        "sharePercent": 0
+      },
+      {
+        "rank": 226,
+        "country": "GD",
+        "tokens": 0,
+        "sharePercent": 0
+      },
+      {
+        "rank": 227,
+        "country": "NR",
+        "tokens": 0,
+        "sharePercent": 0
+      }
+    ],
+    "peers": [
+      {
+        "rank": 5,
+        "model": "deepseek-v4-flash",
+        "lab": "deepseek",
+        "page": "https://opencode.ai/data/deepseek/deepseek-v4-flash",
+        "tokens": 4548225529750
+      },
+      {
+        "rank": 6,
+        "model": "nemotron-3-ultra",
+        "lab": "nvidia",
+        "page": "https://opencode.ai/data/nvidia/nemotron-3-ultra",
+        "tokens": 3944830242727
+      },
+      {
+        "rank": 7,
+        "model": "longcat-2.5-preview",
+        "lab": "meituan",
+        "page": "https://opencode.ai/data/meituan/longcat-2-5-preview",
+        "tokens": 2221654430549
+      },
+      {
+        "rank": 8,
+        "model": "fledge-alpha",
+        "lab": "unknown",
+        "page": "https://opencode.ai/data/unknown/fledge-alpha",
+        "tokens": 2187492662573
+      },
+      {
+        "rank": 9,
+        "model": "glm-5.3-flash",
+        "lab": "zhipu",
+        "page": "https://opencode.ai/data/zhipuai/glm-5-3-flash",
+        "tokens": 1947901441211
+      },
+      {
+        "rank": 10,
+        "model": "mimo-v2.5",
+        "lab": "xiaomi",
+        "page": "https://opencode.ai/data/xiaomi/mimo-v2-5",
+        "tokens": 627281886797
+      },
+      {
+        "rank": 11,
+        "model": "gpt-6-luna",
+        "lab": "openai",
+        "page": "https://opencode.ai/data/openai/gpt-6-luna",
+        "tokens": 616402569305
+      },
+      {
+        "rank": 12,
+        "model": "deepseek-v4-flash-vision-exp",
+        "lab": "deepseek",
+        "page": "https://opencode.ai/data/deepseek/deepseek-v4-flash-vision-exp",
+        "tokens": 610391151318
+      },
+      {
+        "rank": 13,
+        "model": "nemotron-3.5-lightning",
+        "lab": "nvidia",
+        "page": "https://opencode.ai/data/nvidia/nemotron-3-5-lightning",
+        "tokens": 511392682454
+      },
+      {
+        "rank": 14,
+        "model": "deepseek-v4-pro",
+        "lab": "deepseek",
+        "page": "https://opencode.ai/data/deepseek/deepseek-v4-pro",
+        "tokens": 480345856472
+      }
+    ]
+  }
+}

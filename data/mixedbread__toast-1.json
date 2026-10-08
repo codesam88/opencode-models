@@ -1,0 +1,36 @@
+{
+  "page": "https://opencode.ai/data/mixedbread/toast-1",
+  "updatedAt": null,
+  "summary": "Toast 1 costs $0.30 per 1M input tokens and $0.72 per 1M output tokens.",
+  "model": {
+    "id": "mixedbread/toast-1",
+    "name": "Toast 1",
+    "lab": "mixedbread",
+    "labName": "Mixedbread",
+    "family": null,
+    "description": "Specialized search model for knowledge-intensive questions, multi-step retrieval, and evidence synthesis",
+    "releaseDate": "2026-08-13",
+    "lastUpdated": "2026-08-13",
+    "knowledgeCutoff": null,
+    "contextTokens": 131000,
+    "outputTokens": 4000,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 0.3,
+      "output": 0.72,
+      "cachedInput": 0.036,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

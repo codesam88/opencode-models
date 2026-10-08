@@ -1,0 +1,43 @@
+{
+  "page": "https://opencode.ai/data/perplexity/sonar",
+  "updatedAt": null,
+  "summary": "Sonar costs $0.25 per 1M input tokens and $2.50 per 1M output tokens.",
+  "model": {
+    "id": "perplexity/sonar",
+    "name": "Sonar",
+    "lab": "perplexity",
+    "labName": "Perplexity",
+    "family": "sonar",
+    "description": "Fast web-grounded Sonar for current answers, citations, and lightweight retrieval",
+    "releaseDate": "2024-01-01",
+    "lastUpdated": "2025-09-01",
+    "knowledgeCutoff": "2025-09-01",
+    "contextTokens": 128000,
+    "outputTokens": 4096,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": false,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 0.25,
+      "output": 2.5,
+      "cachedInput": null,
+      "cacheWrite": 0.0625
+    },
+    "benchmarks": [
+      {
+        "name": "SciCode",
+        "score": 22.9,
+        "metric": "percent correct",
+        "source": "https://openrouter.ai/perplexity/sonar/benchmarks"
+      }
+    ]
+  },
+  "usage": null
+}

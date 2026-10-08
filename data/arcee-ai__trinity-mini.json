@@ -1,0 +1,36 @@
+{
+  "page": "https://opencode.ai/data/arcee-ai/trinity-mini",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "arcee-ai/trinity-mini",
+    "name": "Trinity Mini",
+    "lab": "arcee-ai",
+    "labName": "Arcee AI",
+    "family": "trinity",
+    "description": "Reasoning-tuned 26B MoE model with 3B active parameters for agents, tools, and multi-step workloads",
+    "releaseDate": "2025-12-01",
+    "lastUpdated": "2026-05-28",
+    "knowledgeCutoff": null,
+    "contextTokens": 131072,
+    "outputTokens": 131072,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/arcee-ai/Trinity-Mini"
+      }
+    ],
+    "priceUsdPer1M": null,
+    "benchmarks": []
+  },
+  "usage": null
+}

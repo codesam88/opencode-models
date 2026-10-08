@@ -1,0 +1,41 @@
+{
+  "page": "https://opencode.ai/data/zhipuai/glm-4-7-flashx",
+  "updatedAt": null,
+  "summary": "GLM-4.7-FlashX costs $0.07 per 1M input tokens and $0.40 per 1M output tokens.",
+  "model": {
+    "id": "zhipuai/glm-4.7-flashx",
+    "name": "GLM-4.7-FlashX",
+    "lab": "zhipuai",
+    "labName": "Zhipu",
+    "family": "glm-flash",
+    "description": "Efficient GLM model for fast reasoning, coding, and agent workflows",
+    "releaseDate": "2026-01-19",
+    "lastUpdated": "2026-01-19",
+    "knowledgeCutoff": "2025-04",
+    "contextTokens": 200000,
+    "outputTokens": 131072,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/zai-org/GLM-4.7-Flash"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.07,
+      "output": 0.4,
+      "cachedInput": 0.01,
+      "cacheWrite": 0
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

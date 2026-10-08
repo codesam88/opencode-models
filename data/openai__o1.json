@@ -1,0 +1,45 @@
+{
+  "page": "https://opencode.ai/data/openai/o1",
+  "updatedAt": null,
+  "summary": "o1 costs $15.00 per 1M input tokens and $60.00 per 1M output tokens.",
+  "model": {
+    "id": "openai/o1",
+    "name": "o1",
+    "lab": "openai",
+    "labName": "OpenAI",
+    "family": "o",
+    "description": "O-series reasoning model for hard analysis, math, coding, and planning",
+    "releaseDate": "2024-12-05",
+    "lastUpdated": "2024-12-05",
+    "knowledgeCutoff": "2023-09",
+    "contextTokens": 200000,
+    "outputTokens": 100000,
+    "inputModalities": [
+      "text",
+      "image",
+      "pdf"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 15,
+      "output": 60,
+      "cachedInput": 7.5,
+      "cacheWrite": null
+    },
+    "benchmarks": [
+      {
+        "name": "Aider Polyglot",
+        "score": 61.7,
+        "metric": "percent correct",
+        "source": "https://aider.chat/docs/leaderboards/"
+      }
+    ]
+  },
+  "usage": null
+}

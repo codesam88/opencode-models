@@ -1,0 +1,48 @@
+{
+  "page": "https://opencode.ai/data/alibaba/qwen3-32b",
+  "updatedAt": null,
+  "summary": "Qwen3 32B costs $0.70 per 1M input tokens and $2.80 per 1M output tokens.",
+  "model": {
+    "id": "alibaba/qwen3-32b",
+    "name": "Qwen3 32B",
+    "lab": "alibaba",
+    "labName": "Alibaba",
+    "family": "qwen",
+    "description": "Dense open Qwen model for self-hosted chat, reasoning, and coding",
+    "releaseDate": "2025-04",
+    "lastUpdated": "2025-04",
+    "knowledgeCutoff": "2025-04",
+    "contextTokens": 131072,
+    "outputTokens": 16384,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/Qwen/Qwen3-32B"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.7,
+      "output": 2.8,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": [
+      {
+        "name": "Aider Polyglot",
+        "score": 40,
+        "metric": "percent correct",
+        "source": "https://aider.chat/docs/leaderboards/"
+      }
+    ]
+  },
+  "usage": null
+}

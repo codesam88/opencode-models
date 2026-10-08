@@ -1,0 +1,65 @@
+{
+  "page": "https://opencode.ai/data/google/gemini-2-5-pro",
+  "updatedAt": null,
+  "summary": "Gemini 2.5 Pro costs $1.25 per 1M input tokens and $10.00 per 1M output tokens.",
+  "model": {
+    "id": "google/gemini-2.5-pro",
+    "name": "Gemini 2.5 Pro",
+    "lab": "google",
+    "labName": "Google",
+    "family": "gemini-pro",
+    "description": "Google's proven reasoning model for coding, math, and multimodal analysis",
+    "releaseDate": "2025-06-17",
+    "lastUpdated": "2025-06-17",
+    "knowledgeCutoff": "2025-01",
+    "contextTokens": 1048576,
+    "outputTokens": 65536,
+    "inputModalities": [
+      "text",
+      "image",
+      "audio",
+      "video",
+      "pdf"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 1.25,
+      "output": 10,
+      "cachedInput": 0.125,
+      "cacheWrite": null
+    },
+    "benchmarks": [
+      {
+        "name": "Aider Polyglot",
+        "score": 83.1,
+        "metric": "percent correct",
+        "source": "https://aider.chat/docs/leaderboards/"
+      },
+      {
+        "name": "Artificial Analysis Coding Index",
+        "score": 32,
+        "metric": "index",
+        "source": "https://openrouter.ai/google/gemini-2.5-pro/benchmarks"
+      },
+      {
+        "name": "SciCode",
+        "score": 42.8,
+        "metric": "percent correct",
+        "source": "https://openrouter.ai/google/gemini-2.5-pro/benchmarks"
+      },
+      {
+        "name": "Terminal-Bench Hard",
+        "score": 26.5,
+        "metric": "success rate",
+        "source": "https://openrouter.ai/google/gemini-2.5-pro/benchmarks"
+      }
+    ]
+  },
+  "usage": null
+}

@@ -1,0 +1,56 @@
+{
+  "page": "https://opencode.ai/data/mistral/mistral-medium-2505",
+  "updatedAt": null,
+  "summary": "Mistral Medium 3 costs $0.40 per 1M input tokens and $2.00 per 1M output tokens.",
+  "model": {
+    "id": "mistral/mistral-medium-2505",
+    "name": "Mistral Medium 3",
+    "lab": "mistral",
+    "labName": "Mistral",
+    "family": "mistral-medium",
+    "description": "Mistral model for multilingual chat, reasoning, and tool-assisted workflows",
+    "releaseDate": "2025-05-07",
+    "lastUpdated": "2025-05-07",
+    "knowledgeCutoff": "2025-05",
+    "contextTokens": 131072,
+    "outputTokens": 131072,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 0.4,
+      "output": 2,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": [
+      {
+        "name": "Artificial Analysis Coding Index",
+        "score": 13.6,
+        "metric": "index",
+        "source": "https://openrouter.ai/mistralai/mistral-medium-3/benchmarks"
+      },
+      {
+        "name": "SciCode",
+        "score": 33.1,
+        "metric": "percent correct",
+        "source": "https://openrouter.ai/mistralai/mistral-medium-3/benchmarks"
+      },
+      {
+        "name": "Terminal-Bench Hard",
+        "score": 3.8,
+        "metric": "success rate",
+        "source": "https://openrouter.ai/mistralai/mistral-medium-3/benchmarks"
+      }
+    ]
+  },
+  "usage": null
+}

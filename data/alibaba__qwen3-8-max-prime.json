@@ -1,0 +1,38 @@
+{
+  "page": "https://opencode.ai/data/alibaba/qwen3-8-max-prime",
+  "updatedAt": null,
+  "summary": "Qwen 3.8 Max Prime costs $4.00 per 1M input tokens and $12.00 per 1M output tokens.",
+  "model": {
+    "id": "alibaba/qwen3.8-max-prime",
+    "name": "Qwen 3.8 Max Prime",
+    "lab": "alibaba",
+    "labName": "Alibaba",
+    "family": "qwen3.8-max",
+    "description": "High-throughput edition of Qwen3.8 Max for coding, professional work, multimodal understanding, and long-running agent workflows",
+    "releaseDate": "2026-09-23",
+    "lastUpdated": "2026-09-23",
+    "knowledgeCutoff": null,
+    "contextTokens": 1000000,
+    "outputTokens": 131072,
+    "inputModalities": [
+      "text",
+      "image",
+      "video"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 4,
+      "output": 12,
+      "cachedInput": 0.5,
+      "cacheWrite": 5
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

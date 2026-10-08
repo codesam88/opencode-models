@@ -1,0 +1,37 @@
+{
+  "page": "https://opencode.ai/data/mistral/voxtral-mini-3b-2507",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "mistral/voxtral-mini-3b-2507",
+    "name": "Voxtral Mini 3B 2507",
+    "lab": "mistral",
+    "labName": "Mistral",
+    "family": "voxtral",
+    "description": "Open audio-language model for speech transcription, audio understanding, and voice-driven tool use",
+    "releaseDate": "2025-07-15",
+    "lastUpdated": "2025-07-15",
+    "knowledgeCutoff": null,
+    "contextTokens": 32768,
+    "outputTokens": 32768,
+    "inputModalities": [
+      "text",
+      "audio"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/mistralai/Voxtral-Mini-3B-2507"
+      }
+    ],
+    "priceUsdPer1M": null,
+    "benchmarks": []
+  },
+  "usage": null
+}

@@ -1,0 +1,36 @@
+{
+  "page": "https://opencode.ai/data/cohere/c4ai-aya-expanse-8b",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "cohere/c4ai-aya-expanse-8b",
+    "name": "Aya Expanse 8B",
+    "lab": "cohere",
+    "labName": "Cohere",
+    "family": null,
+    "description": "Compact open multilingual model optimized for generation across 23 languages",
+    "releaseDate": "2024-10-24",
+    "lastUpdated": "2024-10-24",
+    "knowledgeCutoff": null,
+    "contextTokens": 8000,
+    "outputTokens": 4000,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": false,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/CohereLabs/aya-expanse-8b"
+      }
+    ],
+    "priceUsdPer1M": null,
+    "benchmarks": []
+  },
+  "usage": null
+}

@@ -1,0 +1,41 @@
+{
+  "page": "https://opencode.ai/data/mistral/mistral-nemo",
+  "updatedAt": null,
+  "summary": "Mistral Nemo costs $0.15 per 1M input tokens and $0.15 per 1M output tokens.",
+  "model": {
+    "id": "mistral/mistral-nemo",
+    "name": "Mistral Nemo",
+    "lab": "mistral",
+    "labName": "Mistral",
+    "family": "mistral-nemo",
+    "description": "Efficient Mistral-NVIDIA open model for multilingual chat and local deployment",
+    "releaseDate": "2024-07-01",
+    "lastUpdated": "2024-07-01",
+    "knowledgeCutoff": "2024-07",
+    "contextTokens": 128000,
+    "outputTokens": 128000,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/mistralai/Mistral-Nemo-Instruct-2407"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.15,
+      "output": 0.15,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

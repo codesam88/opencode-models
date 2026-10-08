@@ -1,0 +1,37 @@
+{
+  "page": "https://opencode.ai/data/bytedance-seed/seed-1-6-flash",
+  "updatedAt": null,
+  "summary": "Seed 1.6 Flash costs $0.07 per 1M input tokens and $0.30 per 1M output tokens.",
+  "model": {
+    "id": "bytedance-seed/seed-1-6-flash",
+    "name": "Seed 1.6 Flash",
+    "lab": "bytedance-seed",
+    "labName": "ByteDance Seed",
+    "family": "seed",
+    "description": "Low-latency ByteDance Seed model for high-throughput chat, extraction, and lightweight tool use",
+    "releaseDate": "2025-08-28",
+    "lastUpdated": "2025-08-28",
+    "knowledgeCutoff": null,
+    "contextTokens": 256000,
+    "outputTokens": 32000,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 0.075,
+      "output": 0.3,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

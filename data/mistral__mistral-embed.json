@@ -1,0 +1,36 @@
+{
+  "page": "https://opencode.ai/data/mistral/mistral-embed",
+  "updatedAt": null,
+  "summary": "Mistral Embed costs $0.10 per 1M input tokens and $0.00 per 1M output tokens.",
+  "model": {
+    "id": "mistral/mistral-embed",
+    "name": "Mistral Embed",
+    "lab": "mistral",
+    "labName": "Mistral",
+    "family": "mistral-embed",
+    "description": "Embedding model for semantic search, retrieval, clustering, and ranking pipelines",
+    "releaseDate": "2023-12-11",
+    "lastUpdated": "2023-12-11",
+    "knowledgeCutoff": null,
+    "contextTokens": 8000,
+    "outputTokens": 3072,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": false,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 0.1,
+      "output": 0,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

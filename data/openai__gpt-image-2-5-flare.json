@@ -1,0 +1,37 @@
+{
+  "page": "https://opencode.ai/data/openai/gpt-image-2-5-flare",
+  "updatedAt": null,
+  "summary": "GPT Image 2.5 Flare costs $5.00 per 1M input tokens and $30.00 per 1M output tokens.",
+  "model": {
+    "id": "openai/gpt-image-2.5-flare",
+    "name": "GPT Image 2.5 Flare",
+    "lab": "openai",
+    "labName": "OpenAI",
+    "family": "gpt-image",
+    "description": "Image model for prompt-driven generation, editing, and visual design workflows",
+    "releaseDate": "2026-09-08",
+    "lastUpdated": "2026-09-08",
+    "knowledgeCutoff": null,
+    "contextTokens": 0,
+    "outputTokens": 0,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "image"
+    ],
+    "reasoning": false,
+    "toolCall": false,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 5,
+      "output": 30,
+      "cachedInput": 1.25,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

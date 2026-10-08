@@ -1,0 +1,42 @@
+{
+  "page": "https://opencode.ai/data/mistral/devstral-small-2",
+  "updatedAt": null,
+  "summary": "Devstral Small 2 costs $0.10 per 1M input tokens and $0.30 per 1M output tokens.",
+  "model": {
+    "id": "mistral/devstral-small-2",
+    "name": "Devstral Small 2",
+    "lab": "mistral",
+    "labName": "Mistral",
+    "family": "devstral",
+    "description": "Compact multimodal coding model for repository exploration, file editing, and software agents",
+    "releaseDate": "2025-12-09",
+    "lastUpdated": "2025-12-09",
+    "knowledgeCutoff": "2025-12",
+    "contextTokens": 262144,
+    "outputTokens": 262144,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/mistralai/Devstral-Small-2-24B-Instruct-2512"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.1,
+      "output": 0.3,
+      "cachedInput": 0.1,
+      "cacheWrite": 0.1
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

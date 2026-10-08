@@ -1,0 +1,39 @@
+{
+  "page": "https://opencode.ai/data/google/gemini-3-1-flash-image-preview",
+  "updatedAt": null,
+  "summary": "Nano Banana 2 Preview costs $0.50 per 1M input tokens and $3.00 per 1M output tokens.",
+  "model": {
+    "id": "google/gemini-3.1-flash-image-preview",
+    "name": "Nano Banana 2 Preview",
+    "lab": "google",
+    "labName": "Google",
+    "family": "gemini-flash",
+    "description": "Image model for prompt-driven generation, editing, and visual design workflows",
+    "releaseDate": "2026-02-26",
+    "lastUpdated": "2026-02-26",
+    "knowledgeCutoff": "2025-01",
+    "contextTokens": 65536,
+    "outputTokens": 65536,
+    "inputModalities": [
+      "text",
+      "image",
+      "pdf"
+    ],
+    "outputModalities": [
+      "text",
+      "image"
+    ],
+    "reasoning": true,
+    "toolCall": false,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 0.5,
+      "output": 3,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

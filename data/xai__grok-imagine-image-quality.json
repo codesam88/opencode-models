@@ -1,0 +1,32 @@
+{
+  "page": "https://opencode.ai/data/xai/grok-imagine-image-quality",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "xai/grok-imagine-image-quality",
+    "name": "Grok Imagine Image Quality",
+    "lab": "xai",
+    "labName": "xAI",
+    "family": "grok",
+    "description": "Higher-fidelity Grok Imagine image model for prompt-driven generation, editing, and visual design workflows",
+    "releaseDate": "2026-04-03",
+    "lastUpdated": "2026-04-03",
+    "knowledgeCutoff": null,
+    "contextTokens": 16000,
+    "outputTokens": 0,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "image"
+    ],
+    "reasoning": false,
+    "toolCall": false,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": null,
+    "benchmarks": []
+  },
+  "usage": null
+}

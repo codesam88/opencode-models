@@ -1,0 +1,36 @@
+{
+  "page": "https://opencode.ai/data/openbmb/minicpm5-1b",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "openbmb/minicpm5-1b",
+    "name": "MiniCPM5-1B",
+    "lab": "openbmb",
+    "labName": "OpenBMB",
+    "family": null,
+    "description": "Dense 1B-class open-source model for on-device and resource-constrained use, with native long-context support, Think / No Think chat modes, and tool calling",
+    "releaseDate": "2026-05-19",
+    "lastUpdated": "2026-05-19",
+    "knowledgeCutoff": null,
+    "contextTokens": 131072,
+    "outputTokens": 131072,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/openbmb/MiniCPM5-1B"
+      }
+    ],
+    "priceUsdPer1M": null,
+    "benchmarks": []
+  },
+  "usage": null
+}

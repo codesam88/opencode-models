@@ -1,0 +1,41 @@
+{
+  "page": "https://opencode.ai/data/arcee-ai/trinity-large-thinking",
+  "updatedAt": null,
+  "summary": "Trinity Large Thinking costs $0.25 per 1M input tokens and $0.80 per 1M output tokens.",
+  "model": {
+    "id": "arcee-ai/trinity-large-thinking",
+    "name": "Trinity Large Thinking",
+    "lab": "arcee-ai",
+    "labName": "Arcee AI",
+    "family": "trinity",
+    "description": "Reasoning-optimized 398B MoE agent model with extended thinking for long-horizon and multi-turn tool use",
+    "releaseDate": "2026-04-01",
+    "lastUpdated": "2026-05-28",
+    "knowledgeCutoff": null,
+    "contextTokens": 524288,
+    "outputTokens": 262144,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/arcee-ai/Trinity-Large-Thinking"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.25,
+      "output": 0.8,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

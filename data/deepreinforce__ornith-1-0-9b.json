@@ -1,0 +1,82 @@
+{
+  "page": "https://opencode.ai/data/deepreinforce/ornith-1-0-9b",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "deepreinforce/ornith-1.0-9b",
+    "name": "Ornith 1.0 9B",
+    "lab": "deepreinforce",
+    "labName": "DeepReinforce",
+    "family": "ornith",
+    "description": "Open coding-reasoning model for repository tasks and self-improving agents",
+    "releaseDate": "2026-06-25",
+    "lastUpdated": "2026-06-25",
+    "knowledgeCutoff": null,
+    "contextTokens": 262144,
+    "outputTokens": null,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/deepreinforce-ai/Ornith-1.0-9B"
+      }
+    ],
+    "priceUsdPer1M": null,
+    "benchmarks": [
+      {
+        "name": "SWE-Bench Verified",
+        "score": 69.4,
+        "metric": "percent resolved",
+        "source": "https://huggingface.co/deepreinforce-ai/Ornith-1.0-9B"
+      },
+      {
+        "name": "SWE-Bench Pro",
+        "score": 42.9,
+        "metric": "percent resolved",
+        "source": "https://huggingface.co/deepreinforce-ai/Ornith-1.0-9B"
+      },
+      {
+        "name": "SWE-Bench Multilingual",
+        "score": 52,
+        "metric": "percent resolved",
+        "source": "https://huggingface.co/deepreinforce-ai/Ornith-1.0-9B"
+      },
+      {
+        "name": "Terminal-Bench 2.1",
+        "score": 43.1,
+        "metric": "percent",
+        "variant": "Terminus-2",
+        "source": "https://huggingface.co/deepreinforce-ai/Ornith-1.0-9B"
+      },
+      {
+        "name": "Terminal-Bench 2.1",
+        "score": 40.6,
+        "metric": "percent",
+        "variant": "Claude Code",
+        "source": "https://huggingface.co/deepreinforce-ai/Ornith-1.0-9B"
+      },
+      {
+        "name": "NL2Repo",
+        "score": 27.2,
+        "metric": "percent",
+        "source": "https://huggingface.co/deepreinforce-ai/Ornith-1.0-9B"
+      },
+      {
+        "name": "Claw-eval",
+        "score": 63.1,
+        "metric": "percent",
+        "source": "https://huggingface.co/deepreinforce-ai/Ornith-1.0-9B"
+      }
+    ]
+  },
+  "usage": null
+}

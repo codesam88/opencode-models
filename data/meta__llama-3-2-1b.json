@@ -1,0 +1,36 @@
+{
+  "page": "https://opencode.ai/data/meta/llama-3-2-1b",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "meta/llama-3.2-1b",
+    "name": "Llama-3.2-1B",
+    "lab": "meta",
+    "labName": "Meta",
+    "family": "llama",
+    "description": "Compact open Llama base model for lightweight and on-device use",
+    "releaseDate": "2024-09-25",
+    "lastUpdated": "2024-09-25",
+    "knowledgeCutoff": "2023-12",
+    "contextTokens": 131072,
+    "outputTokens": 8192,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": false,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/meta-llama/Llama-3.2-1B"
+      }
+    ],
+    "priceUsdPer1M": null,
+    "benchmarks": []
+  },
+  "usage": null
+}

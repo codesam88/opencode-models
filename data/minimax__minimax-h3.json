@@ -1,0 +1,40 @@
+{
+  "page": "https://opencode.ai/data/minimax/minimax-h3",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "minimax/MiniMax-H3",
+    "name": "MiniMax H3",
+    "lab": "minimax",
+    "labName": "MiniMax",
+    "family": "minimax",
+    "description": "MiniMax general-purpose video model with multimodal references and synchronized stereo audio. Open H3-Base checkpoints; Context-IR and 2K regeneration are not included in the initial weights release.",
+    "releaseDate": "2026-07-31",
+    "lastUpdated": "2026-10-04",
+    "knowledgeCutoff": null,
+    "contextTokens": 0,
+    "outputTokens": 0,
+    "inputModalities": [
+      "text",
+      "image",
+      "video",
+      "audio"
+    ],
+    "outputModalities": [
+      "video",
+      "audio"
+    ],
+    "reasoning": false,
+    "toolCall": false,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face: H3-Base FL2VA / Ref2VA",
+        "url": "https://huggingface.co/MiniMaxAI/MiniMax-H3"
+      }
+    ],
+    "priceUsdPer1M": null,
+    "benchmarks": []
+  },
+  "usage": null
+}

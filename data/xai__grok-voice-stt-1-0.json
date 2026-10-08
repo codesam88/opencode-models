@@ -1,0 +1,31 @@
+{
+  "page": "https://opencode.ai/data/xai/grok-voice-stt-1-0",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "xai/grok-voice-stt-1.0",
+    "name": "Grok Voice STT 1.0",
+    "lab": "xai",
+    "labName": "xAI",
+    "family": null,
+    "description": "Grok Voice STT 1.0 is xAI's speech-to-text model. It supports transcription with word-level timestamps, optional speaker diarization, and multichannel audio.",
+    "releaseDate": "2026-08-04",
+    "lastUpdated": "2026-08-04",
+    "knowledgeCutoff": null,
+    "contextTokens": 15000,
+    "outputTokens": 15000,
+    "inputModalities": [
+      "audio"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": false,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": null,
+    "benchmarks": []
+  },
+  "usage": null
+}

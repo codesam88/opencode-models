@@ -1,0 +1,37 @@
+{
+  "page": "https://opencode.ai/data/trendyol/asure-12b",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "trendyol/asure-12b",
+    "name": "Trendyol Asure 12B",
+    "lab": "trendyol",
+    "labName": "Trendyol",
+    "family": "gemma",
+    "description": "Turkish-language multimodal instruct model built on Gemma 3 12B for e-commerce text, chat, and image-text tasks",
+    "releaseDate": "2026-02-19",
+    "lastUpdated": "2026-02-20",
+    "knowledgeCutoff": null,
+    "contextTokens": 131072,
+    "outputTokens": null,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": false,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/Trendyol/Trendyol-LLM-Asure-12B"
+      }
+    ],
+    "priceUsdPer1M": null,
+    "benchmarks": []
+  },
+  "usage": null
+}

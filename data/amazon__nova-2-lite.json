@@ -1,0 +1,39 @@
+{
+  "page": "https://opencode.ai/data/amazon/nova-2-lite",
+  "updatedAt": null,
+  "summary": "Nova 2 Lite costs $0.30 per 1M input tokens and $2.50 per 1M output tokens.",
+  "model": {
+    "id": "amazon/nova-2-lite",
+    "name": "Nova 2 Lite",
+    "lab": "amazon",
+    "labName": "Amazon",
+    "family": "nova",
+    "description": "Multimodal reasoning model for visual analysis, planning, and tool use",
+    "releaseDate": "2025-12-02",
+    "lastUpdated": "2025-12-01",
+    "knowledgeCutoff": "2025-10",
+    "contextTokens": 1000000,
+    "outputTokens": 65536,
+    "inputModalities": [
+      "text",
+      "image",
+      "video",
+      "pdf"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 0.3,
+      "output": 2.5,
+      "cachedInput": 0.075,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

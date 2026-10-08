@@ -1,0 +1,41 @@
+{
+  "page": "https://opencode.ai/data/openbmb/minicpm5-2b",
+  "updatedAt": null,
+  "summary": "MiniCPM5-2B costs $0.12 per 1M input tokens and $0.74 per 1M output tokens.",
+  "model": {
+    "id": "openbmb/minicpm5-2b",
+    "name": "MiniCPM5-2B",
+    "lab": "openbmb",
+    "labName": "OpenBMB",
+    "family": null,
+    "description": "Dense 2B-class open-source model for on-device and resource-constrained use, with native long-context support, tool calling, and agentic tasks",
+    "releaseDate": "2026-09-06",
+    "lastUpdated": "2026-09-12",
+    "knowledgeCutoff": null,
+    "contextTokens": 131072,
+    "outputTokens": 131072,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/openbmb/MiniCPM5-2B"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.124,
+      "output": 0.7425,
+      "cachedInput": 0.124,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

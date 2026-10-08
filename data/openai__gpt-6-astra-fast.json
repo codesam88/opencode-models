@@ -1,0 +1,38 @@
+{
+  "page": "https://opencode.ai/data/openai/gpt-6-astra-fast",
+  "updatedAt": null,
+  "summary": "GPT-6 Astra (Fast) costs $20.00 per 1M input tokens and $100.00 per 1M output tokens.",
+  "model": {
+    "id": "openai/gpt-6-astra-fast",
+    "name": "GPT-6 Astra (Fast)",
+    "lab": "openai",
+    "labName": "OpenAI",
+    "family": "gpt-astra",
+    "description": "Fast variant of GPT-6 Astra for low-latency assistance and high-volume workloads.",
+    "releaseDate": "2026-09-04",
+    "lastUpdated": "2026-09-04",
+    "knowledgeCutoff": null,
+    "contextTokens": 1050000,
+    "outputTokens": 128000,
+    "inputModalities": [
+      "text",
+      "image",
+      "pdf"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 20,
+      "output": 100,
+      "cachedInput": 2,
+      "cacheWrite": 25
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

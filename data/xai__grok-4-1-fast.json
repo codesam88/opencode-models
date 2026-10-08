@@ -1,0 +1,32 @@
+{
+  "page": "https://opencode.ai/data/xai/grok-4-1-fast",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "xai/grok-4.1-fast",
+    "name": "Grok 4.1 Fast",
+    "lab": "xai",
+    "labName": "xAI",
+    "family": "grok",
+    "description": "xAI's fast agentic tool-calling model with a 2M context window; non-reasoning variant for low-latency responses",
+    "releaseDate": "2025-11-19",
+    "lastUpdated": "2025-11-19",
+    "knowledgeCutoff": null,
+    "contextTokens": 2000000,
+    "outputTokens": 30000,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": null,
+    "benchmarks": []
+  },
+  "usage": null
+}

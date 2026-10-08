@@ -1,0 +1,38 @@
+{
+  "page": "https://opencode.ai/data/bytedance-seed/seed-2-0-mini",
+  "updatedAt": null,
+  "summary": "Seed 2.0 Mini costs $0.10 per 1M input tokens and $0.40 per 1M output tokens.",
+  "model": {
+    "id": "bytedance-seed/seed-2.0-mini",
+    "name": "Seed 2.0 Mini",
+    "lab": "bytedance-seed",
+    "labName": "ByteDance Seed",
+    "family": "seed",
+    "description": "Lightweight ByteDance Seed 2.0 model for low-latency multimodal reasoning and high-volume tasks",
+    "releaseDate": "2026-02-14",
+    "lastUpdated": "2026-02-14",
+    "knowledgeCutoff": null,
+    "contextTokens": 256000,
+    "outputTokens": 32000,
+    "inputModalities": [
+      "text",
+      "image",
+      "video"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 0.1,
+      "output": 0.4,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

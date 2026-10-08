@@ -1,0 +1,50 @@
+{
+  "page": "https://opencode.ai/data/openai/gpt-4o-2024-05-13",
+  "updatedAt": null,
+  "summary": "GPT-4o (2024-05-13) costs $5.00 per 1M input tokens and $15.00 per 1M output tokens.",
+  "model": {
+    "id": "openai/gpt-4o-2024-05-13",
+    "name": "GPT-4o (2024-05-13)",
+    "lab": "openai",
+    "labName": "OpenAI",
+    "family": "gpt",
+    "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
+    "releaseDate": "2024-05-13",
+    "lastUpdated": "2024-05-13",
+    "knowledgeCutoff": "2023-09",
+    "contextTokens": 128000,
+    "outputTokens": 4096,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 5,
+      "output": 15,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": [
+      {
+        "name": "Artificial Analysis Coding Index",
+        "score": 24.2,
+        "metric": "index",
+        "source": "https://openrouter.ai/openai/gpt-4o-2024-05-13/benchmarks"
+      },
+      {
+        "name": "SciCode",
+        "score": 30.9,
+        "metric": "percent correct",
+        "source": "https://openrouter.ai/openai/gpt-4o-2024-05-13/benchmarks"
+      }
+    ]
+  },
+  "usage": null
+}

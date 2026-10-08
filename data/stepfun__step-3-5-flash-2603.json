@@ -1,0 +1,60 @@
+{
+  "page": "https://opencode.ai/data/stepfun/step-3-5-flash-2603",
+  "updatedAt": null,
+  "summary": "Step 3.5 Flash 2603 costs $0.10 per 1M input tokens and $0.30 per 1M output tokens.",
+  "model": {
+    "id": "stepfun/step-3.5-flash-2603",
+    "name": "Step 3.5 Flash 2603",
+    "lab": "stepfun",
+    "labName": "StepFun",
+    "family": null,
+    "description": "StepFun flash model for efficient multimodal reasoning, coding, and tool use",
+    "releaseDate": "2026-04-02",
+    "lastUpdated": "2026-04-02",
+    "knowledgeCutoff": "2025-01",
+    "contextTokens": 256000,
+    "outputTokens": 256000,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/stepfun-ai/Step-3.5-Flash"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.1,
+      "output": 0.3,
+      "cachedInput": 0.02,
+      "cacheWrite": null
+    },
+    "benchmarks": [
+      {
+        "name": "Artificial Analysis Coding Index",
+        "score": 34.6,
+        "metric": "index",
+        "source": "https://openrouter.ai/stepfun/step-3.5-flash/benchmarks"
+      },
+      {
+        "name": "SciCode",
+        "score": 38.5,
+        "metric": "percent correct",
+        "source": "https://openrouter.ai/stepfun/step-3.5-flash/benchmarks"
+      },
+      {
+        "name": "Terminal-Bench Hard",
+        "score": 32.6,
+        "metric": "success rate",
+        "source": "https://openrouter.ai/stepfun/step-3.5-flash/benchmarks"
+      }
+    ]
+  },
+  "usage": null
+}

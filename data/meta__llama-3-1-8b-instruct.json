@@ -1,0 +1,41 @@
+{
+  "page": "https://opencode.ai/data/meta/llama-3-1-8b-instruct",
+  "updatedAt": null,
+  "summary": "Llama-3.1-8B-Instruct costs $0.00 per 1M input tokens and $0.00 per 1M output tokens.",
+  "model": {
+    "id": "meta/llama-3.1-8b-instruct",
+    "name": "Llama-3.1-8B-Instruct",
+    "lab": "meta",
+    "labName": "Meta",
+    "family": "llama",
+    "description": "Compact open Llama model for lightweight chat, drafting, and self-hosting",
+    "releaseDate": "2024-07-23",
+    "lastUpdated": "2024-07-23",
+    "knowledgeCutoff": "2023-12",
+    "contextTokens": 128000,
+    "outputTokens": 4096,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0,
+      "output": 0,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

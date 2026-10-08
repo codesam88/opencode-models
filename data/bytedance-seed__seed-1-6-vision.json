@@ -1,0 +1,32 @@
+{
+  "page": "https://opencode.ai/data/bytedance-seed/seed-1-6-vision",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "bytedance-seed/seed-1-6-vision",
+    "name": "Seed 1.6 Vision",
+    "lab": "bytedance-seed",
+    "labName": "ByteDance Seed",
+    "family": "seed",
+    "description": "ByteDance Seed multimodal model for image understanding, visual reasoning, and tool-assisted tasks",
+    "releaseDate": "2025-08-15",
+    "lastUpdated": "2025-08-15",
+    "knowledgeCutoff": null,
+    "contextTokens": 256000,
+    "outputTokens": 32000,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": null,
+    "benchmarks": []
+  },
+  "usage": null
+}

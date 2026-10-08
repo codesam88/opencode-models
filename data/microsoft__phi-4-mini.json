@@ -1,0 +1,43 @@
+{
+  "page": "https://opencode.ai/data/microsoft/phi-4-mini",
+  "updatedAt": null,
+  "summary": "Phi-4-mini costs $0.07 per 1M input tokens and $0.30 per 1M output tokens.",
+  "model": {
+    "id": "microsoft/phi-4-mini",
+    "name": "Phi-4-mini",
+    "lab": "microsoft",
+    "labName": "Microsoft",
+    "family": "phi",
+    "description": "Compact Microsoft instruction model tuned for efficient coding assistance, reasoning, and low-latency agent tasks",
+    "releaseDate": "2024-12-11",
+    "lastUpdated": "2024-12-11",
+    "knowledgeCutoff": "2023-10",
+    "contextTokens": 128000,
+    "outputTokens": 4096,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 0.075,
+      "output": 0.3,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": [
+      {
+        "name": "MMLU",
+        "score": 67.3,
+        "metric": "accuracy",
+        "source": "https://huggingface.co/microsoft/Phi-4-mini-instruct/resolve/main/README.md"
+      }
+    ]
+  },
+  "usage": null
+}

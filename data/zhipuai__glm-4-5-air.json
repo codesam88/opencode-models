@@ -1,0 +1,60 @@
+{
+  "page": "https://opencode.ai/data/zhipuai/glm-4-5-air",
+  "updatedAt": null,
+  "summary": "GLM-4.5-Air costs $0.20 per 1M input tokens and $1.10 per 1M output tokens.",
+  "model": {
+    "id": "zhipuai/glm-4.5-air",
+    "name": "GLM-4.5-Air",
+    "lab": "zhipuai",
+    "labName": "Zhipu",
+    "family": "glm-air",
+    "description": "Lighter GLM-4.5 variant for fast coding assistance and cheaper agents",
+    "releaseDate": "2025-07-28",
+    "lastUpdated": "2025-07-28",
+    "knowledgeCutoff": "2025-04",
+    "contextTokens": 131072,
+    "outputTokens": 98304,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/zai-org/GLM-4.5-Air"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.2,
+      "output": 1.1,
+      "cachedInput": 0.03,
+      "cacheWrite": 0
+    },
+    "benchmarks": [
+      {
+        "name": "Artificial Analysis Coding Index",
+        "score": 23.8,
+        "metric": "index",
+        "source": "https://openrouter.ai/z-ai/glm-4.5-air/benchmarks"
+      },
+      {
+        "name": "SciCode",
+        "score": 30.6,
+        "metric": "percent correct",
+        "source": "https://openrouter.ai/z-ai/glm-4.5-air/benchmarks"
+      },
+      {
+        "name": "Terminal-Bench Hard",
+        "score": 20.5,
+        "metric": "success rate",
+        "source": "https://openrouter.ai/z-ai/glm-4.5-air/benchmarks"
+      }
+    ]
+  },
+  "usage": null
+}

@@ -1,0 +1,41 @@
+{
+  "page": "https://opencode.ai/data/cohere/command-r-08-2024",
+  "updatedAt": null,
+  "summary": "Command R costs $0.15 per 1M input tokens and $0.60 per 1M output tokens.",
+  "model": {
+    "id": "cohere/command-r-08-2024",
+    "name": "Command R",
+    "lab": "cohere",
+    "labName": "Cohere",
+    "family": "command-r",
+    "description": "Cohere retrieval model for long-context chat and enterprise RAG workflows",
+    "releaseDate": "2024-08-30",
+    "lastUpdated": "2024-08-30",
+    "knowledgeCutoff": "2024-06-01",
+    "contextTokens": 128000,
+    "outputTokens": 4000,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/CohereLabs/c4ai-command-r-08-2024"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.15,
+      "output": 0.6,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

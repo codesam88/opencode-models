@@ -1,0 +1,41 @@
+{
+  "page": "https://opencode.ai/data/google/deep-research-max-preview-04-2026",
+  "updatedAt": null,
+  "summary": "Deep Research Max Preview costs $2.00 per 1M input tokens and $12.00 per 1M output tokens.",
+  "model": {
+    "id": "google/deep-research-max-preview-04-2026",
+    "name": "Deep Research Max Preview",
+    "lab": "google",
+    "labName": "Google",
+    "family": "gemini-pro",
+    "description": "Maximum-comprehensiveness agentic researcher for multi-step investigation, synthesis, and cited reports",
+    "releaseDate": "2026-04-21",
+    "lastUpdated": "2026-04-21",
+    "knowledgeCutoff": "2025-01",
+    "contextTokens": 1048576,
+    "outputTokens": 65536,
+    "inputModalities": [
+      "text",
+      "image",
+      "video",
+      "audio",
+      "pdf"
+    ],
+    "outputModalities": [
+      "text",
+      "image"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 2,
+      "output": 12,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

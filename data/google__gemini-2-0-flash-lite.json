@@ -1,0 +1,40 @@
+{
+  "page": "https://opencode.ai/data/google/gemini-2-0-flash-lite",
+  "updatedAt": null,
+  "summary": "Gemini 2.0 Flash-Lite costs $0.05 per 1M input tokens and $0.21 per 1M output tokens.",
+  "model": {
+    "id": "google/gemini-2.0-flash-lite",
+    "name": "Gemini 2.0 Flash-Lite",
+    "lab": "google",
+    "labName": "Google",
+    "family": "gemini-flash-lite",
+    "description": "Low-latency Gemini model for high-volume multimodal and agent workloads",
+    "releaseDate": "2024-12-11",
+    "lastUpdated": "2024-12-11",
+    "knowledgeCutoff": "2024-06",
+    "contextTokens": 1048576,
+    "outputTokens": 8192,
+    "inputModalities": [
+      "text",
+      "image",
+      "audio",
+      "video",
+      "pdf"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 0.052,
+      "output": 0.21,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

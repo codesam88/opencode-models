@@ -1,0 +1,72 @@
+{
+  "page": "https://opencode.ai/data/openai/gpt-6-sol",
+  "updatedAt": null,
+  "summary": "GPT-6 Sol costs $2.00 per 1M input tokens and $10.00 per 1M output tokens.",
+  "model": {
+    "id": "openai/gpt-6-sol",
+    "name": "GPT-6 Sol",
+    "lab": "openai",
+    "labName": "OpenAI",
+    "family": "gpt-sol",
+    "description": "OpenAI model for complex coding and agentic workflows",
+    "releaseDate": "2026-09-22",
+    "lastUpdated": "2026-09-22",
+    "knowledgeCutoff": "2026-04-20",
+    "contextTokens": 1050000,
+    "outputTokens": 128000,
+    "inputModalities": [
+      "text",
+      "image",
+      "pdf"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 2,
+      "output": 10,
+      "cachedInput": 0.2,
+      "cacheWrite": 2.5
+    },
+    "benchmarks": [
+      {
+        "name": "DeepSWE",
+        "score": 68.8,
+        "metric": "score",
+        "variant": "max effort",
+        "version": "1.1",
+        "source": "https://openai.com/index/introducing-gpt-6-sol-and-luna/"
+      },
+      {
+        "name": "AutomationBench",
+        "score": 33.2,
+        "metric": "score",
+        "variant": "xhigh effort",
+        "version": "1.0.6",
+        "source": "https://openai.com/index/introducing-gpt-6-sol-and-luna/"
+      },
+      {
+        "name": "Agents' Last Exam",
+        "score": 56.4,
+        "metric": "score",
+        "variant": "max effort",
+        "version": "1",
+        "source": "https://openai.com/index/introducing-gpt-6-sol-and-luna/"
+      },
+      {
+        "name": "OSWorld",
+        "score": 60.5,
+        "metric": "partial reward",
+        "variant": "xhigh effort",
+        "dataset": "offline v2026.08.08",
+        "version": "2.0",
+        "source": "https://openai.com/index/introducing-gpt-6-sol-and-luna/"
+      }
+    ]
+  },
+  "usage": null
+}

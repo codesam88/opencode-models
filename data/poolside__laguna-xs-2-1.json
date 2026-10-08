@@ -1,0 +1,66 @@
+{
+  "page": "https://opencode.ai/data/poolside/laguna-xs-2-1",
+  "updatedAt": null,
+  "summary": "Laguna XS 2.1 costs $0.00 per 1M input tokens and $0.00 per 1M output tokens.",
+  "model": {
+    "id": "poolside/laguna-xs-2.1",
+    "name": "Laguna XS 2.1",
+    "lab": "poolside",
+    "labName": "Poolside",
+    "family": "laguna",
+    "description": "Agentic coding model from Poolside in the XS size class for local deployment",
+    "releaseDate": "2026-07-02",
+    "lastUpdated": "2026-07-02",
+    "knowledgeCutoff": null,
+    "contextTokens": 262144,
+    "outputTokens": 32768,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 0,
+      "output": 0,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": [
+      {
+        "name": "SWE-Bench Verified",
+        "score": 70.9,
+        "metric": "resolved",
+        "harness": "Harbor",
+        "source": "https://poolside.ai/blog/introducing-laguna-xs-2-1"
+      },
+      {
+        "name": "SWE-Bench Multilingual",
+        "score": 63.1,
+        "metric": "resolve rate",
+        "harness": "Harbor",
+        "source": "https://poolside.ai/blog/introducing-laguna-xs-2-1"
+      },
+      {
+        "name": "SWE-Bench Pro",
+        "score": 47.6,
+        "metric": "resolve rate",
+        "harness": "Harbor",
+        "source": "https://poolside.ai/blog/introducing-laguna-xs-2-1"
+      },
+      {
+        "name": "Terminal-Bench",
+        "score": 37.5,
+        "metric": "success rate",
+        "harness": "Harbor",
+        "version": "2.0",
+        "source": "https://poolside.ai/blog/introducing-laguna-xs-2-1"
+      }
+    ]
+  },
+  "usage": null
+}

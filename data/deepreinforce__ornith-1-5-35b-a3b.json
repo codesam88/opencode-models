@@ -1,0 +1,37 @@
+{
+  "page": "https://opencode.ai/data/deepreinforce/ornith-1-5-35b-a3b",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "deepreinforce/ornith-1.5-35b-a3b",
+    "name": "Ornith 1.5 35B A3B",
+    "lab": "deepreinforce",
+    "labName": "DeepReinforce",
+    "family": "ornith",
+    "description": "Mixture-of-experts coding-reasoning model for agentic software tasks, tool use, and image understanding",
+    "releaseDate": "2026-08-18",
+    "lastUpdated": "2026-08-23",
+    "knowledgeCutoff": null,
+    "contextTokens": 262144,
+    "outputTokens": null,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/ornith-ai/Ornith-1.5-35B-A3B"
+      }
+    ],
+    "priceUsdPer1M": null,
+    "benchmarks": []
+  },
+  "usage": null
+}

@@ -1,0 +1,168 @@
+{
+  "page": "https://opencode.ai/data/google/gemini-3-1-pro-preview",
+  "updatedAt": null,
+  "summary": "Gemini 3.1 Pro Preview costs $2.00 per 1M input tokens and $12.00 per 1M output tokens.",
+  "model": {
+    "id": "google/gemini-3.1-pro-preview",
+    "name": "Gemini 3.1 Pro Preview",
+    "lab": "google",
+    "labName": "Google",
+    "family": "gemini-pro",
+    "description": "Reasoning-first Gemini preview for agentic coding and complex problem solving",
+    "releaseDate": "2026-02-19",
+    "lastUpdated": "2026-02-19",
+    "knowledgeCutoff": "2025-01",
+    "contextTokens": 1048576,
+    "outputTokens": 65536,
+    "inputModalities": [
+      "text",
+      "image",
+      "video",
+      "audio",
+      "pdf"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 2,
+      "output": 12,
+      "cachedInput": 0.2,
+      "cacheWrite": null
+    },
+    "benchmarks": [
+      {
+        "name": "SWE-Bench Pro",
+        "score": 54.2,
+        "metric": "resolve rate",
+        "source": "https://www.anthropic.com/news/claude-opus-4-8"
+      },
+      {
+        "name": "Terminal-Bench",
+        "score": 70.3,
+        "metric": "success rate",
+        "harness": "Terminus-2",
+        "version": "2.1",
+        "source": "https://www.anthropic.com/news/claude-opus-4-8"
+      },
+      {
+        "name": "SWE-Bench Pro",
+        "score": 46.1,
+        "metric": "resolve rate",
+        "dataset": "public",
+        "source": "https://labs.scale.com/leaderboard/swe_bench_pro_public"
+      },
+      {
+        "name": "SWE-Atlas Codebase QnA",
+        "score": 13.5,
+        "metric": "score",
+        "harness": "Mini-SWE-Agent",
+        "source": "https://labs.scale.com/leaderboard/sweatlas-qna"
+      },
+      {
+        "name": "SWE-Atlas Refactoring",
+        "score": 33.81,
+        "metric": "score",
+        "harness": "Gemini CLI",
+        "source": "https://labs.scale.com/leaderboard/sweatlas-refactoring"
+      },
+      {
+        "name": "SWE-Atlas Test Writing",
+        "score": 29.84,
+        "metric": "score",
+        "harness": "Mini-SWE-Agent",
+        "source": "https://labs.scale.com/leaderboard/sweatlas-tw"
+      },
+      {
+        "name": "Artificial Analysis Coding Agent Index",
+        "score": 43,
+        "metric": "average pass@1",
+        "harness": "Gemini CLI",
+        "variant": "high",
+        "source": "https://artificialanalysis.ai/agents/coding-agents"
+      },
+      {
+        "name": "SWE-Atlas Codebase QnA",
+        "score": 45.6,
+        "metric": "pass@1",
+        "harness": "Gemini CLI",
+        "variant": "high",
+        "source": "https://artificialanalysis.ai/agents/coding-agents"
+      },
+      {
+        "name": "SWE-Bench Pro",
+        "score": 15.1,
+        "metric": "pass@1",
+        "harness": "Gemini CLI",
+        "variant": "high",
+        "dataset": "hard-aa",
+        "source": "https://artificialanalysis.ai/agents/coding-agents"
+      },
+      {
+        "name": "Terminal-Bench",
+        "score": 68.3,
+        "metric": "pass@1",
+        "harness": "Gemini CLI",
+        "variant": "high",
+        "version": "2.1",
+        "source": "https://artificialanalysis.ai/agents/coding-agents"
+      },
+      {
+        "name": "GPQA Diamond",
+        "score": 94.3,
+        "metric": "accuracy",
+        "source": "https://openai.com/index/introducing-gpt-5-5/"
+      },
+      {
+        "name": "Humanity's Last Exam",
+        "score": 44.4,
+        "metric": "accuracy",
+        "dataset": "full set, text + MM",
+        "source": "https://deepmind.google/models/gemini/flash/"
+      },
+      {
+        "name": "ARC-AGI-2",
+        "score": 77.1,
+        "metric": "accuracy",
+        "source": "https://deepmind.google/models/gemini/flash/"
+      },
+      {
+        "name": "MMMU Pro",
+        "score": 80.5,
+        "metric": "accuracy",
+        "variant": "no tools",
+        "source": "https://deepmind.google/models/gemini/flash/"
+      },
+      {
+        "name": "MCP Atlas",
+        "score": 78.2,
+        "metric": "success rate",
+        "source": "https://deepmind.google/models/gemini/flash/"
+      },
+      {
+        "name": "OSWorld-Verified",
+        "score": 76.2,
+        "metric": "success rate",
+        "source": "https://deepmind.google/models/gemini/flash/"
+      },
+      {
+        "name": "CharXiv Reasoning",
+        "score": 83.3,
+        "metric": "accuracy",
+        "variant": "no tools",
+        "source": "https://deepmind.google/models/gemini/flash/"
+      },
+      {
+        "name": "GDPval-AA",
+        "score": 1314,
+        "metric": "Elo",
+        "source": "https://deepmind.google/models/gemini/flash/"
+      }
+    ]
+  },
+  "usage": null
+}

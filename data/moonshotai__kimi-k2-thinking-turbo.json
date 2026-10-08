@@ -1,0 +1,41 @@
+{
+  "page": "https://opencode.ai/data/moonshotai/kimi-k2-thinking-turbo",
+  "updatedAt": null,
+  "summary": "Kimi K2 Thinking Turbo costs $1.15 per 1M input tokens and $8.00 per 1M output tokens.",
+  "model": {
+    "id": "moonshotai/kimi-k2-thinking-turbo",
+    "name": "Kimi K2 Thinking Turbo",
+    "lab": "moonshotai",
+    "labName": "Moonshot",
+    "family": "kimi-thinking",
+    "description": "Kimi reasoning model for long-horizon research, planning, and tool use",
+    "releaseDate": "2025-11-06",
+    "lastUpdated": "2025-11-06",
+    "knowledgeCutoff": "2024-08",
+    "contextTokens": 262144,
+    "outputTokens": 262144,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/moonshotai/Kimi-K2-Thinking"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 1.15,
+      "output": 8,
+      "cachedInput": 0.15,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

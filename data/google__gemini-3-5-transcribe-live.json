@@ -1,0 +1,31 @@
+{
+  "page": "https://opencode.ai/data/google/gemini-3-5-transcribe-live",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "google/gemini-3.5-transcribe-live",
+    "name": "Gemini 3.5 Transcribe Live",
+    "lab": "google",
+    "labName": "Google",
+    "family": "gemini",
+    "description": "Speech transcription model for accurate audio-to-text and captioning workflows",
+    "releaseDate": "2026-08-26",
+    "lastUpdated": "2026-08-26",
+    "knowledgeCutoff": null,
+    "contextTokens": 0,
+    "outputTokens": 0,
+    "inputModalities": [
+      "audio"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": false,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": null,
+    "benchmarks": []
+  },
+  "usage": null
+}

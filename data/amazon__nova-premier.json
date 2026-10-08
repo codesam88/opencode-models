@@ -1,0 +1,34 @@
+{
+  "page": "https://opencode.ai/data/amazon/nova-premier",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "amazon/nova-premier",
+    "name": "Nova Premier",
+    "lab": "amazon",
+    "labName": "Amazon",
+    "family": "nova",
+    "description": "Multimodal model for complex analysis, long-context understanding, tool use, and model distillation",
+    "releaseDate": "2025-04-30",
+    "lastUpdated": "2025-04-30",
+    "knowledgeCutoff": "2024-10",
+    "contextTokens": 1000000,
+    "outputTokens": 10000,
+    "inputModalities": [
+      "text",
+      "image",
+      "video",
+      "pdf"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": null,
+    "benchmarks": []
+  },
+  "usage": null
+}

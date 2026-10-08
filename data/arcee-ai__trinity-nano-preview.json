@@ -1,0 +1,36 @@
+{
+  "page": "https://opencode.ai/data/arcee-ai/trinity-nano-preview",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "arcee-ai/trinity-nano-preview",
+    "name": "Trinity Nano Preview",
+    "lab": "arcee-ai",
+    "labName": "Arcee AI",
+    "family": "trinity",
+    "description": "Experimental chat-tuned 6B MoE model with 1B active parameters for low-resource chat and instruction following",
+    "releaseDate": "2025-12-01",
+    "lastUpdated": "2026-05-28",
+    "knowledgeCutoff": null,
+    "contextTokens": 131072,
+    "outputTokens": 131072,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/arcee-ai/Trinity-Nano-Preview"
+      }
+    ],
+    "priceUsdPer1M": null,
+    "benchmarks": []
+  },
+  "usage": null
+}

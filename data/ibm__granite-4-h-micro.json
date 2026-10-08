@@ -1,0 +1,36 @@
+{
+  "page": "https://opencode.ai/data/ibm/granite-4-h-micro",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "ibm/granite-4-h-micro",
+    "name": "Granite-4.0-H-Micro",
+    "lab": "ibm",
+    "labName": "IBM",
+    "family": "granite",
+    "description": "Compact open-weight hybrid Granite model for lightweight enterprise chat and tool calling",
+    "releaseDate": "2025-10-02",
+    "lastUpdated": "2025-10-02",
+    "knowledgeCutoff": null,
+    "contextTokens": 131072,
+    "outputTokens": 131072,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/ibm-granite/granite-4.0-h-micro"
+      }
+    ],
+    "priceUsdPer1M": null,
+    "benchmarks": []
+  },
+  "usage": null
+}

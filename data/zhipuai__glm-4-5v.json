@@ -1,0 +1,62 @@
+{
+  "page": "https://opencode.ai/data/zhipuai/glm-4-5v",
+  "updatedAt": null,
+  "summary": "GLM-4.5V costs $0.60 per 1M input tokens and $1.80 per 1M output tokens.",
+  "model": {
+    "id": "zhipuai/glm-4.5v",
+    "name": "GLM-4.5V",
+    "lab": "zhipuai",
+    "labName": "Zhipu",
+    "family": "glm",
+    "description": "GLM vision model for visual reasoning, documents, and multimodal agents",
+    "releaseDate": "2025-08-11",
+    "lastUpdated": "2025-08-11",
+    "knowledgeCutoff": "2025-04",
+    "contextTokens": 64000,
+    "outputTokens": 16384,
+    "inputModalities": [
+      "text",
+      "image",
+      "video"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/zai-org/GLM-4.5V"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.6,
+      "output": 1.8,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": [
+      {
+        "name": "Artificial Analysis Coding Index",
+        "score": 10.9,
+        "metric": "index",
+        "source": "https://openrouter.ai/z-ai/glm-4.5v/benchmarks"
+      },
+      {
+        "name": "SciCode",
+        "score": 22.1,
+        "metric": "percent correct",
+        "source": "https://openrouter.ai/z-ai/glm-4.5v/benchmarks"
+      },
+      {
+        "name": "Terminal-Bench Hard",
+        "score": 5.3,
+        "metric": "success rate",
+        "source": "https://openrouter.ai/z-ai/glm-4.5v/benchmarks"
+      }
+    ]
+  },
+  "usage": null
+}

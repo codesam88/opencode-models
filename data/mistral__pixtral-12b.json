@@ -1,0 +1,42 @@
+{
+  "page": "https://opencode.ai/data/mistral/pixtral-12b",
+  "updatedAt": null,
+  "summary": "Pixtral 12B costs $0.15 per 1M input tokens and $0.15 per 1M output tokens.",
+  "model": {
+    "id": "mistral/pixtral-12b",
+    "name": "Pixtral 12B",
+    "lab": "mistral",
+    "labName": "Mistral",
+    "family": "pixtral",
+    "description": "Mistral vision-language model for image understanding and multimodal chat",
+    "releaseDate": "2024-09-01",
+    "lastUpdated": "2024-09-01",
+    "knowledgeCutoff": "2024-09",
+    "contextTokens": 128000,
+    "outputTokens": 128000,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/mistralai/Pixtral-12B-2409"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.15,
+      "output": 0.15,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

@@ -1,0 +1,31 @@
+{
+  "page": "https://opencode.ai/data/xai/grok-voice-tts-1-0",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "xai/grok-voice-tts-1.0",
+    "name": "Grok Voice TTS 1.0",
+    "lab": "xai",
+    "labName": "xAI",
+    "family": null,
+    "description": "Convert text into spoken audio with a single API call. The API supports a rich set of expressive voices, inline speech tags for fine-grained delivery control, and output formats from high-fidelity MP3 to telephony-optimized μ-law.",
+    "releaseDate": "2026-07-31",
+    "lastUpdated": "2026-07-31",
+    "knowledgeCutoff": null,
+    "contextTokens": 15000,
+    "outputTokens": 15000,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "audio"
+    ],
+    "reasoning": false,
+    "toolCall": false,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": null,
+    "benchmarks": []
+  },
+  "usage": null
+}

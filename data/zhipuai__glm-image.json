@@ -1,0 +1,37 @@
+{
+  "page": "https://opencode.ai/data/zhipuai/glm-image",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "zhipuai/glm-image",
+    "name": "GLM-Image",
+    "lab": "zhipuai",
+    "labName": "Zhipu",
+    "family": null,
+    "description": "GLM-Image is an image generation model adopts a hybrid autoregressive + diffusion decoder architecture. In general image generation quality, GLM‑Image aligns with mainstream latent diffusion approaches, but it shows significant advantages in text-rendering and knowledge‑intensive generation scenarios. It performs especially well in tasks requiring precise semantic understanding and complex information expression, while maintaining strong capabilities in high‑fidelity and fine‑grained detail generation. In addition to text‑to‑image generation, GLM‑Image also supports a rich set of image‑to‑image tasks including image editing, style transfer, identity‑preserving generation, and multi‑subject consistency.",
+    "releaseDate": "2026-01-19",
+    "lastUpdated": "2026-01-19",
+    "knowledgeCutoff": null,
+    "contextTokens": 10240,
+    "outputTokens": 0,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "image"
+    ],
+    "reasoning": false,
+    "toolCall": false,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/zai-org/GLM-Image"
+      }
+    ],
+    "priceUsdPer1M": null,
+    "benchmarks": []
+  },
+  "usage": null
+}

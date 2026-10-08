@@ -1,0 +1,35 @@
+{
+  "page": "https://opencode.ai/data/bytedance-seed/seedance-2-5",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "bytedance-seed/seedance-2.5",
+    "name": "Seedance 2.5",
+    "lab": "bytedance-seed",
+    "labName": "ByteDance Seed",
+    "family": "seed",
+    "description": "ByteDance multimodal audio-video model with up to 30-second single-pass generation, multi-round extension, reference inputs and timestamp-level editing.",
+    "releaseDate": "2026-07-31",
+    "lastUpdated": "2026-10-04",
+    "knowledgeCutoff": null,
+    "contextTokens": 0,
+    "outputTokens": 0,
+    "inputModalities": [
+      "text",
+      "image",
+      "video",
+      "audio"
+    ],
+    "outputModalities": [
+      "video",
+      "audio"
+    ],
+    "reasoning": false,
+    "toolCall": false,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": null,
+    "benchmarks": []
+  },
+  "usage": null
+}

@@ -1,0 +1,37 @@
+{
+  "page": "https://opencode.ai/data/mistral/magistral-small-2509",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "mistral/magistral-small-2509",
+    "name": "Magistral Small 1.2",
+    "lab": "mistral",
+    "labName": "Mistral",
+    "family": "magistral",
+    "description": "Open multimodal reasoning model for transparent analysis of text and images",
+    "releaseDate": "2025-09-18",
+    "lastUpdated": "2025-09-18",
+    "knowledgeCutoff": null,
+    "contextTokens": 131072,
+    "outputTokens": 131072,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/mistralai/Magistral-Small-2509"
+      }
+    ],
+    "priceUsdPer1M": null,
+    "benchmarks": []
+  },
+  "usage": null
+}

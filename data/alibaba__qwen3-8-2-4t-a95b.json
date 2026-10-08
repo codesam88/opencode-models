@@ -1,0 +1,41 @@
+{
+  "page": "https://opencode.ai/data/alibaba/qwen3-8-2-4t-a95b",
+  "updatedAt": null,
+  "summary": "Qwen3.8 2.4T A95B costs $2.00 per 1M input tokens and $6.00 per 1M output tokens.",
+  "model": {
+    "id": "alibaba/qwen3.8-2.4t-a95b",
+    "name": "Qwen3.8 2.4T A95B",
+    "lab": "alibaba",
+    "labName": "Alibaba",
+    "family": "qwen",
+    "description": "Open-weight sparse MoE (2.4T total, 95B active), the open-weight twin of Qwen3.8 Max for coding, research, complex reasoning, and agentic workflows",
+    "releaseDate": "2026-08-12",
+    "lastUpdated": "2026-08-12",
+    "knowledgeCutoff": null,
+    "contextTokens": 262144,
+    "outputTokens": 131072,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/Qwen/Qwen3.8-2.4T-A95B"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 2,
+      "output": 6,
+      "cachedInput": 0.25,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

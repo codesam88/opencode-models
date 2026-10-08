@@ -1,0 +1,37 @@
+{
+  "page": "https://opencode.ai/data/vivgrid/viv-fast",
+  "updatedAt": null,
+  "summary": "Viv Fast costs $0.13 per 1M input tokens and $0.40 per 1M output tokens.",
+  "model": {
+    "id": "vivgrid/viv-fast",
+    "name": "Viv Fast",
+    "lab": "vivgrid",
+    "labName": "Vivgrid",
+    "family": null,
+    "description": "Fast coding model",
+    "releaseDate": "2026-09-21",
+    "lastUpdated": "2026-09-21",
+    "knowledgeCutoff": "2026-09",
+    "contextTokens": 1000000,
+    "outputTokens": 256000,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 0.13,
+      "output": 0.4,
+      "cachedInput": 0.05,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

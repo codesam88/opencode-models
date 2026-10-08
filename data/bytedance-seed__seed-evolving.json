@@ -1,0 +1,33 @@
+{
+  "page": "https://opencode.ai/data/bytedance-seed/seed-evolving",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "bytedance-seed/seed-evolving",
+    "name": "Seed Evolving",
+    "lab": "bytedance-seed",
+    "labName": "ByteDance Seed",
+    "family": "seed",
+    "description": "Rolling ByteDance Seed model for rapidly updated reasoning, coding, and agent capabilities",
+    "releaseDate": "2026-06-23",
+    "lastUpdated": "2026-06-23",
+    "knowledgeCutoff": null,
+    "contextTokens": 256000,
+    "outputTokens": 256000,
+    "inputModalities": [
+      "text",
+      "image",
+      "video"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": null,
+    "benchmarks": []
+  },
+  "usage": null
+}

@@ -1,0 +1,38 @@
+{
+  "page": "https://opencode.ai/data/google/lyria-3-clip-preview",
+  "updatedAt": null,
+  "summary": "Lyria 3 Clip Preview costs $0.00 per 1M input tokens and $0.00 per 1M output tokens.",
+  "model": {
+    "id": "google/lyria-3-clip-preview",
+    "name": "Lyria 3 Clip Preview",
+    "lab": "google",
+    "labName": "Google",
+    "family": "lyria",
+    "description": "Music generation model for short 30-second clips, loops, and previews from text or image prompts",
+    "releaseDate": "2026-03-25",
+    "lastUpdated": "2026-03-25",
+    "knowledgeCutoff": null,
+    "contextTokens": 131072,
+    "outputTokens": 65536,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text",
+      "audio"
+    ],
+    "reasoning": false,
+    "toolCall": false,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 0,
+      "output": 0,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

@@ -1,0 +1,44 @@
+{
+  "page": "https://opencode.ai/data/alibaba/qwen3-5-35b-a3b",
+  "updatedAt": null,
+  "summary": "Qwen3.5 35B-A3B costs $0.25 per 1M input tokens and $2.00 per 1M output tokens.",
+  "model": {
+    "id": "alibaba/qwen3.5-35b-a3b",
+    "name": "Qwen3.5 35B-A3B",
+    "lab": "alibaba",
+    "labName": "Alibaba",
+    "family": "qwen",
+    "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
+    "releaseDate": "2026-02-23",
+    "lastUpdated": "2026-02-23",
+    "knowledgeCutoff": null,
+    "contextTokens": 262144,
+    "outputTokens": 65536,
+    "inputModalities": [
+      "text",
+      "image",
+      "video",
+      "audio"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/Qwen/Qwen3.5-35B-A3B"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.25,
+      "output": 2,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

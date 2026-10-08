@@ -1,0 +1,61 @@
+{
+  "page": "https://opencode.ai/data/mistral/mistral-large-2512",
+  "updatedAt": null,
+  "summary": "Mistral Large 3 costs $0.50 per 1M input tokens and $1.50 per 1M output tokens.",
+  "model": {
+    "id": "mistral/mistral-large-2512",
+    "name": "Mistral Large 3",
+    "lab": "mistral",
+    "labName": "Mistral",
+    "family": "mistral-large",
+    "description": "Mistral's largest general model for enterprise agents, coding, and multilingual reasoning",
+    "releaseDate": "2025-12-02",
+    "lastUpdated": "2025-12-02",
+    "knowledgeCutoff": "2024-11",
+    "contextTokens": 262144,
+    "outputTokens": 262144,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/mistralai/Mistral-Large-3-675B-Instruct-2512"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.5,
+      "output": 1.5,
+      "cachedInput": 0.05,
+      "cacheWrite": null
+    },
+    "benchmarks": [
+      {
+        "name": "Artificial Analysis Coding Index",
+        "score": 22.7,
+        "metric": "index",
+        "source": "https://openrouter.ai/mistralai/mistral-large-2512/benchmarks"
+      },
+      {
+        "name": "SciCode",
+        "score": 36.2,
+        "metric": "percent correct",
+        "source": "https://openrouter.ai/mistralai/mistral-large-2512/benchmarks"
+      },
+      {
+        "name": "Terminal-Bench Hard",
+        "score": 15.9,
+        "metric": "success rate",
+        "source": "https://openrouter.ai/mistralai/mistral-large-2512/benchmarks"
+      }
+    ]
+  },
+  "usage": null
+}

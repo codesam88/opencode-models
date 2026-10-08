@@ -1,0 +1,39 @@
+{
+  "page": "https://opencode.ai/data/amazon/nova-pro",
+  "updatedAt": null,
+  "summary": "Nova Pro costs $0.80 per 1M input tokens and $3.20 per 1M output tokens.",
+  "model": {
+    "id": "amazon/nova-pro",
+    "name": "Nova Pro",
+    "lab": "amazon",
+    "labName": "Amazon",
+    "family": "nova-pro",
+    "description": "Flagship model for demanding analysis, coding, and production agent workflows",
+    "releaseDate": "2024-12-03",
+    "lastUpdated": "2024-12-03",
+    "knowledgeCutoff": "2024-10",
+    "contextTokens": 300000,
+    "outputTokens": 10000,
+    "inputModalities": [
+      "text",
+      "image",
+      "video",
+      "pdf"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 0.8,
+      "output": 3.2,
+      "cachedInput": 0.2,
+      "cacheWrite": 0.8
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

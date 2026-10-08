@@ -1,0 +1,48 @@
+{
+  "page": "https://opencode.ai/data/mistral/devstral-small-2507",
+  "updatedAt": null,
+  "summary": "Devstral Small costs $0.10 per 1M input tokens and $0.30 per 1M output tokens.",
+  "model": {
+    "id": "mistral/devstral-small-2507",
+    "name": "Devstral Small",
+    "lab": "mistral",
+    "labName": "Mistral",
+    "family": "devstral",
+    "description": "Mistral coding agent model for repository tasks and software engineering workflows",
+    "releaseDate": "2025-07-10",
+    "lastUpdated": "2025-07-10",
+    "knowledgeCutoff": "2025-05",
+    "contextTokens": 128000,
+    "outputTokens": 128000,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/mistralai/Devstral-Small-2507"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.1,
+      "output": 0.3,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": [
+      {
+        "name": "SWE-Bench Verified",
+        "score": 53.6,
+        "metric": "resolved",
+        "source": "https://mistral.ai/news/devstral-2507"
+      }
+    ]
+  },
+  "usage": null
+}

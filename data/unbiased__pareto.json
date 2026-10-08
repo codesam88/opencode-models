@@ -1,0 +1,37 @@
+{
+  "page": "https://opencode.ai/data/unbiased/pareto",
+  "updatedAt": null,
+  "summary": "Pareto costs $2.50 per 1M input tokens and $7.50 per 1M output tokens.",
+  "model": {
+    "id": "unbiased/pareto",
+    "name": "Pareto",
+    "lab": "unbiased",
+    "labName": "Unbiased",
+    "family": null,
+    "description": "Blended multimodal model that runs multiple language models in parallel and returns a synthesized answer",
+    "releaseDate": "2026-09-17",
+    "lastUpdated": "2026-09-17",
+    "knowledgeCutoff": null,
+    "contextTokens": 262144,
+    "outputTokens": 131072,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 2.5,
+      "output": 7.5,
+      "cachedInput": 0.25,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

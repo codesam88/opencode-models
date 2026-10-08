@@ -1,0 +1,41 @@
+{
+  "page": "https://opencode.ai/data/ibm/granite-4-h-small",
+  "updatedAt": null,
+  "summary": "Granite-4.0-H-Small costs $0.06 per 1M input tokens and $0.27 per 1M output tokens.",
+  "model": {
+    "id": "ibm/granite-4-h-small",
+    "name": "Granite-4.0-H-Small",
+    "lab": "ibm",
+    "labName": "IBM",
+    "family": "granite",
+    "description": "Open-weight hybrid model for enterprise chat, coding, retrieval-augmented generation, and tool-calling workloads",
+    "releaseDate": "2025-10-02",
+    "lastUpdated": "2025-10-02",
+    "knowledgeCutoff": null,
+    "contextTokens": 131072,
+    "outputTokens": 131072,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/ibm-granite/granite-4.0-h-small"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.0636,
+      "output": 0.265,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

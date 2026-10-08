@@ -1,0 +1,42 @@
+{
+  "page": "https://opencode.ai/data/meta/llama-3-2-11b-vision-instruct",
+  "updatedAt": null,
+  "summary": "Llama-3.2-11B-Vision-Instruct costs $0.00 per 1M input tokens and $0.00 per 1M output tokens.",
+  "model": {
+    "id": "meta/llama-3.2-11b-vision-instruct",
+    "name": "Llama-3.2-11B-Vision-Instruct",
+    "lab": "meta",
+    "labName": "Meta",
+    "family": "llama",
+    "description": "Open multimodal Llama model for image understanding, captioning, and visual QA",
+    "releaseDate": "2024-09-25",
+    "lastUpdated": "2024-09-25",
+    "knowledgeCutoff": "2023-12",
+    "contextTokens": 128000,
+    "outputTokens": 4096,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/meta-llama/Llama-3.2-11B-Vision-Instruct"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0,
+      "output": 0,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

@@ -1,0 +1,51 @@
+{
+  "page": "https://opencode.ai/data/alibaba/qwen3-5-397b-a17b",
+  "updatedAt": null,
+  "summary": "Qwen3.5 397B-A17B costs $0.60 per 1M input tokens and $3.60 per 1M output tokens.",
+  "model": {
+    "id": "alibaba/qwen3.5-397b-a17b",
+    "name": "Qwen3.5 397B-A17B",
+    "lab": "alibaba",
+    "labName": "Alibaba",
+    "family": "qwen",
+    "description": "Large open Qwen multimodal MoE for visual agents and long technical tasks",
+    "releaseDate": "2026-02-15",
+    "lastUpdated": "2026-02-15",
+    "knowledgeCutoff": null,
+    "contextTokens": 262144,
+    "outputTokens": 65536,
+    "inputModalities": [
+      "text",
+      "image",
+      "video",
+      "audio"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/Qwen/Qwen3.5-397B-A17B"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.6,
+      "output": 3.6,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": [
+      {
+        "name": "SWE-Bench Verified",
+        "score": 76.4,
+        "metric": "resolved",
+        "source": "https://huggingface.co/Qwen/Qwen3.5-397B-A17B"
+      }
+    ]
+  },
+  "usage": null
+}

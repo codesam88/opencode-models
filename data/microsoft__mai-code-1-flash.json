@@ -1,0 +1,58 @@
+{
+  "page": "https://opencode.ai/data/microsoft/mai-code-1-flash",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "microsoft/mai-code-1-flash",
+    "name": "MAI-Code-1-Flash",
+    "lab": "microsoft",
+    "labName": "Microsoft",
+    "family": "mai",
+    "description": "Microsoft coding model built for fast, efficient assistance in everyday developer workflows",
+    "releaseDate": "2026-06-02",
+    "lastUpdated": "2026-06-08",
+    "knowledgeCutoff": "2025-12",
+    "contextTokens": 256000,
+    "outputTokens": 128000,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": null,
+    "benchmarks": [
+      {
+        "name": "SWE-Bench Pro",
+        "score": 51.2,
+        "metric": "resolve rate",
+        "harness": "GitHub Copilot",
+        "source": "https://microsoft.ai/news/introducingmai-code-1-flash/"
+      },
+      {
+        "name": "SWE-Bench Verified",
+        "score": 71.6,
+        "metric": "resolved",
+        "source": "https://llm-stats.com/benchmarks/swe-bench-verified"
+      },
+      {
+        "name": "Terminal-Bench",
+        "score": 54.8,
+        "metric": "success rate",
+        "version": "2.0",
+        "source": "https://llm-stats.com/benchmarks/terminal-bench-2"
+      },
+      {
+        "name": "GPQA Diamond",
+        "score": 84.6,
+        "metric": "accuracy",
+        "source": "https://llm-stats.com/benchmarks/gpqa"
+      }
+    ]
+  },
+  "usage": null
+}

@@ -1,0 +1,38 @@
+{
+  "page": "https://opencode.ai/data/google/gemini-3-pro-image-preview",
+  "updatedAt": null,
+  "summary": "Nano Banana Pro Preview costs $2.00 per 1M input tokens and $12.00 per 1M output tokens.",
+  "model": {
+    "id": "google/gemini-3-pro-image-preview",
+    "name": "Nano Banana Pro Preview",
+    "lab": "google",
+    "labName": "Google",
+    "family": "gemini-pro",
+    "description": "Nano Banana Pro for higher-fidelity image generation and design-heavy edits",
+    "releaseDate": "2025-11-20",
+    "lastUpdated": "2025-11-20",
+    "knowledgeCutoff": "2025-01",
+    "contextTokens": 65536,
+    "outputTokens": 32768,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text",
+      "image"
+    ],
+    "reasoning": true,
+    "toolCall": false,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 2,
+      "output": 12,
+      "cachedInput": 0.2,
+      "cacheWrite": 0.375
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

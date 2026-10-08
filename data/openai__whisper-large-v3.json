@@ -1,0 +1,36 @@
+{
+  "page": "https://opencode.ai/data/openai/whisper-large-v3",
+  "updatedAt": null,
+  "summary": "Whisper 3 Large costs $0.0023 per 1M input tokens and $0.0023 per 1M output tokens.",
+  "model": {
+    "id": "openai/whisper-large-v3",
+    "name": "Whisper 3 Large",
+    "lab": "openai",
+    "labName": "OpenAI",
+    "family": "whisper",
+    "description": "Open Whisper checkpoint for robust multilingual transcription and captioning",
+    "releaseDate": "2024-10-01",
+    "lastUpdated": "2024-10-01",
+    "knowledgeCutoff": null,
+    "contextTokens": 448,
+    "outputTokens": 4096,
+    "inputModalities": [
+      "audio"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": false,
+    "openWeights": true,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 0.0023,
+      "output": 0.0023,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

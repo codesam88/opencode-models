@@ -1,0 +1,36 @@
+{
+  "page": "https://opencode.ai/data/cohere/tiny-aya-water",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "cohere/tiny-aya-water",
+    "name": "Tiny Aya Water",
+    "lab": "cohere",
+    "labName": "Cohere",
+    "family": null,
+    "description": "Compact multilingual model specialized for European and Asia-Pacific languages",
+    "releaseDate": "2026-02-17",
+    "lastUpdated": "2026-02-17",
+    "knowledgeCutoff": null,
+    "contextTokens": 8000,
+    "outputTokens": 8000,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/CohereLabs/tiny-aya-water"
+      }
+    ],
+    "priceUsdPer1M": null,
+    "benchmarks": []
+  },
+  "usage": null
+}

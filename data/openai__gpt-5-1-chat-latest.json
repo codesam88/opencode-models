@@ -1,0 +1,37 @@
+{
+  "page": "https://opencode.ai/data/openai/gpt-5-1-chat-latest",
+  "updatedAt": null,
+  "summary": "GPT-5.1 Chat costs $1.25 per 1M input tokens and $10.00 per 1M output tokens.",
+  "model": {
+    "id": "openai/gpt-5.1-chat-latest",
+    "name": "GPT-5.1 Chat",
+    "lab": "openai",
+    "labName": "OpenAI",
+    "family": "gpt-codex",
+    "description": "Chat-tuned GPT-5.1 for polished assistants, writing, and product conversations",
+    "releaseDate": "2025-11-13",
+    "lastUpdated": "2025-11-13",
+    "knowledgeCutoff": "2024-09-30",
+    "contextTokens": 128000,
+    "outputTokens": 16384,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 1.25,
+      "output": 10,
+      "cachedInput": 0.125,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

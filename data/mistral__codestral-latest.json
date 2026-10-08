@@ -1,0 +1,48 @@
+{
+  "page": "https://opencode.ai/data/mistral/codestral-latest",
+  "updatedAt": null,
+  "summary": "Codestral (latest) costs $0.30 per 1M input tokens and $0.90 per 1M output tokens.",
+  "model": {
+    "id": "mistral/codestral-latest",
+    "name": "Codestral (latest)",
+    "lab": "mistral",
+    "labName": "Mistral",
+    "family": "codestral",
+    "description": "Mistral code model for completions, refactors, and developer IDE workflows",
+    "releaseDate": "2024-05-29",
+    "lastUpdated": "2025-01-04",
+    "knowledgeCutoff": "2024-10",
+    "contextTokens": 256000,
+    "outputTokens": 4096,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/mistralai/Codestral-22B-v0.1"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.3,
+      "output": 0.9,
+      "cachedInput": 0.03,
+      "cacheWrite": null
+    },
+    "benchmarks": [
+      {
+        "name": "Aider Polyglot",
+        "score": 11.1,
+        "metric": "percent correct",
+        "source": "https://aider.chat/docs/leaderboards/"
+      }
+    ]
+  },
+  "usage": null
+}

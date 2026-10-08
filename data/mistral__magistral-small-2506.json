@@ -1,0 +1,36 @@
+{
+  "page": "https://opencode.ai/data/mistral/magistral-small-2506",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "mistral/magistral-small-2506",
+    "name": "Magistral Small",
+    "lab": "mistral",
+    "labName": "Mistral",
+    "family": "magistral",
+    "description": "Open Mistral reasoning model for transparent step-by-step problem solving",
+    "releaseDate": "2025-06-10",
+    "lastUpdated": "2025-06-10",
+    "knowledgeCutoff": null,
+    "contextTokens": 131072,
+    "outputTokens": 8192,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/mistralai/Magistral-Small-2506"
+      }
+    ],
+    "priceUsdPer1M": null,
+    "benchmarks": []
+  },
+  "usage": null
+}

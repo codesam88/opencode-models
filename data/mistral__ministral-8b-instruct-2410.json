@@ -1,0 +1,36 @@
+{
+  "page": "https://opencode.ai/data/mistral/ministral-8b-instruct-2410",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "mistral/ministral-8b-instruct-2410",
+    "name": "Ministral 8B Instruct",
+    "lab": "mistral",
+    "labName": "Mistral",
+    "family": "ministral",
+    "description": "Efficient open Mistral edge model for on-device chat and function calling",
+    "releaseDate": "2024-10-16",
+    "lastUpdated": "2024-10-16",
+    "knowledgeCutoff": null,
+    "contextTokens": 131072,
+    "outputTokens": 8192,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/mistralai/Ministral-8B-Instruct-2410"
+      }
+    ],
+    "priceUsdPer1M": null,
+    "benchmarks": []
+  },
+  "usage": null
+}

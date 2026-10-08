@@ -1,0 +1,31 @@
+{
+  "page": "https://opencode.ai/data/openai/gpt-realtime-whisper",
+  "updatedAt": null,
+  "summary": null,
+  "model": {
+    "id": "openai/gpt-realtime-whisper",
+    "name": "GPT Realtime Whisper",
+    "lab": "openai",
+    "labName": "OpenAI",
+    "family": "whisper",
+    "description": "Streaming speech-to-text model for low-latency transcript deltas from live audio",
+    "releaseDate": "2026-05-07",
+    "lastUpdated": "2026-05-07",
+    "knowledgeCutoff": null,
+    "contextTokens": 16000,
+    "outputTokens": 2000,
+    "inputModalities": [
+      "audio"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": false,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": null,
+    "benchmarks": []
+  },
+  "usage": null
+}

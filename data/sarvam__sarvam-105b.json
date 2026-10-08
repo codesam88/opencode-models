@@ -1,0 +1,36 @@
+{
+  "page": "https://opencode.ai/data/sarvam/sarvam-105b",
+  "updatedAt": null,
+  "summary": "Sarvam 105B costs $0.04 per 1M input tokens and $0.16 per 1M output tokens.",
+  "model": {
+    "id": "sarvam/sarvam-105b",
+    "name": "Sarvam 105B",
+    "lab": "sarvam",
+    "labName": "Sarvam",
+    "family": "sarvam",
+    "description": "Flagship Indian-language reasoning model for enterprise multilingual applications",
+    "releaseDate": "2025-09-01",
+    "lastUpdated": "2025-09-01",
+    "knowledgeCutoff": null,
+    "contextTokens": 131072,
+    "outputTokens": 131072,
+    "inputModalities": [
+      "text"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 0.04,
+      "output": 0.16,
+      "cachedInput": null,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

@@ -1,0 +1,48 @@
+{
+  "page": "https://opencode.ai/data/google/gemini-3-pro-preview",
+  "updatedAt": null,
+  "summary": "Gemini 3 Pro Preview costs $2.00 per 1M input tokens and $12.00 per 1M output tokens.",
+  "model": {
+    "id": "google/gemini-3-pro-preview",
+    "name": "Gemini 3 Pro Preview",
+    "lab": "google",
+    "labName": "Google",
+    "family": "gemini-pro",
+    "description": "Preview Gemini flagship for complex reasoning, coding, and rich multimodal prompts",
+    "releaseDate": "2025-11-18",
+    "lastUpdated": "2025-11-18",
+    "knowledgeCutoff": "2025-01",
+    "contextTokens": 1048576,
+    "outputTokens": 65536,
+    "inputModalities": [
+      "text",
+      "image",
+      "video",
+      "audio",
+      "pdf"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": false,
+    "weights": [],
+    "priceUsdPer1M": {
+      "input": 2,
+      "output": 12,
+      "cachedInput": 0.2,
+      "cacheWrite": null
+    },
+    "benchmarks": [
+      {
+        "name": "SWE-Bench Pro",
+        "score": 43.3,
+        "metric": "resolve rate",
+        "dataset": "public",
+        "source": "https://labs.scale.com/leaderboard/swe_bench_pro_public"
+      }
+    ]
+  },
+  "usage": null
+}

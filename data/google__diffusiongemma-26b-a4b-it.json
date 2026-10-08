@@ -1,0 +1,42 @@
+{
+  "page": "https://opencode.ai/data/google/diffusiongemma-26b-a4b-it",
+  "updatedAt": null,
+  "summary": "DiffusionGemma 26B A4B IT costs $0.50 per 1M input tokens and $0.50 per 1M output tokens.",
+  "model": {
+    "id": "google/diffusiongemma-26b-a4b-it",
+    "name": "DiffusionGemma 26B A4B IT",
+    "lab": "google",
+    "labName": "Google",
+    "family": "gemma",
+    "description": "Gemma 4 based discrete text diffusion model for fast chat, reasoning, and tool use",
+    "releaseDate": "2026-06-09",
+    "lastUpdated": "2026-07-15",
+    "knowledgeCutoff": "2025-01",
+    "contextTokens": 262144,
+    "outputTokens": 32768,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": true,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/google/diffusiongemma-26B-A4B-it"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.5,
+      "output": 0.5,
+      "cachedInput": 0.5,
+      "cacheWrite": 0.5
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

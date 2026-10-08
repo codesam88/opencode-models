@@ -1,0 +1,42 @@
+{
+  "page": "https://opencode.ai/data/mistral/ministral-14b",
+  "updatedAt": null,
+  "summary": "Ministral 14B costs $0.20 per 1M input tokens and $0.20 per 1M output tokens.",
+  "model": {
+    "id": "mistral/ministral-14b",
+    "name": "Ministral 14B",
+    "lab": "mistral",
+    "labName": "Mistral",
+    "family": "ministral",
+    "description": "Compact multimodal Mistral model for local assistants, edge agents, and efficient tool use",
+    "releaseDate": "2025-12-02",
+    "lastUpdated": "2025-12-02",
+    "knowledgeCutoff": null,
+    "contextTokens": 262144,
+    "outputTokens": 262144,
+    "inputModalities": [
+      "text",
+      "image"
+    ],
+    "outputModalities": [
+      "text"
+    ],
+    "reasoning": false,
+    "toolCall": true,
+    "openWeights": true,
+    "weights": [
+      {
+        "label": "Hugging Face",
+        "url": "https://huggingface.co/mistralai/Ministral-3-14B-Instruct-2512"
+      }
+    ],
+    "priceUsdPer1M": {
+      "input": 0.2,
+      "output": 0.2,
+      "cachedInput": 0.02,
+      "cacheWrite": null
+    },
+    "benchmarks": []
+  },
+  "usage": null
+}

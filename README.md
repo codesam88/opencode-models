@@ -15,11 +15,18 @@ python3 -m modelpareto fetch                     # refresh data/ from opencode.a
 python3 -m modelpareto benchmarks                # list benchmarks + coverage
 python3 -m modelpareto render                    # pareto.html, best-covered benchmark
 python3 -m modelpareto render --benchmark "SWE-Bench Verified" --out swe.html
+python3 -m modelpareto list --source zen         # text table, best value first
+python3 -m modelpareto list --source go --benchmark "SWE-Bench Verified"
 ```
 
 `render` defaults to the benchmark covering the most models. The output is one
 self-contained HTML file (inline SVG, no external assets) — open it from disk
 or serve the directory.
+
+`list` filters to a Console tier (`zen` = curated, `go` = open) and prints a
+text table sorted by score per dollar of input price. Free models lead their
+benchmark. Tier membership lists ship in `modelpareto/sources/` as slug files
+scraped from the tier pages; refresh them manually when the tiers change.
 
 Stdlib-only, Python ≥ 3.10, no dependencies. Tests: `python3 -m unittest discover -s tests`.
 

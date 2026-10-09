@@ -252,9 +252,37 @@ class CliTest(unittest.TestCase):
             finally:
                 sources.load_source = orig
         self.assertEqual(code, 0)
-        self.assertIn("50", out)   # score
-        self.assertIn("1", out)    # price
-        self.assertIn("50.0", out) # ratio score/price
+        line = next(l for l in out.splitlines() if l.rstrip().endswith("M1"))
+        # everything integer: score 50, $1.00 shown as 100 cents, ratio 50
+        self.assertRegex(line, r"\s50\s+TB\s+100\s+50\s+")
+
+    def test_numbers_are_shown_as_rounded_integers(self):
+        import json
+
+        import modelpareto.sources as sources
+
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            (d / "l__cheap.json").write_text(json.dumps({"model": {
+                "id": "l/cheap", "name": "CHEAP", "lab": "l",
+                "priceUsdPer1M": {"input": 0.0612, "output": None,
+                                  "cachedInput": None},
+                "benchmarks": [{"name": "Terminal-Bench", "version": "2.1",
+                                "score": 88.8, "metric": "acc", "source": ""}],
+            }}))
+            orig = sources.load_source
+            sources.load_source = lambda name: {"cheap"}
+            try:
+                code, out = self._run("--data", tmp, "list")
+            finally:
+                sources.load_source = orig
+        self.assertEqual(code, 0)
+        self.assertIn("¢/1M", out)   # the column says what it counts
+        line = next(l for l in out.splitlines() if l.rstrip().endswith("CHEAP"))
+        # 88.8 rounds to 89; $0.0612 shows as 6 cents; the ratio rounds too
+        self.assertRegex(line, r"\s89\s+TB\s+6\s+1451\s+\S+\s+CHEAP$")
+        self.assertNotIn("88.8", line)
+        self.assertNotIn("0.0612", line)
 
     def test_list_output_price_uses_output_axis(self):
         import json
@@ -282,8 +310,9 @@ class CliTest(unittest.TestCase):
             finally:
                 sources.load_source = orig
         self.assertEqual(code, 0)
-        self.assertIn("5", out)    # output price shown
-        self.assertIn("10.0", out) # 50/5 ratio
+        # output price $5.00 shown as 500 cents; ratio 50/5 → 10
+        line = next(l for l in out.splitlines() if l.rstrip().endswith("M1"))
+        self.assertRegex(line, r"\s50\s+TB\s+500\s+10\s+")
 
     def test_list_unknown_source_errors(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -321,7 +350,7 @@ class CliTest(unittest.TestCase):
         for title in ("best value", "worst score", "highest cost"):
             self.assertRegex(out, rf"(?m)^── [^\n]*{title}")
         # one column header per table, all five columns named, in order
-        header = re.compile(r"(?m)^\s*SCORE\s+BENCH\s+\$/1M\s+SCORE/\$\s+PROV"
+        header = re.compile(r"(?m)^\s*SCORE\s+BENCH\s+¢/1M\s+SCORE/\$\s+PROV"
                             r"\s+MODEL\s*$")
         self.assertEqual(len(header.findall(out)), 3)
 
@@ -538,6 +567,39 @@ class CliTest(unittest.TestCase):
         wide = next(l for l in lines if l.rstrip().endswith("WIDE"))
         self.assertIn("go,zen", wide)   # the whole token, not a truncation
 
+    def test_tb4_only_models_get_their_own_tag_and_axis(self):
+        import json
+
+        import modelpareto.sources as sources
+
+        def doc(mid, version, score):
+            return json.dumps({"model": {
+                "id": mid, "name": mid.split("/")[1].upper(), "lab": "l",
+                "priceUsdPer1M": {"input": 1.0, "output": None,
+                                  "cachedInput": None},
+                "benchmarks": [{"name": "Terminal-Bench", "version": version,
+                                "score": score, "metric": "acc", "source": ""}],
+            }})
+
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            (d / "l__two.json").write_text(doc("l/two", "2.1", 50.0))
+            (d / "l__four.json").write_text(doc("l/four", "4.0", 41.0))
+            orig = sources.load_source
+            sources.load_source = lambda name: {"two", "four"}
+            try:
+                code, out = self._run("--data", tmp, "list")
+            finally:
+                sources.load_source = orig
+        self.assertEqual(code, 0)
+        lines = out.splitlines()
+        four = next(l for l in lines if l.rstrip().endswith("FOUR"))
+        two = next(l for l in lines if l.rstrip().endswith("TWO"))
+        self.assertIn("TB4", four)      # 4.0 is labelled apart from 2.1
+        self.assertIn("  TB", two)
+        self.assertNotIn("TB4", two)
+        self.assertIn("TB 4.0 fill", out)   # the header names the axis
+
     def test_list_prints_three_tables_in_order(self):
         import modelpareto.sources as sources
 
@@ -636,8 +698,9 @@ class CliTest(unittest.TestCase):
             finally:
                 sources.load_source = orig
         self.assertEqual(code, 0)
-        # 0.2·1.0 + 0.6·0.1 + 0.2·2.0 = 0.66
-        self.assertIn("0.66", out)
+        # 0.2·1.0 + 0.6·0.1 + 0.2·2.0 = 0.66 → 66 cents; ratio 50/0.66 → 76
+        line = next(l for l in out.splitlines() if l.rstrip().endswith("M1"))
+        self.assertRegex(line, r"\s50\s+TB\s+66\s+76\s+")
 
     def test_list_gives_each_priced_variant_its_own_line(self):
         import json

@@ -47,14 +47,22 @@ Best value splits into bands — **free** (use first), **included usage**
 (lines the tier grants a monthly allowance for), **pay-as-you-go** — and is
 ranked by score per dollar *inside* each band. A line's cost is 20% input +
 60% cached read + 20% output; `--price input|output` picks a single rate
-instead. Columns are measured from the lines actually being shown (header
-included), so nothing shifts when a price or a provider list outgrows the
-rest.
+instead. The numbers are all rounded integers: `SCORE` and `SCORE/$` round to
+whole numbers, and the cost column counts cents (`¢/1M` = round(price·100)),
+so a $0.0612 line reads as `6`, not `0.0612`. Columns are measured from the
+lines actually being shown (header included), so nothing shifts when a price
+or a provider list outgrows the rest.
 
-Ranking combines the two benchmark families: Terminal-Bench rows are ordered
-by score per dollar and SWE-Bench-only rows are inserted at their SWE
-percentile (`--benchmark X` ranks on one benchmark instead). The families are
-not comparable, so they only indicate relative performance.
+Ranking combines three benchmark axes: Terminal-Bench 2.x rows are ordered by
+score per dollar and build the skeleton; rows that carry only SWE-Bench, or
+only the harder Terminal-Bench 4.0, are inserted at their own axis' percentile
+(`--benchmark X` ranks on one benchmark instead). 4.0 is a harder task set —
+its leaders reach ~58 where 2.1's reach ~87 — so a 4.0 score never competes
+directly with 2.x numbers and is tagged `TB4` in the table. 2.1 builds the
+skeleton while it has the coverage (37 tier models against 12); when that
+inverts, promote 4.0 to primary by changing `TB4_FAMILY`'s role in
+`ranking.py`. The axes are not comparable, so they only indicate relative
+performance.
 
 Pricing comes from the tier docs rather than the catalog, which carries one
 Zen-style price per model: documented rates replace it, and every priced

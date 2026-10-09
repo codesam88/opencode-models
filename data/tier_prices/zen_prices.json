@@ -1,0 +1,1032 @@
+[
+ {
+  "tier": "zen",
+  "model_id": "big-pickle",
+  "name": "Big Pickle",
+  "input": 0.0,
+  "output": 0.0,
+  "cached_read": 0.0,
+  "limit": null,
+  "free": true
+ },
+ {
+  "tier": "zen",
+  "model_id": "space-bunny-free",
+  "name": "Space Bunny Free",
+  "input": 0.0,
+  "output": 0.0,
+  "cached_read": 0.0,
+  "limit": null,
+  "free": true
+ },
+ {
+  "tier": "zen",
+  "model_id": "longcat-2.5-preview-free",
+  "name": "LongCat 2.5 Preview Free",
+  "input": 0.0,
+  "output": 0.0,
+  "cached_read": 0.0,
+  "limit": null,
+  "free": true
+ },
+ {
+  "tier": "zen",
+  "model_id": "step-5-preview-free",
+  "name": "Step 5 Preview Free",
+  "input": 0.0,
+  "output": 0.0,
+  "cached_read": 0.0,
+  "limit": null,
+  "free": true
+ },
+ {
+  "tier": "zen",
+  "model_id": "exo-free",
+  "name": "Exo Free",
+  "input": 0.0,
+  "output": 0.0,
+  "cached_read": 0.0,
+  "limit": null,
+  "free": true
+ },
+ {
+  "tier": "zen",
+  "model_id": "mimo-v2.6-flash-free",
+  "name": "MiMo-V2.6-Flash Free",
+  "input": 0.0,
+  "output": 0.0,
+  "cached_read": 0.0,
+  "limit": null,
+  "free": true
+ },
+ {
+  "tier": "zen",
+  "model_id": "mimo-v2.5-free",
+  "name": "MiMo-V2.5 Free",
+  "input": 0.0,
+  "output": 0.0,
+  "cached_read": 0.0,
+  "limit": null,
+  "free": true
+ },
+ {
+  "tier": "zen",
+  "model_id": "ling-3.1-flash-free",
+  "name": "Ling 3.1 Flash Free",
+  "input": 0.0,
+  "output": 0.0,
+  "cached_read": 0.0,
+  "limit": null,
+  "free": true
+ },
+ {
+  "tier": "zen",
+  "model_id": "ling-3.0-flash-fin-free",
+  "name": "Ling 3.0 Flash Fin Free",
+  "input": 0.0,
+  "output": 0.0,
+  "cached_read": 0.0,
+  "limit": null,
+  "free": true
+ },
+ {
+  "tier": "zen",
+  "model_id": "nemotron-3-ultra-free",
+  "name": "Nemotron 3 Ultra Free",
+  "input": 0.0,
+  "output": 0.0,
+  "cached_read": 0.0,
+  "limit": null,
+  "free": true
+ },
+ {
+  "tier": "zen",
+  "model_id": "nemotron-3.5-lightning-free",
+  "name": "Nemotron 3.5 Lightning Free",
+  "input": 0.0,
+  "output": 0.0,
+  "cached_read": 0.0,
+  "limit": null,
+  "free": true
+ },
+ {
+  "tier": "zen",
+  "model_id": "muse-spark-1.3-contributor-free",
+  "name": "Muse Spark 1.3 Contributor Free",
+  "input": 0.0,
+  "output": 0.0,
+  "cached_read": 0.0,
+  "limit": null,
+  "free": true
+ },
+ {
+  "tier": "zen",
+  "model_id": "jev-1.13-free",
+  "name": "Jev 1.13 Free",
+  "input": 0.0,
+  "output": 0.0,
+  "cached_read": null,
+  "limit": null,
+  "free": true
+ },
+ {
+  "tier": "zen",
+  "model_id": "jev-1.13",
+  "name": "Jev 1.13",
+  "input": 0.042,
+  "output": 0.0,
+  "cached_read": null,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "minimax-m3",
+  "name": "MiniMax M3",
+  "input": 0.3,
+  "output": 1.2,
+  "cached_read": 0.06,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "minimax-m2.7",
+  "name": "MiniMax M2.7",
+  "input": 0.3,
+  "output": 1.2,
+  "cached_read": 0.06,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "minimax-m2.5",
+  "name": "MiniMax M2.5",
+  "input": 0.3,
+  "output": 1.2,
+  "cached_read": 0.06,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "glm-5.3-flash",
+  "name": "GLM 5.3 Flash",
+  "input": 0.15,
+  "output": 0.5,
+  "cached_read": 0.03,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "glm-5.3",
+  "name": "GLM 5.3",
+  "input": 1.4,
+  "output": 4.4,
+  "cached_read": 0.26,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "glm-5.2",
+  "name": "GLM 5.2",
+  "input": 1.4,
+  "output": 4.4,
+  "cached_read": 0.26,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "glm-5.1",
+  "name": "GLM 5.1",
+  "input": 1.4,
+  "output": 4.4,
+  "cached_read": 0.26,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "glm-5",
+  "name": "GLM 5",
+  "input": 1.0,
+  "output": 3.2,
+  "cached_read": 0.2,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "kimi-k2.7-code",
+  "name": "Kimi K2.7 Code",
+  "input": 0.95,
+  "output": 4.0,
+  "cached_read": 0.19,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "kimi-k3",
+  "name": "Kimi K3",
+  "input": 3.0,
+  "output": 15.0,
+  "cached_read": 0.3,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "kimi-k2.6",
+  "name": "Kimi K2.6",
+  "input": 0.95,
+  "output": 4.0,
+  "cached_read": 0.16,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "kimi-k2.5",
+  "name": "Kimi K2.5",
+  "input": 0.6,
+  "output": 3.0,
+  "cached_read": 0.1,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "mistral-large-4",
+  "name": "Mistral Large 4 (50% off)",
+  "input": 0.68,
+  "output": 2.09,
+  "cached_read": 0.07,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "qwen3.8-max",
+  "name": "Qwen3.8 Max",
+  "input": 2.0,
+  "output": 6.0,
+  "cached_read": 0.25,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "qwen3.8-flash",
+  "name": "Qwen3.8 Flash",
+  "input": 0.15,
+  "output": 0.47,
+  "cached_read": 0.016,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "qwen3.7-max",
+  "name": "Qwen3.7 Max",
+  "input": 2.5,
+  "output": 7.5,
+  "cached_read": 0.5,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "qwen3.7-plus",
+  "name": "Qwen3.7 Plus",
+  "input": 0.4,
+  "output": 1.6,
+  "cached_read": 0.04,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "qwen3.6-plus",
+  "name": "Qwen3.6 Plus",
+  "input": 0.5,
+  "output": 3.0,
+  "cached_read": 0.05,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "qwen3.5-plus",
+  "name": "Qwen3.5 Plus",
+  "input": 0.2,
+  "output": 1.2,
+  "cached_read": 0.02,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "deepseek-v4.1-flash",
+  "name": "DeepSeek V4.1 Flash",
+  "input": 0.3,
+  "output": 1.2,
+  "cached_read": 0.006,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "deepseek-v4-pro",
+  "name": "DeepSeek V4 Pro",
+  "input": 1.74,
+  "output": 3.48,
+  "cached_read": 0.145,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "deepseek-v4-flash",
+  "name": "DeepSeek V4 Flash",
+  "input": 0.14,
+  "output": 0.28,
+  "cached_read": 0.028,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "deepseek-v4-flash-vision-exp",
+  "name": "DeepSeek V4 Flash Vision Exp",
+  "input": 0.14,
+  "output": 0.28,
+  "cached_read": 0.028,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "claude-fable-5-1",
+  "name": "Claude Fable 5.1",
+  "input": 10.0,
+  "output": 50.0,
+  "cached_read": 0.25,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "claude-fable-5",
+  "name": "Claude Fable 5",
+  "input": 10.0,
+  "output": 50.0,
+  "cached_read": 1.0,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "claude-opus-5-5",
+  "name": "Claude Opus 5.5",
+  "input": 4.0,
+  "output": 20.0,
+  "cached_read": 0.2,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "claude-opus-5",
+  "name": "Claude Opus 5",
+  "input": 5.0,
+  "output": 25.0,
+  "cached_read": 0.5,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "claude-opus-4-8",
+  "name": "Claude Opus 4.8",
+  "input": 5.0,
+  "output": 25.0,
+  "cached_read": 0.5,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "claude-opus-4-7",
+  "name": "Claude Opus 4.7",
+  "input": 5.0,
+  "output": 25.0,
+  "cached_read": 0.5,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "claude-opus-4-6",
+  "name": "Claude Opus 4.6",
+  "input": 5.0,
+  "output": 25.0,
+  "cached_read": 0.5,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "claude-opus-4-5",
+  "name": "Claude Opus 4.5",
+  "input": 5.0,
+  "output": 25.0,
+  "cached_read": 0.5,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "claude-sonnet-5-5",
+  "name": "Claude Sonnet 5.5",
+  "input": 2.0,
+  "output": 10.0,
+  "cached_read": 0.2,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "claude-sonnet-5",
+  "name": "Claude Sonnet 5",
+  "input": 2.0,
+  "output": 10.0,
+  "cached_read": 0.2,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "claude-sonnet-4-6",
+  "name": "Claude Sonnet 4.6",
+  "input": 3.0,
+  "output": 15.0,
+  "cached_read": 0.3,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "claude-sonnet-4-5",
+  "name": "Claude Sonnet 4.5 (\u2264 200K tokens)",
+  "input": 3.0,
+  "output": 15.0,
+  "cached_read": 0.3,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "claude-sonnet-4-5",
+  "name": "Claude Sonnet 4.5 (> 200K tokens)",
+  "input": 6.0,
+  "output": 22.5,
+  "cached_read": 0.6,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "claude-haiku-5-5",
+  "name": "Claude Haiku 5.5 (\u2264 100K tokens)",
+  "input": 0.1,
+  "output": 0.5,
+  "cached_read": 0.01,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "claude-haiku-5-5",
+  "name": "Claude Haiku 5.5 (> 100K tokens)",
+  "input": 0.5,
+  "output": 2.5,
+  "cached_read": 0.05,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "claude-haiku-4-5",
+  "name": "Claude Haiku 4.5",
+  "input": 1.0,
+  "output": 5.0,
+  "cached_read": 0.1,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gemini-3.8-flash",
+  "name": "Gemini 3.8 Flash",
+  "input": 1.5,
+  "output": 7.5,
+  "cached_read": 0.15,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gemini-3.7-flash",
+  "name": "Gemini 3.7 Flash",
+  "input": 1.5,
+  "output": 7.5,
+  "cached_read": 0.15,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gemini-3.6-flash",
+  "name": "Gemini 3.6 Flash",
+  "input": 1.5,
+  "output": 7.5,
+  "cached_read": 0.15,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gemini-3.5-flash",
+  "name": "Gemini 3.5 Flash",
+  "input": 1.5,
+  "output": 9.0,
+  "cached_read": 0.15,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gemini-3.5-flash-lite",
+  "name": "Gemini 3.5 Flash Lite",
+  "input": 0.3,
+  "output": 2.5,
+  "cached_read": 0.03,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gemini-3.1-pro",
+  "name": "Gemini 3.1 Pro (\u2264 200K tokens)",
+  "input": 2.0,
+  "output": 12.0,
+  "cached_read": 0.2,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gemini-3.1-pro",
+  "name": "Gemini 3.1 Pro (> 200K tokens)",
+  "input": 4.0,
+  "output": 18.0,
+  "cached_read": 0.4,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gemini-3-flash",
+  "name": "Gemini 3 Flash",
+  "input": 0.5,
+  "output": 3.0,
+  "cached_read": 0.05,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "grok-4.7",
+  "name": "Grok 4.7 (\u2264 200K tokens)",
+  "input": 2.0,
+  "output": 6.0,
+  "cached_read": 0.5,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "grok-4.7",
+  "name": "Grok 4.7 (> 200K tokens)",
+  "input": 4.0,
+  "output": 12.0,
+  "cached_read": 1.0,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "grok-4.6",
+  "name": "Grok 4.6 (\u2264 200K tokens)",
+  "input": 2.0,
+  "output": 6.0,
+  "cached_read": 0.5,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "grok-4.6",
+  "name": "Grok 4.6 (> 200K tokens)",
+  "input": 4.0,
+  "output": 12.0,
+  "cached_read": 1.0,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "grok-4.5",
+  "name": "Grok 4.5 (\u2264 200K tokens)",
+  "input": 2.0,
+  "output": 6.0,
+  "cached_read": 0.3,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "grok-4.5",
+  "name": "Grok 4.5 (> 200K tokens)",
+  "input": 4.0,
+  "output": 12.0,
+  "cached_read": 0.6,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "grok-build-0.1",
+  "name": "Grok Build 0.1",
+  "input": 1.0,
+  "output": 2.0,
+  "cached_read": 0.2,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "muse-spark-1.3",
+  "name": "Muse Spark 1.3",
+  "input": 1.25,
+  "output": 4.25,
+  "cached_read": 0.15,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "muse-spark-1.2",
+  "name": "Muse Spark 1.2",
+  "input": 1.25,
+  "output": 4.25,
+  "cached_read": 0.15,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gpt-6-astra",
+  "name": "GPT 6 Astra (\u2264 272K tokens)",
+  "input": 10.0,
+  "output": 50.0,
+  "cached_read": 1.0,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gpt-6-astra",
+  "name": "GPT 6 Astra (> 272K tokens)",
+  "input": 20.0,
+  "output": 75.0,
+  "cached_read": 2.0,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gpt-6-sol",
+  "name": "GPT 6 Sol (\u2264 272K tokens)",
+  "input": 2.0,
+  "output": 10.0,
+  "cached_read": 0.2,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gpt-6-sol",
+  "name": "GPT 6 Sol (> 272K tokens)",
+  "input": 4.0,
+  "output": 15.0,
+  "cached_read": 0.4,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gpt-6.1-sol",
+  "name": "GPT 6.1 Sol (\u2264 272K tokens)",
+  "input": 2.0,
+  "output": 10.0,
+  "cached_read": 0.1,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gpt-6.1-sol",
+  "name": "GPT 6.1 Sol (> 272K tokens)",
+  "input": 4.0,
+  "output": 15.0,
+  "cached_read": 0.2,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gpt-6-luna",
+  "name": "GPT 6 Luna (\u2264 272K tokens)",
+  "input": 0.1,
+  "output": 0.5,
+  "cached_read": 0.01,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gpt-6-luna",
+  "name": "GPT 6 Luna (> 272K tokens)",
+  "input": 0.2,
+  "output": 0.75,
+  "cached_read": 0.02,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gpt-5.6-sol",
+  "name": "GPT 5.6 Sol (\u2264 272K tokens)",
+  "input": 4.0,
+  "output": 20.0,
+  "cached_read": 0.4,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gpt-5.6-sol",
+  "name": "GPT 5.6 Sol (> 272K tokens)",
+  "input": 8.0,
+  "output": 30.0,
+  "cached_read": 0.8,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gpt-5.6-terra",
+  "name": "GPT 5.6 Terra (\u2264 272K tokens)",
+  "input": 2.0,
+  "output": 12.0,
+  "cached_read": 0.2,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gpt-5.6-terra",
+  "name": "GPT 5.6 Terra (> 272K tokens)",
+  "input": 4.0,
+  "output": 18.0,
+  "cached_read": 0.4,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gpt-5.6-luna",
+  "name": "GPT 5.6 Luna (\u2264 272K tokens)",
+  "input": 0.2,
+  "output": 1.2,
+  "cached_read": 0.02,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gpt-5.6-luna",
+  "name": "GPT 5.6 Luna (> 272K tokens)",
+  "input": 0.4,
+  "output": 1.8,
+  "cached_read": 0.04,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gpt-5.5",
+  "name": "GPT 5.5 (\u2264 272K tokens)",
+  "input": 5.0,
+  "output": 30.0,
+  "cached_read": 0.5,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gpt-5.5",
+  "name": "GPT 5.5 (> 272K tokens)",
+  "input": 10.0,
+  "output": 45.0,
+  "cached_read": 1.0,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gpt-5.5-pro",
+  "name": "GPT 5.5 Pro",
+  "input": 30.0,
+  "output": 180.0,
+  "cached_read": 30.0,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gpt-5.4",
+  "name": "GPT 5.4 (\u2264 272K tokens)",
+  "input": 2.5,
+  "output": 15.0,
+  "cached_read": 0.25,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gpt-5.4",
+  "name": "GPT 5.4 (> 272K tokens)",
+  "input": 5.0,
+  "output": 22.5,
+  "cached_read": 0.5,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gpt-5.4-pro",
+  "name": "GPT 5.4 Pro",
+  "input": 30.0,
+  "output": 180.0,
+  "cached_read": 30.0,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gpt-5.4-mini",
+  "name": "GPT 5.4 Mini",
+  "input": 0.75,
+  "output": 4.5,
+  "cached_read": 0.075,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gpt-5.4-nano",
+  "name": "GPT 5.4 Nano",
+  "input": 0.2,
+  "output": 1.25,
+  "cached_read": 0.02,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gpt-5.3-codex-spark",
+  "name": "GPT 5.3 Codex Spark",
+  "input": 1.75,
+  "output": 14.0,
+  "cached_read": 0.175,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gpt-5.3-codex",
+  "name": "GPT 5.3 Codex",
+  "input": 1.75,
+  "output": 14.0,
+  "cached_read": 0.175,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gpt-5.2",
+  "name": "GPT 5.2",
+  "input": 1.75,
+  "output": 14.0,
+  "cached_read": 0.175,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gpt-5.2-codex",
+  "name": "GPT 5.2 Codex",
+  "input": 1.75,
+  "output": 14.0,
+  "cached_read": 0.175,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gpt-5.1",
+  "name": "GPT 5.1",
+  "input": 1.07,
+  "output": 8.5,
+  "cached_read": 0.107,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gpt-5.1-codex",
+  "name": "GPT 5.1 Codex",
+  "input": 1.07,
+  "output": 8.5,
+  "cached_read": 0.107,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gpt-5.1-codex-max",
+  "name": "GPT 5.1 Codex Max",
+  "input": 1.25,
+  "output": 10.0,
+  "cached_read": 0.125,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gpt-5.1-codex-mini",
+  "name": "GPT 5.1 Codex Mini",
+  "input": 0.25,
+  "output": 2.0,
+  "cached_read": 0.025,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gpt-5",
+  "name": "GPT 5",
+  "input": 1.07,
+  "output": 8.5,
+  "cached_read": 0.107,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gpt-5-codex",
+  "name": "GPT 5 Codex",
+  "input": 1.07,
+  "output": 8.5,
+  "cached_read": 0.107,
+  "limit": null,
+  "free": false
+ },
+ {
+  "tier": "zen",
+  "model_id": "gpt-5-nano",
+  "name": "GPT 5 Nano",
+  "input": 0.05,
+  "output": 0.4,
+  "cached_read": 0.005,
+  "limit": null,
+  "free": false
+ }
+]

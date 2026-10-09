@@ -13,17 +13,52 @@ from __future__ import annotations
 
 import argparse
 import sys
+from dataclasses import replace
 from pathlib import Path
 
+from .arena import ARENA_BENCHMARK, ArenaCache, merge_from_file
 from .benchmarks import available
 from .data import load_models
 from .fetch import http_get, refresh
-from .ranking import by_score_per_price
+from .pricing import load_prices, refresh_prices
+from .ranking import (
+    BAND_FREE,
+    BAND_INCLUDED,
+    BAND_PAYG,
+    build_rows,
+    order_rows,
+    partition_rows,
+    ratio,
+)
 from .render import render_html
+from . import arena as arena_mod
 from . import sources
 
 DEFAULT_DATA = Path(__file__).resolve().parent.parent / "data"
 DEFAULT_OUT = Path(__file__).resolve().parent.parent / "pareto.html"
+
+#: Representative cost: 20% input, 60% cached read, 20% output.
+COST_NOTE = "cost 20% in / 60% cached / 20% out"
+BAND_LABELS = (
+    (BAND_FREE, "free — use first"),
+    (BAND_INCLUDED, "included usage"),
+    (BAND_PAYG, "pay-as-you-go"),
+)
+TABLE_HEADER = (f"{'SCORE':>6}  {'BENCH':>5}  {'$/1M':>7}  "
+                f"{'SCORE/$':>8}  MODEL")
+RULE_WIDTH = 60
+
+
+def _style(text: str) -> str:
+    """Bold when talking to a terminal, plain when piped or captured."""
+    return f"\033[1m{text}\033[0m" if sys.stdout.isatty() else text
+
+
+def _section(title: str) -> None:
+    """Open a table: blank line, rule-wrapped title, highlighted header."""
+    print()
+    print(f"── {title} " + "─" * max(4, RULE_WIDTH - len(title)))
+    print(_style(TABLE_HEADER))
 
 
 def _fail(msg: str) -> int:
@@ -35,7 +70,7 @@ def _cmd_benchmarks(args: argparse.Namespace) -> int:
     data_dir = Path(args.data)
     if not data_dir.is_dir():
         return _fail(f"no data directory at {data_dir} — run `fetch` first")
-    for name, count in available(load_models(data_dir)):
+    for name, count in available(merge_from_file(load_models(data_dir), data_dir)):
         print(f"{count:4d}  {name}")
     return 0
 
@@ -44,7 +79,7 @@ def _cmd_render(args: argparse.Namespace) -> int:
     data_dir = Path(args.data)
     if not data_dir.is_dir():
         return _fail(f"no data directory at {data_dir} — run `fetch` first")
-    models = load_models(data_dir)
+    models = merge_from_file(load_models(data_dir), data_dir)
     choices = available(models)
     if not choices:
         return _fail(f"no benchmark scores found in {data_dir} — run `fetch`")
@@ -61,9 +96,73 @@ def _cmd_render(args: argparse.Namespace) -> int:
 
 
 def _cmd_fetch(args: argparse.Namespace) -> int:
-    saved = refresh(Path(args.data), get=http_get)
-    print(f"saved {len(saved)} model files to {args.data}")
+    data_dir = Path(args.data)
+    saved = refresh(data_dir, get=http_get)
+    print(f"saved {len(saved)} model files to {data_dir}")
+    try:
+        prices = refresh_prices(data_dir / "tier_prices", get=http_get)
+    except (OSError, ValueError) as exc:  # docs down must not fail the fetch
+        print(f"warning: tier pricing docs not refreshed ({exc})")
+    else:
+        if prices:
+            print(f"saved {', '.join(prices)} to {data_dir / 'tier_prices'}")
+        else:
+            print("warning: tier pricing docs parsed to nothing, "
+                  "keeping existing snapshots")
     return 0
+
+
+def _cmd_scores(args: argparse.Namespace) -> int:
+    """Manage the cached arena.ai Elo table.
+
+    Default is offline: read the cache and report its size. ``--refresh``
+    is the only online path — it looks up the arena dataset and rewrites
+    the cache, so regular runs never hammer any service.
+    """
+    data_dir = Path(args.data)
+    cache = ArenaCache(data_dir)
+    if args.refresh:
+        scores = arena_mod.lookup_arena_elo(get=http_get)
+        cache.save(scores)
+        print(f"fetched {len(scores)} arena Elo scores -> "
+              f"{data_dir / arena_mod.CACHE_NAME}")
+    else:
+        scores = cache.load()
+        print(f"cached arena Elo scores: {len(scores)} (--refresh to look up)")
+    return 0
+
+
+def _entries_for(source: str, data_dir: Path):
+    """Documented pricing lines for a tier (Go first: interchangeable, and
+    its rates are the ones with included usage attached)."""
+    prices = load_prices(data_dir / "tier_prices")
+    if source in prices:
+        return prices[source]
+    if source == "all":
+        return prices.get("go", []) + prices.get("zen", [])
+    return []
+
+
+def _bench_tag(benchmark: str | None) -> str:
+    if not benchmark:
+        return "-"
+    folded = benchmark.lower().replace(" ", "-")
+    if folded.startswith("terminal-bench"):
+        return "TB"
+    if folded.startswith("swe-bench"):
+        return "SWE"
+    return benchmark[:5]
+
+
+def _print_row(row) -> None:
+    price = "0" if row.price == 0 else f"{row.price:g}"
+    if row.score is None:
+        print(f"{'-':>6}  {_bench_tag(row.benchmark):>5}  {price:>7}  "
+              f"{'-':>8}  {row.name}")
+        return
+    value = "free" if row.price == 0 else f"{ratio(row.score, row.price):.1f}"
+    print(f"{row.score:>6g}  {_bench_tag(row.benchmark):>5}  {price:>7}  "
+          f"{value:>8}  {row.name}")
 
 
 def _cmd_list(args: argparse.Namespace) -> int:
@@ -79,32 +178,50 @@ def _cmd_list(args: argparse.Namespace) -> int:
                 f"{', '.join(sources.available_sources())}, all"
             )
         slugs = None  # all = no tier filter
-    models = load_models(data_dir)
-    in_tier = models if slugs is None else [
-        m for m in models
-        if m.model_id.split("/")[-1] in slugs or m.model_id in slugs
-    ]
-    choices = dict(available(in_tier))
-    benchmark = args.benchmark or (max(choices, key=choices.get) if choices else None)
-    if benchmark is None:
-        return _fail(f"no {args.source} model in {data_dir} has benchmark scores")
-    if benchmark not in choices:
-        listing = ", ".join(f"{n} ({c})" for n, c in list(available(in_tier))[:10])
-        return _fail(f"unknown benchmark {benchmark!r} — available: {listing}")
-    ranked = by_score_per_price(in_tier, benchmark, price_field=f"price_{args.price}")
-    if slugs is None:
-        print(f"all: {len(models)} models in catalog · "
-              f"benchmark {benchmark} · sorted by score per $ {args.price.replace('price_','')}")
+    models = merge_from_file(load_models(data_dir), data_dir)
+    in_tier, free_ids = sources.members(models, slugs)
+    if not in_tier:
+        return _fail(f"no model of {args.source} is in {data_dir} — run `fetch`")
+
+    if args.benchmark:
+        wanted = args.benchmark
+        if wanted not in dict(available(in_tier)):
+            listing = ", ".join(f"{n} ({c})" for n, c in list(available(in_tier))[:10])
+            return _fail(f"unknown benchmark {wanted!r} — available: {listing}")
+        rows = [replace(r, score=r.model.scores[wanted], benchmark=wanted)
+                for r in build_rows(in_tier, _entries_for(args.source, data_dir),
+                                    free_ids, axis=args.price)
+                if wanted in r.model.scores]
+        rows.sort(key=lambda r: (-ratio(r.score, r.price), -r.score))
+        order_note = f"benchmark {wanted} · sorted by score per $"
     else:
-        print(f"{args.source}: {len(in_tier)}/{len(slugs)} models in catalog · "
-              f"benchmark {benchmark} · sorted by score per $ {args.price.replace('price_','')}")
-    print(f"{'score':>6}  {'$/1M':>7}  {'score/$':>8}  model")
-    for m in ranked:
-        score = m.scores[benchmark]
-        px = getattr(m, f"price_{args.price}")
-        ratio = "free" if px == 0 else f"{score / px:.1f}"
-        price = "0" if px == 0 else f"{px:g}"
-        print(f"{score:>6g}  {price:>7}  {ratio:>8}  {m.name}")
+        rows = order_rows(build_rows(in_tier, _entries_for(args.source, data_dir),
+                                     free_ids, axis=args.price))
+        order_note = "Terminal-Bench first, SWE-Bench fills in"
+    if not rows:
+        return _fail(f"no {args.source} model in {data_dir} has benchmark scores")
+
+    head = (f"all: {len(models)} models in catalog" if slugs is None else
+            f"{args.source}: {len(in_tier)}/{len(slugs)} models in catalog")
+    print(f"{head} · {len(rows)} lines · {order_note} · {COST_NOTE}")
+
+    main, worst, pricey = partition_rows(rows)
+
+    _section(f"best value · {len(main)} lines")
+    for band, label in BAND_LABELS:
+        group = [r for r in main if r.band == band]
+        if group:
+            print(f"  {label} · {len(group)}")
+            for row in group:
+                _print_row(row)
+
+    _section(f"worst score (bottom 30%) · {len(worst)} lines")
+    for row in worst:
+        _print_row(row)
+
+    _section(f"highest cost (top 30%) · {len(pricey)} lines")
+    for row in pricey:
+        _print_row(row)
     return 0
 
 
@@ -128,15 +245,24 @@ def main(argv: list[str] | None = None) -> int:
                           help="output HTML path (default: %(default)s)")
 
     p_list = sub.add_parser(
-        "list", help="text table of a Console tier (zen/go), best value first"
+        "list", help="three tables of a Console tier (zen/go): best value "
+                     "(free/included/pay-as-you-go), worst score, highest cost"
     )
     p_list.add_argument("--source", required=True,
                         help="tier to list (zen or go)")
-    p_list.add_argument("--price", choices=("input", "output"), default="input",
-                        help="price axis for the ratio (default: input)")
+    p_list.add_argument("--price", choices=("weighted", "input", "output"),
+                        default="weighted",
+                        help="cost of a line (default: weighted 20%% in, "
+                             "60%% cached, 20%% out)")
     p_list.add_argument("--benchmark",
-                        help="benchmark to rank on (default: best coverage "
-                             "within the tier)")
+                        help="rank on one benchmark instead of combining "
+                             "Terminal-Bench (first) with SWE-Bench")
+
+    p_scores = sub.add_parser(
+        "scores", help="manage cached arena.ai Elo scores (offline unless --refresh)"
+    )
+    p_scores.add_argument("--refresh", action="store_true",
+                          help="look up arena.ai and rewrite the cache")
 
     args = parser.parse_args(argv)
     return {
@@ -144,6 +270,7 @@ def main(argv: list[str] | None = None) -> int:
         "benchmarks": _cmd_benchmarks,
         "render": _cmd_render,
         "list": _cmd_list,
+        "scores": _cmd_scores,
     }[args.command](args)
 
 

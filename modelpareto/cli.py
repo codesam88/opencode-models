@@ -91,18 +91,19 @@ def _cmd_list(args: argparse.Namespace) -> int:
     if benchmark not in choices:
         listing = ", ".join(f"{n} ({c})" for n, c in list(available(in_tier))[:10])
         return _fail(f"unknown benchmark {benchmark!r} — available: {listing}")
-    ranked = by_score_per_price(in_tier, benchmark)
+    ranked = by_score_per_price(in_tier, benchmark, price_field=f"price_{args.price}")
     if slugs is None:
         print(f"all: {len(models)} models in catalog · "
-              f"benchmark {benchmark} · sorted by score per $ input")
+              f"benchmark {benchmark} · sorted by score per $ {args.price.replace('price_','')}")
     else:
         print(f"{args.source}: {len(in_tier)}/{len(slugs)} models in catalog · "
-              f"benchmark {benchmark} · sorted by score per $ input")
+              f"benchmark {benchmark} · sorted by score per $ {args.price.replace('price_','')}")
     print(f"{'score':>6}  {'$/1M':>7}  {'score/$':>8}  model")
     for m in ranked:
         score = m.scores[benchmark]
-        ratio = "free" if m.price_input == 0 else f"{score / m.price_input:.1f}"
-        price = "0" if m.price_input == 0 else f"{m.price_input:g}"
+        px = getattr(m, f"price_{args.price}")
+        ratio = "free" if px == 0 else f"{score / px:.1f}"
+        price = "0" if px == 0 else f"{px:g}"
         print(f"{score:>6g}  {price:>7}  {ratio:>8}  {m.name}")
     return 0
 
@@ -131,6 +132,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_list.add_argument("--source", required=True,
                         help="tier to list (zen or go)")
+    p_list.add_argument("--price", choices=("input", "output"), default="input",
+                        help="price axis for the ratio (default: input)")
     p_list.add_argument("--benchmark",
                         help="benchmark to rank on (default: best coverage "
                              "within the tier)")

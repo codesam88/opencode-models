@@ -7,13 +7,13 @@ from modelpareto.sources import available_sources, load_source
 from modelpareto.data import Model
 
 
-def _m(model_id, price, score):
+def _m(model_id, price, score, output=None):
     return Model(
         model_id=model_id,
         name=model_id,
         lab="x",
         price_input=price,
-        price_output=None,
+        price_output=output,
         price_cached_input=None,
         scores={} if score is None else {"TB": score},
     )
@@ -59,6 +59,18 @@ class RankingTest(unittest.TestCase):
             self.BENCH,
         )
         self.assertEqual([m.model_id for m in out], ["ok"])
+
+    def test_output_price_axis_changes_ratio(self):
+        # Both cost $2/M input; output differs: a 5, b 10 → a cheaper out
+        models = [_m("a", 2.0, 80.0, output=5.0), _m("b", 2.0, 90.0, output=10.0)]
+        out = by_score_per_price(models, self.BENCH, price_field="price_output")
+        # a: 80/5=16, b: 90/10=9 → a leads despite lower score
+        self.assertEqual([m.model_id for m in out], ["a", "b"])
+
+    def test_unknown_price_field_raises(self):
+        with self.assertRaises(ValueError):
+            by_score_per_price([_m("a", 1.0, 50.0)], self.BENCH,
+                               price_field="price_cache_write")
 
 
 if __name__ == "__main__":

@@ -161,6 +161,35 @@ class CliTest(unittest.TestCase):
         self.assertIn("1", out)    # price
         self.assertIn("50.0", out) # ratio score/price
 
+    def test_list_output_price_uses_output_axis(self):
+        import json
+        import modelpareto.sources as sources
+
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            doc = json.dumps({
+                "model": {
+                    "id": "a/m1", "name": "M1", "lab": "a",
+                    "priceUsdPer1M": {"input": 1.0, "output": 5.0,
+                                      "cachedInput": None},
+                    "benchmarks": [{"name": "TB", "score": 50.0,
+                                    "metric": "acc", "source": ""}],
+                }
+            })
+            (d / "a__m1.json").write_text(doc)
+            orig = sources.load_source
+            sources.load_source = lambda name: {"m1"}
+            try:
+                code, out = self._run(
+                    "--data", tmp, "list", "--source", "zen",
+                    "--benchmark", "TB", "--price", "output",
+                )
+            finally:
+                sources.load_source = orig
+        self.assertEqual(code, 0)
+        self.assertIn("5", out)    # output price shown
+        self.assertIn("10.0", out) # 50/5 ratio
+
     def test_list_unknown_source_errors(self):
         with tempfile.TemporaryDirectory() as tmp:
             _write_sample(Path(tmp))

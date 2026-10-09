@@ -73,6 +73,25 @@ class LoadModelTest(unittest.TestCase):
         m = self._model()
         self.assertEqual(m.slug, "deepseek-deepseek-v4-pro")
 
+    def test_benchmark_version_becomes_part_of_the_key(self):
+        """Terminal-Bench 2.1 (Fable 5, 88) must not mix with 4.0 (Fable 5.1, 55.8)."""
+        sample = json.loads(json.dumps(SAMPLE))
+        sample["model"]["benchmarks"] = [
+            {"name": "Terminal-Bench", "version": "2.1", "score": 88.0,
+             "metric": "success rate", "source": ""},
+        ]
+        m = self._model(sample)
+        self.assertEqual(m.scores, {"Terminal-Bench 2.1": 88.0})
+
+    def test_benchmark_without_version_keeps_bare_name(self):
+        sample = json.loads(json.dumps(SAMPLE))
+        sample["model"]["benchmarks"] = [
+            {"name": "Terminal-Bench", "score": 55.8, "metric": "score",
+             "source": ""},
+        ]
+        m = self._model(sample)
+        self.assertEqual(m.scores, {"Terminal-Bench": 55.8})
+
 
 class LoadModelsTest(unittest.TestCase):
     def test_loads_every_json_in_directory(self):

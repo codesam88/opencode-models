@@ -32,13 +32,26 @@ class Model:
         return self.model_id.replace("/", "-")
 
 
+def _benchmark_key(b: dict) -> str:
+    """Benchmark name qualified by version when present.
+
+    Two models' "Terminal-Bench" scores are only comparable when the
+    benchmark version is the same — Fable 5's 88 on Terminal-Bench 2.1 and
+    Fable 5.1's 55.8 on 4.0 look like a regression until you see the
+    version. Entries without a version field keep the bare name.
+    """
+    name = b["name"]
+    version = b.get("version")
+    return f"{name} {version}" if version else name
+
+
 def load_model(path: Path) -> Model:
     """Parse one scraped ``<lab>__<model>.json`` file."""
     doc = json.loads(path.read_text())
     m = doc["model"]
     price = m.get("priceUsdPer1M") or {}
     scores = {
-        b["name"]: b["score"]
+        _benchmark_key(b): b["score"]
         for b in m.get("benchmarks") or []
         if isinstance(b.get("score"), (int, float))
     }

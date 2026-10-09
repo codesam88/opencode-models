@@ -77,25 +77,45 @@ class Row:
 
 
 def _best(scores: dict[str, float], family: str,
-          skip: str | None = None) -> tuple[str, float] | None:
+          skip: str | None = None,
+          versioned: bool = False) -> tuple[str, float] | None:
     """Highest score under *family*, as ``(key, value)``.
 
     Families are matched with spaces folded to dashes so ``Terminal Bench
-    2.1`` and ``Terminal-Bench 2.1`` count as the same benchmark. *skip*
-    excludes keys on a harder scale of the same family — a 4.0 score must
-    not win a slot that is compared against 2.x numbers.
+    2.1`` and ``Terminal-Bench 2.1`` count as the same benchmark.
+
+    *skip* excludes keys on a harder scale of the same family — a 4.0 score
+    must not win a slot that is compared against 2.x numbers.
+
+    *versioned* restricts the family to actual version runs: after the
+    family prefix a version number must follow. Terminal-Bench Hard and
+    Terminal-Bench-Science are separate benchmarks that happen to share the
+    prefix — a 20.5 on TB Hard is not a "Terminal-Bench 2.x" run and must
+    never fill a slot compared against 2.1 board numbers.
     """
     best = None
     folded_skip = skip.lower().replace(" ", "-") if skip else None
+    folded_family = family.lower().replace(" ", "-")
     for key, value in scores.items():
         folded = key.lower().replace(" ", "-")
-        if not folded.startswith(family.lower().replace(" ", "-")):
+        if not folded.startswith(folded_family):
+            continue
+        if versioned and not _version_run(folded[len(folded_family):]):
             continue
         if folded_skip and folded.startswith(folded_skip):
             continue
         if best is None or value > best[1]:
             best = (key, value)
     return best
+
+
+def _version_run(after_family: str) -> bool:
+    """True when what follows the family prefix is a version, not a word.
+
+    ``-2.1`` and ``-3.0`` are version runs; ``-Hard`` and ``-Science-0.1``
+    are different benchmarks sharing the prefix.
+    """
+    return after_family.lstrip("-_ ")[:1].isdigit()
 
 
 def ratio(score: float, price: float) -> float:
@@ -166,7 +186,8 @@ def build_rows(models: list[Model], entries=(), free_ids=frozenset(),
         else:
             price = cost
             band = BAND_INCLUDED if limit is not None else BAND_PAYG
-        primary = _best(model.scores, PRIMARY_FAMILY, skip=TB4_FAMILY)
+        primary = _best(model.scores, PRIMARY_FAMILY, skip=TB4_FAMILY,
+                        versioned=True)
         secondary = _best(model.scores, SECONDARY_FAMILY)
         tb4 = _best(model.scores, TB4_FAMILY)
         chosen = primary or secondary or tb4
@@ -234,7 +255,8 @@ def order_rows(rows: list[Row]) -> list[Row]:
     """
 
     def primary_of(row: Row):
-        return _best(row.model.scores, PRIMARY_FAMILY, skip=TB4_FAMILY)
+        return _best(row.model.scores, PRIMARY_FAMILY, skip=TB4_FAMILY,
+                     versioned=True)
 
     def score_on(row: Row, axis: str):
         return _best(row.model.scores, axis)

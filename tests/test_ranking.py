@@ -18,8 +18,8 @@ SWE = "SWE-Bench Pro"
 
 
 def _m(model_id, price, tb=None, swe=None, output=None, cached=None, name=None,
-       tb40=None):
-    scores = {}
+       tb40=None, scores=None):
+    scores = dict(scores or {})
     if tb is not None:
         scores[TB] = tb
     if swe is not None:
@@ -124,6 +124,28 @@ class RowBuildingTest(unittest.TestCase):
         row = build_rows(models, [])[0]
         self.assertEqual(row.score, 55.8)          # primary family wins
         self.assertEqual(row.benchmark, TB)
+
+    def test_terminal_bench_hard_is_not_a_2_x_run(self):
+        # TB Hard / TB-Science are separate benchmarks, not versions of
+        # Terminal-Bench: a model carrying only those has no primary score
+        row = build_rows([_m("a/m1", 1.0,
+                             scores={"Terminal-Bench Hard": 20.5})])[0]
+        self.assertIsNone(row.score)
+        self.assertIsNone(row.benchmark)
+
+    def test_a_space_spelled_terminal_bench_version_still_counts(self):
+        # catalogs write both "Terminal-Bench 2.1" and "Terminal Bench 2.1"
+        row = build_rows([_m("a/m1", 1.0,
+                             scores={"Terminal Bench 2.1": 71.0})])[0]
+        self.assertEqual(row.score, 71.0)
+        self.assertEqual(row.benchmark, "Terminal Bench 2.1")
+
+    def test_a_model_with_only_hard_falls_back_to_its_4_run_or_nothing(self):
+        rows = order_rows(build_rows([_m("a/m1", 1.0,
+                                          scores={"Terminal-Bench Hard": 20.5,
+                                                  "Terminal-Bench 4.0": 55.8})]))
+        self.assertEqual(rows[0].score, 55.8)     # ranked on its 4.0 run
+        self.assertEqual(rows[0].benchmark, "Terminal-Bench 4.0")
 
     def test_a_swe_only_row_falls_back_to_the_secondary_family(self):
         models = [_m("a/m1", 1.0, swe=40.0)]
@@ -241,6 +263,18 @@ class OrderTest(unittest.TestCase):
         models.append(_m("l/sweweak", 1.0, swe=10.0))
         ordered = [r.model.model_id for r in order_rows(build_rows(models))]
         self.assertEqual(ordered[-1], "l/sweweak")
+
+    def test_a_terminal_bench_hard_row_does_not_split_the_skeleton(self):
+        # the ordering's primary lookup must be as strict as the row
+        # builder's: TB Hard is its own benchmark, not a 2.x run, so a
+        # model carrying only it is unscored for ranking
+        models = [_m(f"l/tb{i}", 1.0, tb=t)
+                  for i, t in enumerate([90.0, 70.0], 1)]
+        models.append(_m("l/hard", 1.0,
+                         scores={"Terminal-Bench Hard": 20.5}))
+        self.assertEqual([r.model.model_id
+                          for r in order_rows(build_rows(models))],
+                         ["l/tb1", "l/tb2"])   # l/hard has no ranking axis
 
     def test_rows_with_neither_benchmark_drop_out(self):
         models = [_m("l/tb", 1.0, tb=70.0), _m("l/unbenchmarked", 1.0)]

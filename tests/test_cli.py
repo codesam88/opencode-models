@@ -29,9 +29,16 @@ def _write_sample(data_dir: Path):
             }
         })
 
-    (data_dir / "a__m1.json").write_text(model_doc("a/m1", 1.0, 50.0))
-    (data_dir / "b__m2.json").write_text(model_doc("b/m2", 3.0, 90.0))
-    (data_dir / "c__m3.json").write_text(model_doc("c/m3", 9.0, 40.0))
+    (_models(data_dir) / "a__m1.json").write_text(model_doc("a/m1", 1.0, 50.0))
+    (_models(data_dir) / "b__m2.json").write_text(model_doc("b/m2", 3.0, 90.0))
+    (_models(data_dir) / "c__m3.json").write_text(model_doc("c/m3", 9.0, 40.0))
+
+
+def _models(d: Path) -> Path:
+    """Model fixtures live under <data>/opencode/, like production data."""
+    models = d / "opencode"
+    models.mkdir(parents=True, exist_ok=True)
+    return models
 
 
 def _write_grid(data_dir: Path):
@@ -47,7 +54,7 @@ def _write_grid(data_dir: Path):
                             "score": float(i * i), "metric": "acc",
                             "source": ""}],
         }})
-        (data_dir / f"l__m{i:02d}.json").write_text(doc)
+        (_models(data_dir) / f"l__m{i:02d}.json").write_text(doc)
 
 
 class CliTest(unittest.TestCase):
@@ -117,7 +124,7 @@ class CliTest(unittest.TestCase):
                 code, _ = self._run("--data", tmp, "fetch")
             finally:
                 cli.http_get = orig
-            saved = (Path(tmp) / "x__y.json").exists()
+            saved = (_models(Path(tmp)) / "x__y.json").exists()
         self.assertEqual(code, 0)
         self.assertTrue(saved)
 
@@ -180,9 +187,8 @@ class CliTest(unittest.TestCase):
                 code, out = self._run("--data", tmp, "scores", "--refresh")
             finally:
                 arena.lookup_arena_elo = orig
-            cached = arena.ArenaCache(Path(tmp)).load() if hasattr(arena, "ArenaCache") else {}
             from modelpareto.arena import ArenaCache
-            cached = ArenaCache(Path(tmp)).load()
+            cached = ArenaCache(Path(tmp) / "aiarena").load()
         self.assertEqual(code, 0)
         self.assertEqual(cached, {"m1": 1500.0, "m2": 1400.0})
         self.assertIn("2", out)
@@ -193,7 +199,7 @@ class CliTest(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             _write_sample(Path(tmp))
-            ArenaCache(Path(tmp)).save({"m1": 1500.0})
+            ArenaCache(Path(tmp) / "aiarena").save({"m1": 1500.0})
             code, out = self._run("--data", tmp, "benchmarks")
         self.assertEqual(code, 0)
         self.assertIn("LMArena Elo", out)
@@ -263,7 +269,7 @@ class CliTest(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
-            (d / "l__cheap.json").write_text(json.dumps({"model": {
+            (_models(d) / "l__cheap.json").write_text(json.dumps({"model": {
                 "id": "l/cheap", "name": "CHEAP", "lab": "l",
                 "priceUsdPer1M": {"input": 0.0612, "output": None,
                                   "cachedInput": None},
@@ -299,7 +305,7 @@ class CliTest(unittest.TestCase):
                                     "metric": "acc", "source": ""}],
                 }
             })
-            (d / "a__m1.json").write_text(doc)
+            (_models(d) / "a__m1.json").write_text(doc)
             orig = sources.load_source
             sources.load_source = lambda name: {"m1"}
             try:
@@ -382,9 +388,9 @@ class CliTest(unittest.TestCase):
             # ds: documented by both providers at different rates; the two
             # fillers are pricey enough to be culled and weak enough that
             # best value keeps both ds lines
-            (d / "l__ds.json").write_text(model_doc("l/ds", 9.9, 50.0))
-            (d / "l__e1.json").write_text(model_doc("l/e1", 5.0, 10.0))
-            (d / "l__e2.json").write_text(model_doc("l/e2", 6.0, 20.0))
+            (_models(d) / "l__ds.json").write_text(model_doc("l/ds", 9.9, 50.0))
+            (_models(d) / "l__e1.json").write_text(model_doc("l/e1", 5.0, 10.0))
+            (_models(d) / "l__e2.json").write_text(model_doc("l/e2", 6.0, 20.0))
             prices_dir = d / "tier_prices"
             prices_dir.mkdir()
             (prices_dir / "zen_prices.json").write_text(json.dumps([
@@ -440,7 +446,7 @@ class CliTest(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
-            (d / "l__ds.json").write_text(json.dumps({"model": {
+            (_models(d) / "l__ds.json").write_text(json.dumps({"model": {
                 "id": "l/ds", "name": "DS", "lab": "l",
                 "priceUsdPer1M": {"input": 9.9, "output": None,
                                   "cachedInput": None},
@@ -482,8 +488,8 @@ class CliTest(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
-            (d / "l__gift.json").write_text(doc("l/gift", 5.0, 40.0))
-            (d / "l__paid.json").write_text(doc("l/paid", 1.0, 50.0))
+            (_models(d) / "l__gift.json").write_text(doc("l/gift", 5.0, 40.0))
+            (_models(d) / "l__paid.json").write_text(doc("l/paid", 1.0, 50.0))
             prices_dir = d / "tier_prices"
             prices_dir.mkdir()
             (prices_dir / "go_prices.json").write_text(json.dumps([
@@ -535,7 +541,7 @@ class CliTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
             for mid, (price, score) in prices.items():
-                (d / f"l__{mid}.json").write_text(doc(f"l/{mid}", price, score))
+                (_models(d) / f"l__{mid}.json").write_text(doc(f"l/{mid}", price, score))
             prices_dir = d / "tier_prices"
             prices_dir.mkdir()
             (prices_dir / "go_prices.json").write_text(json.dumps([
@@ -583,8 +589,8 @@ class CliTest(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
-            (d / "l__two.json").write_text(doc("l/two", "2.1", 50.0))
-            (d / "l__four.json").write_text(doc("l/four", "4.0", 41.0))
+            (_models(d) / "l__two.json").write_text(doc("l/two", "2.1", 50.0))
+            (_models(d) / "l__four.json").write_text(doc("l/four", "4.0", 41.0))
             orig = sources.load_source
             sources.load_source = lambda name: {"two", "four"}
             try:
@@ -599,6 +605,62 @@ class CliTest(unittest.TestCase):
         self.assertIn("  TB", two)
         self.assertNotIn("TB4", two)
         self.assertIn("TB 4.0 fill", out)   # the header names the axis
+
+    def test_conflicts_reports_disagreements_with_tiers_and_verdicts(self):
+        import json
+
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            (_models(d) / "a__m.json").write_text(json.dumps({"model": {
+                "id": "a/m", "name": "M",
+                "benchmarks": [{"name": "SWE-Bench", "version": "Verified",
+                                "score": 74.0, "metric": "pass@1",
+                                "source":
+                                "https://artificialanalysis.ai/models/m"}]}}))
+            over = d / "overrides"
+            over.mkdir()
+            (over / "a__m.json").write_text(json.dumps({"model": {
+                "id": "a/m", "benchmarks": [
+                    {"name": "SWE-Bench", "version": "Verified", "score": 99.0,
+                     "source": "https://random-blog.example/post",
+                     "note": "a blog says the vendor claimed more"}]}}))
+            code, out = self._run("--data", tmp, "conflicts")
+        self.assertEqual(code, 0)
+        self.assertIn("a/m", out)
+        self.assertIn("74", out)          # upstream value
+        self.assertIn("99", out)          # the override's claim
+        self.assertIn("upstream kept", out)   # tier-3 loses to independent
+        self.assertIn("1 curated models", out)
+
+    def test_curated_rows_carry_an_asterisk(self):
+        import json
+        import modelpareto.sources as sources
+
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            (_models(d) / "a__m1.json").write_text(json.dumps({"model": {
+                "id": "a/m1", "name": "M1",
+                "priceUsdPer1M": {"input": 1.0, "output": None,
+                                  "cachedInput": None},
+                "benchmarks": [{"name": "TB", "score": 50.0,
+                                "metric": "acc", "source": ""}]}}))
+            over = d / "overrides"
+            over.mkdir()
+            (over / "a__m1.json").write_text(json.dumps({"model": {
+                "id": "a/m1", "benchmarks": [
+                    {"name": "Humanity's Last Exam", "score": 46.5,
+                     "source": "https://artificialanalysis.ai/models/m1"}]}}))
+            orig = sources.load_source
+            sources.load_source = lambda name: {"m1"}
+            try:
+                code, out = self._run(
+                    "--data", tmp, "list", "--source", "zen", "--benchmark", "TB",
+                )
+            finally:
+                sources.load_source = orig
+        self.assertEqual(code, 0)
+        line = next(l for l in out.splitlines() if "M1" in l and "TB" in l)
+        self.assertTrue(line.rstrip().endswith("M1 *"), line)   # curated mark
 
     def test_list_prints_three_tables_in_order(self):
         import modelpareto.sources as sources
@@ -653,7 +715,7 @@ class CliTest(unittest.TestCase):
                                       ("l/p3", 4.0, 40.0), ("l/p4", 5.0, 50.0),
                                       ("l/p5", 6.0, 60.0), ("l/inc", 1.0, 70.0),
                                       ("l/gift", 5.0, 55.0)]:
-                (d / f"{mid.replace('/', '__')}.json").write_text(doc(mid, price, score))
+                (_models(d) / f"{mid.replace('/', '__')}.json").write_text(doc(mid, price, score))
             prices_dir = d / "tier_prices"
             prices_dir.mkdir()
             (prices_dir / "go_prices.json").write_text(json.dumps([
@@ -685,7 +747,7 @@ class CliTest(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
-            (d / "a__m1.json").write_text(json.dumps({"model": {
+            (_models(d) / "a__m1.json").write_text(json.dumps({"model": {
                 "id": "a/m1", "name": "M1", "lab": "a",
                 "priceUsdPer1M": {"input": 1.0, "output": 2.0, "cachedInput": 0.1},
                 "benchmarks": [{"name": "Terminal-Bench", "version": "2.1",
@@ -709,7 +771,7 @@ class CliTest(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
-            (d / "l__ds.json").write_text(json.dumps({"model": {
+            (_models(d) / "l__ds.json").write_text(json.dumps({"model": {
                 "id": "l/ds", "name": "DS", "lab": "l",
                 "priceUsdPer1M": {"input": 1.74, "output": None, "cachedInput": None},
                 "benchmarks": [{"name": "Terminal-Bench", "version": "2.1",

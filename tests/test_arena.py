@@ -42,7 +42,7 @@ class ArenaCacheTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             nested = Path(tmp) / "a" / "b"
             ArenaCache(nested).save({"x": 1.0})
-            self.assertTrue((nested / "arena-scores.json").exists())
+            self.assertTrue((nested / "scores.json").exists())
 
 
 class LookupTest(unittest.TestCase):

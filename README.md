@@ -12,6 +12,7 @@ claim; everything else is context.
 
 ```sh
 python3 -m modelpareto fetch                     # refresh data/ from opencode.ai
+python3 -m modelpareto conflicts                 # curated overrides vs upstream
 python3 -m modelpareto benchmarks                # list benchmarks + coverage
 python3 -m modelpareto render                    # pareto.html, best-covered benchmark
 python3 -m modelpareto render --benchmark "SWE-Bench Verified" --out swe.html
@@ -82,10 +83,27 @@ Stdlib-only, Python ≥ 3.10, no dependencies. Tests: `python3 -m unittest disco
 
 ## Data
 
-`data/` holds one JSON per model, copied verbatim from
-`https://opencode.ai/data/<lab>/<model>.json`. Parsing is tolerant: models
-without pricing or without the selected benchmark are simply excluded from the
-frontier rather than failing a render.
+`data/` is split by who writes it:
+
+| directory | contents | written by |
+|---|---|---|
+| `opencode/` | upstream records, one JSON per model, verbatim from `https://opencode.ai/data/<lab>/<model>.json` | `fetch` only |
+| `aiarena/` | arena.ai (LMArena) Elo cache, `{slug: elo}` | `scores --refresh` |
+| `overrides/` | hand-written sparse overlays: only the benchmark entries we vouched for (see `data/overrides/README.md`) | nobody — `fetch` reports disagreements via `conflicts` |
+| `tier_prices/` | snapshots of the Console tier pricing tables | `fetch` |
+
+The upstream layer is never edited: curated scores are merged at load time,
+keyed by (benchmark name, version), so an overlay can *add* a benchmark the
+registry lacks or *pin* a value it also carries. A pinned value applies only
+when its source is at least as good as upstream's — sources are tiered:
+independent evaluators that run every model on one harness (Artificial
+Analysis) beat official benchmark boards (tbench.ai), which beat vendor
+model cards and launch posts. Everything a disagreement touches is printed
+by `conflicts`; to accept upstream, delete the entry. Rows whose model
+carries an overlay are marked `*` in `list`.
+
+Parsing is tolerant: models without pricing or without the selected
+benchmark are simply excluded from the frontier rather than failing a render.
 
 `data/tier_prices/{zen,go}_prices.json` are snapshots of the Console tier
 pricing tables (parsed from the tier docs), rewritten by `fetch`.

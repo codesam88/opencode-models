@@ -20,6 +20,7 @@ from .arena import ARENA_BENCHMARK, ArenaCache, merge_from_file
 from .benchmarks import available
 from .data import load_models
 from .fetch import http_get, refresh
+from .overrides import TIER_LABELS, load_curated, off_band_models, source_tier
 from .pricing import load_prices, refresh_prices
 from .ranking import (
     BAND_FREE,
@@ -77,11 +78,22 @@ def _fail(msg: str) -> int:
     return 1
 
 
+def _load(data_dir: Path):
+    """Upstream records, curated overlays and arena scores all applied.
+
+    Returns the models and the set of model ids carrying an override (the
+    console marks those rows so a curated number is never invisible).
+    """
+    curated = load_curated(data_dir / "opencode", data_dir / "overrides")
+    return merge_from_file(curated.models, data_dir / "aiarena"), curated
+
+
 def _cmd_benchmarks(args: argparse.Namespace) -> int:
     data_dir = Path(args.data)
     if not data_dir.is_dir():
         return _fail(f"no data directory at {data_dir} — run `fetch` first")
-    for name, count in available(merge_from_file(load_models(data_dir), data_dir)):
+    models, _ = _load(data_dir)
+    for name, count in available(models):
         print(f"{count:4d}  {name}")
     return 0
 
@@ -90,7 +102,7 @@ def _cmd_render(args: argparse.Namespace) -> int:
     data_dir = Path(args.data)
     if not data_dir.is_dir():
         return _fail(f"no data directory at {data_dir} — run `fetch` first")
-    models = merge_from_file(load_models(data_dir), data_dir)
+    models, _ = _load(data_dir)
     choices = available(models)
     if not choices:
         return _fail(f"no benchmark scores found in {data_dir} — run `fetch`")
@@ -106,10 +118,46 @@ def _cmd_render(args: argparse.Namespace) -> int:
     return 0
 
 
+def _print_conflicts(curated) -> int:
+    """Override-vs-upstream disagreements, and overrides nothing matched."""
+    for c in curated.conflicts:
+        verdict = ("override wins"
+                   if c.override_wins else "override noted, upstream kept")
+        print(f"{c.model_id}  {c.benchmark}: "
+              f"{c.upstream} [{TIER_LABELS[source_tier(c.upstream_source)]}] "
+              f"→ {c.override} [{TIER_LABELS[source_tier(c.override_source)]}]"
+              f"  · {verdict}")
+        if c.reason:
+            print(f"    {c.reason}")
+    for model_id in sorted(curated.orphans):
+        print(f"{model_id}  override file has no upstream record")
+    return len(curated.conflicts) + len(curated.orphans)
+
+
+def _cmd_conflicts(args: argparse.Namespace) -> int:
+    """Curated overrides that disagree with upstream, ranked by provenance.
+
+    Each disagreement shows both values with the tier of their source, and
+    whether the override applies (its source is at least as good as
+    upstream's) or is merely recorded. To accept upstream, delete the
+    entry in data/overrides/.
+    """
+    data_dir = Path(args.data)
+    if not data_dir.is_dir():
+        return _fail(f"no data directory at {data_dir} — run `fetch` first")
+    curated = load_curated(data_dir / "opencode", data_dir / "overrides")
+    n = _print_conflicts(curated)
+    for mid, s21, s40, resid in off_band_models(curated.models):
+        print(f"{mid}  Terminal-Bench 2.1 {s21} vs 4.0 {s40} — "
+              f"{resid:+.0f} off the 2.1→4.0 band, check the run")
+    print(f"{len(curated.curated)} curated models · {n} to review")
+    return 0
+
+
 def _cmd_fetch(args: argparse.Namespace) -> int:
     data_dir = Path(args.data)
     saved = refresh(data_dir, get=http_get)
-    print(f"saved {len(saved)} model files to {data_dir}")
+    print(f"saved {len(saved)} model files to {data_dir / 'opencode'}")
     try:
         prices = refresh_prices(data_dir / "tier_prices", get=http_get)
     except (OSError, ValueError) as exc:  # docs down must not fail the fetch
@@ -120,6 +168,11 @@ def _cmd_fetch(args: argparse.Namespace) -> int:
         else:
             print("warning: tier pricing docs parsed to nothing, "
                   "keeping existing snapshots")
+    curated = load_curated(data_dir / "opencode", data_dir / "overrides")
+    n = _print_conflicts(curated)
+    if n:
+        print(f"{n} curated override(s) disagree with upstream — "
+              f"run `conflicts` to review")
     return 0
 
 
@@ -131,12 +184,12 @@ def _cmd_scores(args: argparse.Namespace) -> int:
     the cache, so regular runs never hammer any service.
     """
     data_dir = Path(args.data)
-    cache = ArenaCache(data_dir)
+    cache = ArenaCache(data_dir / "aiarena")
     if args.refresh:
         scores = arena_mod.lookup_arena_elo(get=http_get)
         cache.save(scores)
         print(f"fetched {len(scores)} arena Elo scores -> "
-              f"{data_dir / arena_mod.CACHE_NAME}")
+              f"{data_dir / 'aiarena' / arena_mod.CACHE_NAME}")
     else:
         scores = cache.load()
         print(f"cached arena Elo scores: {len(scores)} (--refresh to look up)")
@@ -195,8 +248,10 @@ def _widths(rows) -> tuple[int, ...]:
     )
 
 
-def _print_row(row, widths: tuple[int, ...]) -> None:
-    print(_row_line(_cells(row), widths) + f"  {row.name}")
+def _print_row(row, widths: tuple[int, ...], curated: set[str] = frozenset()
+               ) -> None:
+    name = f"{row.name} *" if row.model.model_id in curated else row.name
+    print(_row_line(_cells(row), widths) + f"  {name}")
 
 
 def _cmd_list(args: argparse.Namespace) -> int:
@@ -217,7 +272,7 @@ def _cmd_list(args: argparse.Namespace) -> int:
         return _fail(f"unknown source {source!r} — available: "
                      f"{', '.join(tiers)}, all")
 
-    models = merge_from_file(load_models(data_dir), data_dir)
+    models, curated = _load(data_dir)
     groups, listed, counts, tier_slugs = [], [], {}, {}
     covered: set[str] = set()
     for provider in selected:
@@ -276,15 +331,15 @@ def _cmd_list(args: argparse.Namespace) -> int:
         if group:
             print(f"  {label} · {len(group)}")
             for row in group:
-                _print_row(row, widths)
+                _print_row(row, widths, curated.curated)
 
     _section(f"worst score (bottom 30%) · {len(worst)} lines", widths)
     for row in worst:
-        _print_row(row, widths)
+        _print_row(row, widths, curated.curated)
 
     _section(f"highest cost (top 30%) · {len(pricey)} lines", widths)
     for row in pricey:
-        _print_row(row, widths)
+        _print_row(row, widths, curated.curated)
     return 0
 
 
@@ -298,6 +353,8 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("fetch", help="refresh data from opencode.ai")
+    sub.add_parser("conflicts",
+                   help="curated overrides disagreeing with upstream")
 
     sub.add_parser("benchmarks", help="list benchmarks with model coverage")
 
@@ -334,6 +391,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     return {
         "fetch": _cmd_fetch,
+        "conflicts": _cmd_conflicts,
         "benchmarks": _cmd_benchmarks,
         "render": _cmd_render,
         "list": _cmd_list,

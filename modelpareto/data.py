@@ -1,10 +1,12 @@
 """Load opencode.ai/data per-model JSON files into normalized records.
 
 The scraper (see fetch.py) stores one JSON file per model exactly as served
-by ``https://opencode.ai/data/<lab>/<model>.json``. This module turns those
-files into :class:`Model` records; parsing is tolerant — a model without
-pricing, without benchmarks, or a file that is not valid JSON at all must
-not take down a whole render.
+by ``https://opencode.ai/data/<lab>/<model>.json`` under ``data/opencode/``
+— the verbatim upstream layer that only ``fetch`` writes. Curated overlays
+live beside it in ``data/overrides/`` and are merged by overrides.py, never
+here. This module turns the upstream files into :class:`Model` records;
+parsing is tolerant — a model without pricing, without benchmarks, or a
+file that is not valid JSON at all must not take down a whole render.
 """
 
 from __future__ import annotations
@@ -25,6 +27,7 @@ class Model:
     price_output: float | None
     price_cached_input: float | None
     scores: dict[str, float] = field(default_factory=dict)
+    sources: dict[str, str | None] = field(default_factory=dict)
 
     @property
     def slug(self) -> str:
@@ -32,7 +35,7 @@ class Model:
         return self.model_id.replace("/", "-")
 
 
-def _benchmark_key(b: dict) -> str:
+def benchmark_key(b: dict) -> str:
     """Benchmark name qualified by version when present.
 
     Two models' "Terminal-Bench" scores are only comparable when the
@@ -50,11 +53,12 @@ def load_model(path: Path) -> Model:
     doc = json.loads(path.read_text())
     m = doc["model"]
     price = m.get("priceUsdPer1M") or {}
-    scores = {
-        _benchmark_key(b): b["score"]
-        for b in m.get("benchmarks") or []
-        if isinstance(b.get("score"), (int, float))
-    }
+    scores: dict[str, float] = {}
+    sources: dict[str, str | None] = {}
+    for b in m.get("benchmarks") or []:
+        if isinstance(b.get("score"), (int, float)):
+            scores[benchmark_key(b)] = b["score"]
+        sources[benchmark_key(b)] = b.get("source")
     return Model(
         model_id=m["id"],
         name=m.get("name") or m["id"],
@@ -63,6 +67,7 @@ def load_model(path: Path) -> Model:
         price_output=price.get("output"),
         price_cached_input=price.get("cachedInput"),
         scores=scores,
+        sources=sources,
     )
 
 

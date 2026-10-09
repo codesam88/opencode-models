@@ -3,7 +3,7 @@ online lookups reads locally.
 
 The live arena API is Cloudflare-blocked, so the lookup uses the community
 copy on HuggingFace's datasets-server JSON API (no auth). Results are
-folded into ``data/arena-scores.json`` — a {slug: elo} cache — and merged
+folded into ``data/aiarena/scores.json`` — a {slug: elo} cache — and merged
 into models at load time as an "LMArena Elo" benchmark axis.
 """
 
@@ -14,7 +14,7 @@ from pathlib import Path
 
 from .data import Model
 
-CACHE_NAME = "arena-scores.json"
+CACHE_NAME = "scores.json"
 ARENA_BENCHMARK = "LMArena Elo"
 ROWS_URL = ("https://datasets-server.huggingface.co/rows?dataset="
             "openaccess-ai-collective/chatbot-arena-elo-scores&config=default"

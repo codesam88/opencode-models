@@ -1,0 +1,16 @@
+{
+  "model": {
+    "id": "xai/grok-4.7",
+    "note": "Grok 4.7's Terminal-Bench 4.0 in the registry is x.ai's own chart from its announcement; Artificial Analysis ran the same benchmark on the same (Grok Build) scaffold independently and got less, so the independent value wins the tier policy.",
+    "benchmarks": [
+      {
+        "name": "Terminal-Bench",
+        "version": "4.0",
+        "score": 33.0,
+        "metric": "pass@1",
+        "source": "https://artificialanalysis.ai/articles/benchmarking-grok-4-7",
+        "note": "Artificial Analysis, mini-swe-agent harness with Grok Build (xhigh) — their independence is the point: same benchmark, same scaffold family, independent grading. Upstream's 37.6 is retained as a conflict (tier 3, x.ai's own post) for review."
+      }
+    ]
+  }
+}

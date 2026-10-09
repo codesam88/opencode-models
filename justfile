@@ -15,15 +15,19 @@ benchmarks:
 render:
     python3 -m modelpareto render
 
-# Text table: zen tier, best value first
+# Text table: both providers merged, best value first
+list:
+    python3 -m modelpareto list
+
+# Text table: zen provider only
 list-zen:
     python3 -m modelpareto list --source zen
 
-# Text table: go tier, best value first
+# Text table: go provider only
 list-go:
     python3 -m modelpareto list --source go
 
-# Text table: full catalog, best value first
+# Text table: full catalog, incl. models in neither provider
 list-all:
     python3 -m modelpareto list --source all
 

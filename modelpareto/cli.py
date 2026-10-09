@@ -26,6 +26,7 @@ from .ranking import (
     BAND_INCLUDED,
     BAND_PAYG,
     build_rows,
+    merge_rows,
     order_rows,
     partition_rows,
     ratio,
@@ -45,7 +46,7 @@ BAND_LABELS = (
     (BAND_PAYG, "pay-as-you-go"),
 )
 TABLE_HEADER = (f"{'SCORE':>6}  {'BENCH':>5}  {'$/1M':>7}  "
-                f"{'SCORE/$':>8}  MODEL")
+                f"{'SCORE/$':>8}  {'PROV':>4}  MODEL")
 RULE_WIDTH = 60
 
 
@@ -156,53 +157,79 @@ def _bench_tag(benchmark: str | None) -> str:
 
 def _print_row(row) -> None:
     price = "0" if row.price == 0 else f"{row.price:g}"
+    provider = f"{row.provider:>4}  "
     if row.score is None:
         print(f"{'-':>6}  {_bench_tag(row.benchmark):>5}  {price:>7}  "
-              f"{'-':>8}  {row.name}")
+              f"{'-':>8}  {provider}{row.name}")
         return
     value = "free" if row.price == 0 else f"{ratio(row.score, row.price):.1f}"
     print(f"{row.score:>6g}  {_bench_tag(row.benchmark):>5}  {price:>7}  "
-          f"{value:>8}  {row.name}")
+          f"{value:>8}  {provider}{row.name}")
 
 
 def _cmd_list(args: argparse.Namespace) -> int:
     data_dir = Path(args.data)
     if not data_dir.is_dir():
         return _fail(f"no data directory at {data_dir} — run `fetch` first")
-    try:
-        slugs = sources.load_source(args.source)
-    except KeyError:
-        if args.source != "all":
-            return _fail(
-                f"unknown source {args.source!r} — available: "
-                f"{', '.join(sources.available_sources())}, all"
-            )
-        slugs = None  # all = no tier filter
+
+    # providers: zen and go, plus `-` for catalog models in neither tier
+    tiers = sources.available_sources()
+    source = args.source
+    if source is None:
+        selected, scope = list(tiers), "tiers"      # both, merged
+    elif source == "all":
+        selected, scope = list(tiers) + ["-"], "all"
+    elif source in tiers:
+        selected, scope = [source], "tier"
+    else:
+        return _fail(f"unknown source {source!r} — available: "
+                     f"{', '.join(tiers)}, all")
+
     models = merge_from_file(load_models(data_dir), data_dir)
-    in_tier, free_ids = sources.members(models, slugs)
-    if not in_tier:
-        return _fail(f"no model of {args.source} is in {data_dir} — run `fetch`")
+    groups, listed, counts, tier_slugs = [], [], {}, {}
+    covered: set[str] = set()
+    for provider in selected:
+        if provider == "-":
+            pool = [m for m in models if m.model_id not in covered]
+            free_ids = sources.members(models, None)[1]
+        else:
+            tier_slugs[provider] = sources.load_source(provider)
+            pool, free_ids = sources.members(models, tier_slugs[provider])
+            counts[provider] = len(pool)
+            covered |= {m.model_id for m in pool}
+        listed += pool
+        groups.append(build_rows(pool, _entries_for(provider, data_dir),
+                                 free_ids, axis=args.price, provider=provider))
+    if not listed:
+        return _fail(f"no model of {source or 'zen+go'} is in {data_dir} "
+                     f"— run `fetch`")
+    rows = merge_rows(*groups)
 
     if args.benchmark:
         wanted = args.benchmark
-        if wanted not in dict(available(in_tier)):
-            listing = ", ".join(f"{n} ({c})" for n, c in list(available(in_tier))[:10])
+        if wanted not in dict(available(listed)):
+            listing = ", ".join(f"{n} ({c})"
+                                for n, c in list(available(listed))[:10])
             return _fail(f"unknown benchmark {wanted!r} — available: {listing}")
         rows = [replace(r, score=r.model.scores[wanted], benchmark=wanted)
-                for r in build_rows(in_tier, _entries_for(args.source, data_dir),
-                                    free_ids, axis=args.price)
-                if wanted in r.model.scores]
+                for r in rows if wanted in r.model.scores]
         rows.sort(key=lambda r: (-ratio(r.score, r.price), -r.score))
         order_note = f"benchmark {wanted} · sorted by score per $"
     else:
-        rows = order_rows(build_rows(in_tier, _entries_for(args.source, data_dir),
-                                     free_ids, axis=args.price))
+        rows = order_rows(rows)
         order_note = "Terminal-Bench first, SWE-Bench fills in"
     if not rows:
-        return _fail(f"no {args.source} model in {data_dir} has benchmark scores")
+        return _fail(f"no {source or 'zen+go'} model in {data_dir} "
+                     f"has benchmark scores")
 
-    head = (f"all: {len(models)} models in catalog" if slugs is None else
-            f"{args.source}: {len(in_tier)}/{len(slugs)} models in catalog")
+    if scope == "tiers":
+        head = (f"zen+go: {counts.get('zen', 0)} zen + "
+                f"{counts.get('go', 0)} go models")
+    elif scope == "tier":
+        head = (f"{source}: {counts[source]}/{len(tier_slugs[source])} "
+                f"models in catalog")
+    else:
+        head = f"all: {len(models)} models in catalog"
     print(f"{head} · {len(rows)} lines · {order_note} · {COST_NOTE}")
 
     main, worst, pricey = partition_rows(rows)
@@ -245,11 +272,14 @@ def main(argv: list[str] | None = None) -> int:
                           help="output HTML path (default: %(default)s)")
 
     p_list = sub.add_parser(
-        "list", help="three tables of a Console tier (zen/go): best value "
-                     "(free/included/pay-as-you-go), worst score, highest cost"
+        "list", help="three tables of Console models across providers "
+                     "(zen/go): best value (free/included/pay-as-you-go), "
+                     "worst score, highest cost"
     )
-    p_list.add_argument("--source", required=True,
-                        help="tier to list (zen or go)")
+    p_list.add_argument("--source",
+                        help="provider to list: zen or go (default: both, "
+                             "merged) — 'all' adds the catalog models that "
+                             "are in neither tier")
     p_list.add_argument("--price", choices=("weighted", "input", "output"),
                         default="weighted",
                         help="cost of a line (default: weighted 20%% in, "

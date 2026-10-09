@@ -15,19 +15,27 @@ python3 -m modelpareto fetch                     # refresh data/ from opencode.a
 python3 -m modelpareto benchmarks                # list benchmarks + coverage
 python3 -m modelpareto render                    # pareto.html, best-covered benchmark
 python3 -m modelpareto render --benchmark "SWE-Bench Verified" --out swe.html
-python3 -m modelpareto list --source zen         # three tables: value, worst, priciest
-python3 -m modelpareto list --source go --benchmark "SWE-Bench Verified"
+python3 -m modelpareto list                      # both providers merged, three tables
+python3 -m modelpareto list --source zen         # one provider only
+python3 -m modelpareto list --source all --benchmark "SWE-Bench Verified"
 ```
 
 `render` defaults to the benchmark covering the most models. The output is one
 self-contained HTML file (inline SVG, no external assets) — open it from disk
 or serve the directory.
 
-`list` filters to a Console tier (`zen` = curated, `go` = open, `all` = the
-whole catalog) and prints three tables: **best value** first, then **worst
-score** (bottom 30%) and **highest cost** (top 30%). The culls are disjoint
-and cost claims first, so a model that is both priciest and lowest-scoring is
-reported once, under cost.
+`list` covers the Console **providers** (`zen` = curated, `go` = open) and
+prints three tables: **best value** first, then **worst score** (bottom 30%)
+and **highest cost** (top 30%). The culls are disjoint and cost claims first,
+so a model that is both priciest and lowest-scoring is reported once, under
+cost.
+
+By default both providers are merged into one view. A model sold by both gets
+one line per provider — same model, different rate and different monthly
+allowance — tagged in the `PROV` column immediately before the model name
+(`zen`, `go`, or `-` for catalog models in neither tier; those only appear
+with `--source all`). `--source zen` / `--source go` narrows the view to a
+single provider.
 
 Best value splits into bands — **free** (use first), **included usage**
 (lines the tier grants a monthly allowance for), **pay-as-you-go** — and is
@@ -44,8 +52,8 @@ Pricing comes from the tier docs rather than the catalog, which carries one
 Zen-style price per model: documented rates replace it, and every priced
 variant (peak/off-peak, token window) gets its own line. Free lines — `-free`
 tier slugs and zero-priced models — are priced at a tenth of the cheapest
-real price in the set and tagged `[free]`, so "free" sorts and divides like
-any other cost instead of going infinite.
+real price *in the whole view* (across providers) and tagged `[free]`, so
+"free" sorts and divides like any other cost instead of going infinite.
 
 Tier membership lists ship in `modelpareto/sources/` as slug files scraped
 from the tier pages; doc-calibrated prices are snapshotted in

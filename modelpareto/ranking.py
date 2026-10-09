@@ -6,7 +6,7 @@ excluded — a ratio cannot be computed for them.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from .data import Model
 from .pricing import variant_of, weighted_cost
@@ -64,6 +64,7 @@ class Row:
     band: str
     score: float | None          # primary family score, else secondary
     benchmark: str | None        # the key `score` came from
+    provider: str = "-"          # zen / go, "-" when in neither tier
     entry: object | None = None  # pricing.PriceEntry when doc-priced
 
 
@@ -87,7 +88,7 @@ def ratio(score: float, price: float) -> float:
 
 
 def build_rows(models: list[Model], entries=(), free_ids=frozenset(),
-               axis: str = "weighted") -> list[Row]:
+               axis: str = "weighted", provider: str = "-") -> list[Row]:
     """Price every line of the console list.
 
     A documented line replaces the catalog price (the catalog has no notion
@@ -156,8 +157,22 @@ def build_rows(models: list[Model], entries=(), free_ids=frozenset(),
                         band=band,
                         score=chosen[1] if chosen else None,
                         benchmark=chosen[0] if chosen else None,
-                        entry=entry))
+                        provider=provider, entry=entry))
     return rows
+
+
+def merge_rows(*groups: list[Row]) -> list[Row]:
+    """Concatenate provider groups onto one free-price scale.
+
+    Each group prices its own free lines against its own cheapest line;
+    once zen and go share a view the whole view has to agree on what "a
+    tenth of the cheapest" means, so free rows are re-priced against every
+    group's real prices. Provider tags and order are kept.
+    """
+    rows = [row for group in groups for row in group]
+    real = [row.price for row in rows if not row.free and row.price > 0]
+    nominal = min(real) / 10 if real else 0.0
+    return [replace(row, price=nominal) if row.free else row for row in rows]
 
 
 def order_rows(rows: list[Row]) -> list[Row]:

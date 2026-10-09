@@ -23,3 +23,31 @@ def load_source(name: str) -> set[str]:
     if not path.exists():
         raise KeyError(name)
     return {line.strip() for line in path.read_text().splitlines() if line.strip()}
+
+
+def members(models: list[Model], slugs: set[str] | None
+            ) -> tuple[list[Model], set[str]]:
+    """Tier membership: the models in a tier, plus which of them are free.
+
+    The tier pages list free variants under their own slug
+    (``mimo-v2.6-flash-free``, ``step-5-preview-free``) while the catalog
+    carries one model under the base slug, so ``X-free`` has to reach ``X``.
+    A member reached through a ``-free`` slug — or priced at zero — is free.
+    """
+    if slugs is None:  # `--source all`: no tier filter
+        return (list(models),
+                {m.model_id for m in models if m.price_input == 0})
+    included: list[Model] = []
+    free: set[str] = set()
+    for m in models:
+        slug = m.model_id.split("/")[-1]
+        if slug in slugs or m.model_id in slugs:
+            matched_free = False
+        elif f"{slug}-free" in slugs:
+            matched_free = True
+        else:
+            continue
+        included.append(m)
+        if matched_free or m.price_input == 0:
+            free.add(m.model_id)
+    return included, free

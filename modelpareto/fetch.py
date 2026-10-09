@@ -45,13 +45,15 @@ def _filename_for(url: str) -> str:
 
 
 def refresh(data_dir: Path, get=http_get) -> list[str]:
-    """Download every model's JSON into *data_dir*; return saved filenames.
+    """Download every model's JSON into *data_dir*/opencode; return names.
 
-    A failed or empty download for one model is skipped, not fatal — the
-    rest of the dataset still refreshes.
+    The upstream layer is verbatim: ``fetch`` writes only here, and the
+    curated overlays in ``data/overrides/`` are layered on at load time
+    (see overrides.py). A failed or empty download for one model is
+    skipped, not fatal — the rest of the dataset still refreshes.
     """
-    data_dir = Path(data_dir)
-    data_dir.mkdir(parents=True, exist_ok=True)
+    out = Path(data_dir) / "opencode"
+    out.mkdir(parents=True, exist_ok=True)
     saved: list[str] = []
     for url in urls_from_sitemap(get(SITEMAP_URL)):
         try:
@@ -61,6 +63,6 @@ def refresh(data_dir: Path, get=http_get) -> list[str]:
         if not body.strip():
             continue
         name = _filename_for(url)
-        (data_dir / name).write_text(body)
+        (out / name).write_text(body)
         saved.append(name)
     return saved

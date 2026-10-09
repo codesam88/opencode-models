@@ -7,6 +7,10 @@ help:
 fetch:
     python3 -m modelpareto fetch
 
+# Curated overrides that disagree with upstream
+conflicts:
+    python3 -m modelpareto conflicts
+
 # List benchmarks with coverage
 benchmarks:
     python3 -m modelpareto benchmarks

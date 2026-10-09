@@ -78,7 +78,7 @@ class RefreshTest(unittest.TestCase):
                 }
             )
             saved = refresh(Path(tmp), get)
-            body = (Path(tmp) / "ai21__jamba-large.json").read_text()
+            body = (Path(tmp) / "opencode" / "ai21__jamba-large.json").read_text()
         self.assertEqual(body, '{"a":1}')
         self.assertIn("ai21__jamba-large.json", saved)
 

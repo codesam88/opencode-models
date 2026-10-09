@@ -168,6 +168,17 @@ class CliTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("zen", out)
 
+    def test_list_source_all_includes_everything(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_sample(Path(tmp))
+            code, out = self._run(
+                "--data", tmp, "list", "--source", "all", "--benchmark", "TB",
+            )
+        self.assertEqual(code, 0)
+        self.assertIn("M1", out)
+        self.assertIn("M2", out)
+        self.assertIn("M3", out)
+
 
 if __name__ == "__main__":
     unittest.main()

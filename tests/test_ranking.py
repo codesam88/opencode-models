@@ -4,7 +4,7 @@ import unittest
 
 from modelpareto.data import Model
 from modelpareto.pricing import PriceEntry
-from modelpareto.ranking import build_rows, order_rows, partition_rows
+from modelpareto.ranking import build_rows, merge_rows, order_rows, partition_rows
 
 TB = "Terminal-Bench 2.1"
 SWE = "SWE-Bench Pro"
@@ -120,6 +120,29 @@ class RowBuildingTest(unittest.TestCase):
         row = build_rows(models, [])[0]
         self.assertEqual(row.score, 40.0)
         self.assertEqual(row.benchmark, SWE)
+
+
+class MergeTest(unittest.TestCase):
+    def test_rows_carry_the_provider_they_are_listed_under(self):
+        self.assertEqual(build_rows([_m("l/a", 1.0, tb=50.0)])[0].provider, "-")
+        self.assertEqual(
+            build_rows([_m("l/a", 1.0, tb=50.0)], provider="go")[0].provider, "go")
+
+    def test_free_lines_share_one_price_scale_across_providers(self):
+        # zen sells a model for free, go sells another at $0.20: the free
+        # line has to be 1/10 of the cheapest price in the *whole* view,
+        # not of whatever its own provider group happened to contain
+        zen = build_rows([_m("l/zfree", 5.0, tb=40.0)],
+                         [_entry("zfree", 0.0, 0.0, free=True)], provider="zen")
+        go = build_rows([_m("l/gopaid", 0.2, tb=40.0)], provider="go")
+        merged = merge_rows(zen, go)
+        self.assertEqual([r.provider for r in merged], ["zen", "go"])
+        free = [r for r in merged if r.free]
+        paid = [r for r in merged if not r.free]
+        self.assertEqual(len(free), 1)
+        self.assertAlmostEqual(free[0].price, 0.02)   # 0.2 / 10
+        self.assertEqual(len(paid), 1)
+        self.assertAlmostEqual(paid[0].price, 0.2)
 
 
 class OrderTest(unittest.TestCase):

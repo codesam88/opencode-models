@@ -330,6 +330,78 @@ class CliTest(unittest.TestCase):
             self.assertEqual(cli._style("hi"), "\033[1mhi\033[0m")
         self.assertEqual(cli._style("hi"), "hi")   # plain when redirected/piped
 
+    def test_list_defaults_to_both_providers_merged(self):
+        import json
+
+        import modelpareto.sources as sources
+
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+
+            def model_doc(mid, price, score):
+                return json.dumps({"model": {
+                    "id": mid, "name": mid.split("/")[1].upper(), "lab": "l",
+                    "priceUsdPer1M": {"input": price, "output": None,
+                                      "cachedInput": None},
+                    "benchmarks": [{"name": "Terminal-Bench", "version": "2.1",
+                                    "score": score, "metric": "acc",
+                                    "source": ""}],
+                }})
+
+            # ds: documented by both providers at different rates; the two
+            # fillers are pricey enough to be culled and weak enough that
+            # best value keeps both ds lines
+            (d / "l__ds.json").write_text(model_doc("l/ds", 9.9, 50.0))
+            (d / "l__e1.json").write_text(model_doc("l/e1", 5.0, 10.0))
+            (d / "l__e2.json").write_text(model_doc("l/e2", 6.0, 20.0))
+            prices_dir = d / "tier_prices"
+            prices_dir.mkdir()
+            (prices_dir / "zen_prices.json").write_text(json.dumps([
+                {"tier": "zen", "model_id": "ds", "name": "DS", "input": 2.0,
+                 "output": 2.0, "cached_read": 2.0, "limit": None,
+                 "free": False},
+            ]))
+            (prices_dir / "go_prices.json").write_text(json.dumps([
+                {"tier": "go", "model_id": "ds", "name": "DS", "input": 1.0,
+                 "output": 1.0, "cached_read": 1.0, "limit": 60.0,
+                 "free": False},
+            ]))
+            orig = sources.load_source
+            sources.load_source = lambda name: {"ds", "e1", "e2"}
+            try:
+                code, out = self._run("--data", tmp, "list")   # no --source
+            finally:
+                sources.load_source = orig
+        self.assertEqual(code, 0)
+        lines = out.splitlines()
+        self.assertEqual(len(re.findall(r"(?m)^\s+\S+\s+\S+\s+\S+\s+\S+\s+"
+                                        r"\S+  DS$", out)), 2)
+        self.assertTrue(any(line.endswith("go  DS") for line in lines))   # provider
+        self.assertTrue(any(line.endswith("zen  DS") for line in lines))  # before name
+        self.assertIn("PROV  MODEL", out)            # column header
+        self.assertIn("included usage", out)         # go grants a monthly cap
+        self.assertIn("pay-as-you-go", out)          # zen does not
+
+    def test_list_all_adds_a_dash_provider_for_catalog_only_models(self):
+        import modelpareto.sources as sources
+
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_sample(Path(tmp))
+            orig = sources.load_source
+            sources.load_source = lambda name: {"m1", "m2"}
+            try:
+                code, out = self._run("--data", tmp, "list", "--benchmark", "TB")
+                self.assertEqual(code, 0)
+                self.assertNotIn("M3", out)          # default = tiers only
+                code, out = self._run("--data", tmp, "list", "--source", "all",
+                                      "--benchmark", "TB")
+            finally:
+                sources.load_source = orig
+        self.assertEqual(code, 0)
+        self.assertIn("M1", out)
+        self.assertTrue(any(line.endswith("-  M3") for line in out.splitlines()),
+                        "M3 is in neither tier, so it is listed under '-'")
+
     def test_list_prints_three_tables_in_order(self):
         import modelpareto.sources as sources
 

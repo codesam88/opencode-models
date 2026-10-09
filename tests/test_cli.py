@@ -320,8 +320,10 @@ class CliTest(unittest.TestCase):
         self.assertEqual(out.count("\n\n──"), 3)   # blank line before each table
         for title in ("best value", "worst score", "highest cost"):
             self.assertRegex(out, rf"(?m)^── [^\n]*{title}")
-        self.assertEqual(out.count("SCORE/$"), 3)  # highlighted column headers
-        self.assertEqual(len(re.findall(r"(?m)^ SCORE ", out)), 3)
+        # one column header per table, all five columns named, in order
+        header = re.compile(r"(?m)^\s*SCORE\s+BENCH\s+\$/1M\s+SCORE/\$\s+PROV"
+                            r"\s+MODEL\s*$")
+        self.assertEqual(len(header.findall(out)), 3)
 
     def test_headers_are_bold_when_the_output_is_a_terminal(self):
         import modelpareto.cli as cli
@@ -402,6 +404,140 @@ class CliTest(unittest.TestCase):
         self.assertTrue(any(line.endswith("-  M3") for line in out.splitlines()),
                         "M3 is in neither tier, so it is listed under '-'")
 
+    def test_list_collapses_a_pair_priced_the_same_into_one_line(self):
+        import json
+
+        import modelpareto.sources as sources
+
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            (d / "l__ds.json").write_text(json.dumps({"model": {
+                "id": "l/ds", "name": "DS", "lab": "l",
+                "priceUsdPer1M": {"input": 9.9, "output": None,
+                                  "cachedInput": None},
+                "benchmarks": [{"name": "Terminal-Bench", "version": "2.1",
+                                "score": 50.0, "metric": "acc", "source": ""}],
+            }}))
+            prices_dir = d / "tier_prices"
+            prices_dir.mkdir()
+            same = {"model_id": "ds", "name": "DS", "input": 1.0,
+                    "output": 1.0, "cached_read": 1.0, "free": False}
+            (prices_dir / "go_prices.json").write_text(
+                json.dumps([dict(same, tier="go", limit=60.0)]))
+            (prices_dir / "zen_prices.json").write_text(
+                json.dumps([dict(same, tier="zen", limit=None)]))
+            orig = sources.load_source
+            sources.load_source = lambda name: {"ds"}
+            try:
+                code, out = self._run("--data", tmp, "list")
+            finally:
+                sources.load_source = orig
+        self.assertEqual(code, 0)
+        lines = [l for l in out.splitlines() if l.rstrip().endswith("DS")]
+        self.assertEqual(len(lines), 1, out)   # one line, not one per provider
+        self.assertIn("go,zen", lines[0])
+
+    def test_free_lines_show_a_zero_price_tag(self):
+        import json
+
+        import modelpareto.sources as sources
+
+        def doc(mid, price, score):
+            return json.dumps({"model": {
+                "id": mid, "name": mid.split("/")[1].upper(), "lab": "l",
+                "priceUsdPer1M": {"input": price, "output": None,
+                                  "cachedInput": None},
+                "benchmarks": [{"name": "Terminal-Bench", "version": "2.1",
+                                "score": score, "metric": "acc", "source": ""}],
+            }})
+
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            (d / "l__gift.json").write_text(doc("l/gift", 5.0, 40.0))
+            (d / "l__paid.json").write_text(doc("l/paid", 1.0, 50.0))
+            prices_dir = d / "tier_prices"
+            prices_dir.mkdir()
+            (prices_dir / "go_prices.json").write_text(json.dumps([
+                {"tier": "go", "model_id": "gift", "name": "Gift",
+                 "input": 0.0, "output": 0.0, "cached_read": 0.0,
+                 "limit": None, "free": True},
+            ]))
+            orig = sources.load_source
+            sources.load_source = lambda name: {"gift", "paid"}
+            try:
+                code, out = self._run("--data", tmp, "list")
+            finally:
+                sources.load_source = orig
+        self.assertEqual(code, 0)
+        gift = [l for l in out.splitlines() if "GIFT [free]" in l]
+        self.assertEqual(len(gift), 1, out)
+        self.assertNotIn("0.1", gift[0])       # the nominal price stays hidden
+        self.assertRegex(gift[0], r"\s0\s+free\s+\S+\s+GIFT \[free\]$")
+
+    def test_columns_stay_aligned_whatever_the_cell_widths(self):
+        """Column widths are measured once, across the whole view.
+
+        Fixed widths break the moment a cell outgrows its column — and the
+        widest cells here (price '0.263175', provider 'go,zen') land in the
+        *highest cost* table, so only a view-wide measurement keeps every
+        table lined up with its own header.
+        """
+        import json
+
+        import modelpareto.sources as sources
+
+        def doc(mid, price, score):
+            return json.dumps({"model": {
+                "id": mid, "name": mid.split("/")[1].upper(), "lab": "l",
+                "priceUsdPer1M": {"input": price, "output": None,
+                                  "cachedInput": None},
+                "benchmarks": [{"name": "Terminal-Bench", "version": "2.1",
+                                "score": score, "metric": "acc", "source": ""}],
+            }})
+
+        prices = {                    # price per $1M, cheapest last
+            "gift": (5.0, 40.0),      # zero-priced in zen → shown at 0
+            "narrow": (0.0612, 50.0),
+            "mid": (0.1518, 55.0),
+            "mid2": (0.165, 60.0),
+            "wide": (0.263175, 65.0),  # widest price AND widest provider
+            "top": (5.0, 70.0),
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            for mid, (price, score) in prices.items():
+                (d / f"l__{mid}.json").write_text(doc(f"l/{mid}", price, score))
+            prices_dir = d / "tier_prices"
+            prices_dir.mkdir()
+            (prices_dir / "go_prices.json").write_text(json.dumps([
+                {"tier": "go", "model_id": "wide", "name": "Wide",
+                 "input": 0.263175, "output": 0.263175, "cached_read": 0.263175,
+                 "limit": 60.0, "free": False},
+            ]))
+            (prices_dir / "zen_prices.json").write_text(json.dumps([
+                {"tier": "zen", "model_id": mid, "name": mid.title(),
+                 "input": price, "output": price, "cached_read": price,
+                 "limit": None, "free": mid == "gift"}
+                for mid, (price, _) in prices.items()
+            ]))
+            orig = sources.load_source
+            sources.load_source = lambda name: (
+                {"wide"} if name == "go" else set(prices))
+            try:
+                code, out = self._run("--data", tmp, "list")
+            finally:
+                sources.load_source = orig
+        self.assertEqual(code, 0)
+        lines = out.splitlines()
+        header = next(l for l in lines if l.strip().startswith("SCORE"))
+        model_col = header.index("MODEL")
+        # one row from each of the three tables, widest cells checked last
+        for name in ("MID", "GIFT [free]", "TOP", "WIDE"):
+            row = next(l for l in lines if l.rstrip().endswith(name))
+            self.assertEqual(row.index(name), model_col, f"{name}: {row!r}")
+        wide = next(l for l in lines if l.rstrip().endswith("WIDE"))
+        self.assertIn("go,zen", wide)   # the whole token, not a truncation
+
     def test_list_prints_three_tables_in_order(self):
         import modelpareto.sources as sources
 
@@ -477,8 +613,8 @@ class CliTest(unittest.TestCase):
         self.assertLess(out.index("included usage"),
                         out.index("pay-as-you-go"))
         self.assertLess(out.index("pay-as-you-go"), out.index("worst score"))
-        self.assertIn("GIFT [free]", out)      # tagged, and...
-        self.assertIn("0.1", out)              # ...priced at 1/10 of $1
+        self.assertIn("GIFT [free]", out)      # tagged (zero price tag is
+        # covered by test_free_lines_show_a_zero_price_tag)
 
     def test_list_shows_the_representative_cost_not_the_bare_input(self):
         import json

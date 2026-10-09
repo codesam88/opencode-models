@@ -26,6 +26,7 @@ from .ranking import (
     BAND_INCLUDED,
     BAND_PAYG,
     build_rows,
+    dedupe_providers,
     merge_rows,
     order_rows,
     partition_rows,
@@ -45,8 +46,8 @@ BAND_LABELS = (
     (BAND_INCLUDED, "included usage"),
     (BAND_PAYG, "pay-as-you-go"),
 )
-TABLE_HEADER = (f"{'SCORE':>6}  {'BENCH':>5}  {'$/1M':>7}  "
-                f"{'SCORE/$':>8}  {'PROV':>4}  MODEL")
+#: Fixed columns, right-aligned; the model name takes the rest of the line.
+HEADERS = ("SCORE", "BENCH", "$/1M", "SCORE/$", "PROV")
 RULE_WIDTH = 60
 
 
@@ -55,11 +56,19 @@ def _style(text: str) -> str:
     return f"\033[1m{text}\033[0m" if sys.stdout.isatty() else text
 
 
-def _section(title: str) -> None:
+def _row_line(cells: tuple[str, ...], widths: tuple[int, ...]) -> str:
+    return "  ".join(cell.rjust(width) for cell, width in zip(cells, widths))
+
+
+def _header(widths: tuple[int, ...]) -> str:
+    return _style(_row_line(HEADERS, widths) + "  MODEL")
+
+
+def _section(title: str, widths: tuple[int, ...]) -> None:
     """Open a table: blank line, rule-wrapped title, highlighted header."""
     print()
     print(f"── {title} " + "─" * max(4, RULE_WIDTH - len(title)))
-    print(_style(TABLE_HEADER))
+    print(_header(widths))
 
 
 def _fail(msg: str) -> int:
@@ -155,16 +164,31 @@ def _bench_tag(benchmark: str | None) -> str:
     return benchmark[:5]
 
 
-def _print_row(row) -> None:
-    price = "0" if row.price == 0 else f"{row.price:g}"
-    provider = f"{row.provider:>4}  "
-    if row.score is None:
-        print(f"{'-':>6}  {_bench_tag(row.benchmark):>5}  {price:>7}  "
-              f"{'-':>8}  {provider}{row.name}")
-        return
-    value = "free" if row.price == 0 else f"{ratio(row.score, row.price):.1f}"
-    print(f"{row.score:>6g}  {_bench_tag(row.benchmark):>5}  {price:>7}  "
-          f"{value:>8}  {provider}{row.name}")
+def _cells(row) -> tuple[str, str, str, str, str]:
+    """The five fixed columns of one row, as text."""
+    # a free line is free whatever price it was re-priced to for ranking
+    no_cost = row.free or row.price == 0
+    price = "0" if no_cost else f"{row.price:g}"
+    if no_cost:
+        value = "free"
+    elif row.score is None:
+        value = "-"
+    else:
+        value = f"{ratio(row.score, row.price):.1f}"
+    score = "-" if row.score is None else f"{row.score:g}"
+    return score, _bench_tag(row.benchmark), price, value, row.provider
+
+
+def _widths(rows) -> tuple[int, ...]:
+    """Widest cell per column across the whole view, header included."""
+    return tuple(
+        max([len(heading)] + [len(cells[i]) for cells in map(_cells, rows)])
+        for i, heading in enumerate(HEADERS)
+    )
+
+
+def _print_row(row, widths: tuple[int, ...]) -> None:
+    print(_row_line(_cells(row), widths) + f"  {row.name}")
 
 
 def _cmd_list(args: argparse.Namespace) -> int:
@@ -203,7 +227,8 @@ def _cmd_list(args: argparse.Namespace) -> int:
     if not listed:
         return _fail(f"no model of {source or 'zen+go'} is in {data_dir} "
                      f"— run `fetch`")
-    rows = merge_rows(*groups)
+    # one line per (model, variant, score, cost) before the culls see them
+    rows = dedupe_providers(merge_rows(*groups))
 
     if args.benchmark:
         wanted = args.benchmark
@@ -233,22 +258,25 @@ def _cmd_list(args: argparse.Namespace) -> int:
     print(f"{head} · {len(rows)} lines · {order_note} · {COST_NOTE}")
 
     main, worst, pricey = partition_rows(rows)
+    # one set of column widths for the whole view, so the three tables line
+    # up with each other too
+    widths = _widths(rows)
 
-    _section(f"best value · {len(main)} lines")
+    _section(f"best value · {len(main)} lines", widths)
     for band, label in BAND_LABELS:
         group = [r for r in main if r.band == band]
         if group:
             print(f"  {label} · {len(group)}")
             for row in group:
-                _print_row(row)
+                _print_row(row, widths)
 
-    _section(f"worst score (bottom 30%) · {len(worst)} lines")
+    _section(f"worst score (bottom 30%) · {len(worst)} lines", widths)
     for row in worst:
-        _print_row(row)
+        _print_row(row, widths)
 
-    _section(f"highest cost (top 30%) · {len(pricey)} lines")
+    _section(f"highest cost (top 30%) · {len(pricey)} lines", widths)
     for row in pricey:
-        _print_row(row)
+        _print_row(row, widths)
     return 0
 
 

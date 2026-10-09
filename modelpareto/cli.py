@@ -73,12 +73,14 @@ def _cmd_list(args: argparse.Namespace) -> int:
     try:
         slugs = sources.load_source(args.source)
     except KeyError:
-        return _fail(
-            f"unknown source {args.source!r} — available: "
-            f"{', '.join(sources.available_sources())}"
-        )
+        if args.source != "all":
+            return _fail(
+                f"unknown source {args.source!r} — available: "
+                f"{', '.join(sources.available_sources())}, all"
+            )
+        slugs = None  # all = no tier filter
     models = load_models(data_dir)
-    in_tier = [
+    in_tier = models if slugs is None else [
         m for m in models
         if m.model_id.split("/")[-1] in slugs or m.model_id in slugs
     ]
@@ -90,9 +92,12 @@ def _cmd_list(args: argparse.Namespace) -> int:
         listing = ", ".join(f"{n} ({c})" for n, c in list(available(in_tier))[:10])
         return _fail(f"unknown benchmark {benchmark!r} — available: {listing}")
     ranked = by_score_per_price(in_tier, benchmark)
-    matched = len(in_tier)
-    print(f"{args.source}: {matched}/{len(slugs)} models in catalog · "
-          f"benchmark {benchmark} · sorted by score per $ input")
+    if slugs is None:
+        print(f"all: {len(models)} models in catalog · "
+              f"benchmark {benchmark} · sorted by score per $ input")
+    else:
+        print(f"{args.source}: {len(in_tier)}/{len(slugs)} models in catalog · "
+              f"benchmark {benchmark} · sorted by score per $ input")
     print(f"{'score':>6}  {'$/1M':>7}  {'score/$':>8}  model")
     for m in ranked:
         score = m.scores[benchmark]

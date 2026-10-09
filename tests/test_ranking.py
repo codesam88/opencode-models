@@ -13,15 +13,19 @@ from modelpareto.ranking import (
 )
 
 TB = "Terminal-Bench 2.1"
+TB4 = "Terminal-Bench 4.0"
 SWE = "SWE-Bench Pro"
 
 
-def _m(model_id, price, tb=None, swe=None, output=None, cached=None, name=None):
+def _m(model_id, price, tb=None, swe=None, output=None, cached=None, name=None,
+       tb40=None):
     scores = {}
     if tb is not None:
         scores[TB] = tb
     if swe is not None:
         scores[SWE] = swe
+    if tb40 is not None:
+        scores[TB4] = tb40
     lab = model_id.split("/")[0]
     return Model(
         model_id=model_id,
@@ -126,6 +130,18 @@ class RowBuildingTest(unittest.TestCase):
         row = build_rows(models, [])[0]
         self.assertEqual(row.score, 40.0)
         self.assertEqual(row.benchmark, SWE)
+
+    def test_the_4_score_never_wins_the_2_slot(self):
+        # 4.0 is a harder task set (top score ~58 vs ~87): a model carrying
+        # both ranks on its 2.1 number, not the inflated-looking 4.0 gap
+        row = build_rows([_m("l/both", 1.0, tb=50.0, tb40=88.0)])[0]
+        self.assertEqual(row.benchmark, TB)
+        self.assertEqual(row.score, 50.0)
+
+    def test_a_4_only_model_keeps_its_score_for_display(self):
+        row = build_rows([_m("l/four", 1.0, tb40=41.0)])[0]
+        self.assertEqual(row.benchmark, TB4)
+        self.assertEqual(row.score, 41.0)
 
 
 class MergeTest(unittest.TestCase):
@@ -239,6 +255,27 @@ class OrderTest(unittest.TestCase):
         ordered = order_rows(build_rows(models, entries))
         self.assertEqual([r.model.model_id for r in ordered],
                          ["l/tb", "l/freebie"])
+
+    def test_tb4_only_rows_fill_in_at_their_percentile(self):
+        # 4.0 scores are their own axis: inserted like SWE rows, never
+        # sorted against 2.1 numbers
+        models = [_m(f"l/tb{i}", 1.0, tb=t)
+                  for i, t in enumerate([100, 80, 60, 40, 20], 1)]
+        models += [_m("l/fourhot", 1.0, tb40=88.0),
+                   _m("l/fourcool", 1.0, tb40=22.0)]
+        ordered = [r.model.model_id for r in order_rows(build_rows(models))]
+        # 22 is last of the two 4.0 rows → the bottom slot
+        self.assertEqual(ordered, ["l/fourhot", "l/tb1", "l/tb2", "l/tb3",
+                                   "l/tb4", "l/fourcool", "l/tb5"])
+
+    def test_a_free_tb4_row_is_listed_once(self):
+        # a free 4.0-only row is placed as a filler — not also appended to
+        # the free tail that follows the scored rows
+        models = [_m("l/tb", 1.0, tb=70.0), _m("l/free4", 5.0, tb40=30.0)]
+        entries = [_entry("free4", 0.0, 0.0, free=True)]
+        ordered = order_rows(build_rows(models, entries))
+        self.assertEqual([r.model.model_id for r in ordered],
+                         ["l/free4", "l/tb"])
 
 
 class PartitionTest(unittest.TestCase):

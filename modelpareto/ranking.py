@@ -44,6 +44,14 @@ def by_score_per_price(models: list[Model], benchmark: str,
 #: Benchmark families the console list combines, in priority order.
 PRIMARY_FAMILY = "Terminal-Bench"
 SECONDARY_FAMILY = "SWE-Bench"
+#: Terminal-Bench 4.0 (Aug 2026) is a harder task set than 2.x — the best
+#: 4.0 run scores ~58 where 2.1 leaders reach ~87 — so its numbers live on
+#: their own scale. 2.1 still builds the skeleton (37 tier models carry it
+#: against 12 for 4.0); 4.0 fills in like SWE-Bench until coverage flips.
+TB4_FAMILY = "Terminal-Bench 4.0"
+
+#: Fill-in axes, applied after the primary skeleton is built.
+SECONDARY_AXES = (SECONDARY_FAMILY, TB4_FAMILY)
 
 #: Share of the list culled into each side table.
 CULL_FRACTION = 0.3
@@ -68,17 +76,25 @@ class Row:
     entry: object | None = None  # pricing.PriceEntry when doc-priced
 
 
-def _best(scores: dict[str, float], family: str) -> tuple[str, float] | None:
+def _best(scores: dict[str, float], family: str,
+          skip: str | None = None) -> tuple[str, float] | None:
     """Highest score under *family*, as ``(key, value)``.
 
     Families are matched with spaces folded to dashes so ``Terminal Bench
-    2.1`` and ``Terminal-Bench 2.1`` count as the same benchmark.
+    2.1`` and ``Terminal-Bench 2.1`` count as the same benchmark. *skip*
+    excludes keys on a harder scale of the same family — a 4.0 score must
+    not win a slot that is compared against 2.x numbers.
     """
     best = None
+    folded_skip = skip.lower().replace(" ", "-") if skip else None
     for key, value in scores.items():
-        if key.lower().replace(" ", "-").startswith(family.lower()):
-            if best is None or value > best[1]:
-                best = (key, value)
+        folded = key.lower().replace(" ", "-")
+        if not folded.startswith(family.lower().replace(" ", "-")):
+            continue
+        if folded_skip and folded.startswith(folded_skip):
+            continue
+        if best is None or value > best[1]:
+            best = (key, value)
     return best
 
 
@@ -150,9 +166,10 @@ def build_rows(models: list[Model], entries=(), free_ids=frozenset(),
         else:
             price = cost
             band = BAND_INCLUDED if limit is not None else BAND_PAYG
-        primary = _best(model.scores, PRIMARY_FAMILY)
+        primary = _best(model.scores, PRIMARY_FAMILY, skip=TB4_FAMILY)
         secondary = _best(model.scores, SECONDARY_FAMILY)
-        chosen = primary or secondary
+        tb4 = _best(model.scores, TB4_FAMILY)
+        chosen = primary or secondary or tb4
         rows.append(Row(model=model, name=name, price=price, free=free,
                         band=band,
                         score=chosen[1] if chosen else None,
@@ -205,21 +222,22 @@ def dedupe_providers(rows: list[Row]) -> list[Row]:
 
 
 def order_rows(rows: list[Row]) -> list[Row]:
-    """Terminal-Bench first, then greedily place the SWE-Bench-only rows.
+    """Terminal-Bench 2.x first, then the fill-in axes by their own score.
 
-    The two benchmark families are not comparable (versions, harnesses,
-    difficulty), so they are only an indication of relative performance: the
-    Terminal-Bench rows build the skeleton in score-per-dollar order, and
-    each row that has only SWE-Bench is inserted at the slot its SWE
-    percentile maps to. Unscored rows cannot be ranked and drop — except
-    free ones, which are listed last (they cost nothing whatever).
+    The benchmark families are not comparable (versions, harnesses,
+    difficulty), so they are only an indication of relative performance:
+    the Terminal-Bench 2.x rows build the skeleton in score-per-dollar
+    order, and each row that has only SWE-Bench — or only the harder
+    Terminal-Bench 4.0 — is inserted at the slot its own axis' percentile
+    maps to. Unscored rows cannot be ranked and drop — except free ones,
+    which are listed last (they cost nothing whatever).
     """
 
     def primary_of(row: Row):
-        return _best(row.model.scores, PRIMARY_FAMILY)
+        return _best(row.model.scores, PRIMARY_FAMILY, skip=TB4_FAMILY)
 
-    def secondary_of(row: Row):
-        return _best(row.model.scores, SECONDARY_FAMILY)
+    def score_on(row: Row, axis: str):
+        return _best(row.model.scores, axis)
 
     def value_key(row: Row, score: float):
         return (-ratio(score, row.price), -score)
@@ -227,23 +245,23 @@ def order_rows(rows: list[Row]) -> list[Row]:
     skeleton = sorted((r for r in rows if primary_of(r)),
                       key=lambda r: value_key(r, primary_of(r)[1]))
 
-    with_secondary = [r for r in rows if secondary_of(r)]
-    with_secondary.sort(key=lambda r: -ratio(secondary_of(r)[1], r.price))
-    rank = {id(r): i for i, r in enumerate(with_secondary)}
-    count = len(with_secondary)
-
     result = list(skeleton)
-    placed = 0  # insertion positions only move forward
-    for row in (r for r in with_secondary if not primary_of(r)):
-        percentile = rank[id(row)] / (count - 1) if count > 1 else 0.0
-        slot = round(percentile * len(skeleton))
-        slot = min(max(slot, placed), len(result))
-        result.insert(slot, row)
-        placed = slot
+    for axis in SECONDARY_AXES:
+        placed = 0  # insertion positions only move forward within an axis
+        fillers = sorted((r for r in rows if score_on(r, axis)),
+                         key=lambda r: -ratio(score_on(r, axis)[1], r.price))
+        rank = {id(r): i for i, r in enumerate(fillers)}
+        count = len(fillers)
+        for row in (r for r in fillers if not primary_of(r)):
+            percentile = rank[id(row)] / (count - 1) if count > 1 else 0.0
+            slot = round(percentile * len(skeleton))
+            slot = min(max(slot, placed), len(result))
+            result.insert(slot, row)
+            placed = slot
     # free lines no benchmark covers: ranked last, not dropped — maximising
     # free usage means seeing them even though they cannot be scored
-    result += [r for r in rows
-               if not primary_of(r) and not secondary_of(r) and r.free]
+    scored = {id(r) for r in result}
+    result += [r for r in rows if id(r) not in scored and r.free]
     return result
 
 

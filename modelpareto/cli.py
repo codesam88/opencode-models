@@ -47,7 +47,8 @@ BAND_LABELS = (
     (BAND_PAYG, "pay-as-you-go"),
 )
 #: Fixed columns, right-aligned; the model name takes the rest of the line.
-HEADERS = ("SCORE", "BENCH", "$/1M", "SCORE/$", "PROV")
+#: Costs count cents ($/100) so a cheap line is a readable number.
+HEADERS = ("SCORE", "BENCH", "¢/1M", "SCORE/$", "PROV")
 RULE_WIDTH = 60
 
 
@@ -157,6 +158,8 @@ def _bench_tag(benchmark: str | None) -> str:
     if not benchmark:
         return "-"
     folded = benchmark.lower().replace(" ", "-")
+    if folded.startswith("terminal-bench-4"):
+        return "TB4"                     # harder scale, ranked on its own
     if folded.startswith("terminal-bench"):
         return "TB"
     if folded.startswith("swe-bench"):
@@ -165,17 +168,22 @@ def _bench_tag(benchmark: str | None) -> str:
 
 
 def _cells(row) -> tuple[str, str, str, str, str]:
-    """The five fixed columns of one row, as text."""
+    """The five fixed columns of one row, as text.
+
+    Everything is shown as a rounded integer — scores and score-per-dollar
+    round to whole numbers, and costs are shown in cents (round(n*100)) so
+    a $0.0612 line reads as 6 rather than 0.0612.
+    """
     # a free line is free whatever price it was re-priced to for ranking
     no_cost = row.free or row.price == 0
-    price = "0" if no_cost else f"{row.price:g}"
+    price = "0" if no_cost else f"{round(row.price * 100)}"
     if no_cost:
         value = "free"
     elif row.score is None:
         value = "-"
     else:
-        value = f"{ratio(row.score, row.price):.1f}"
-    score = "-" if row.score is None else f"{row.score:g}"
+        value = f"{round(ratio(row.score, row.price))}"
+    score = "-" if row.score is None else f"{round(row.score)}"
     return score, _bench_tag(row.benchmark), price, value, row.provider
 
 
@@ -242,7 +250,7 @@ def _cmd_list(args: argparse.Namespace) -> int:
         order_note = f"benchmark {wanted} · sorted by score per $"
     else:
         rows = order_rows(rows)
-        order_note = "Terminal-Bench first, SWE-Bench fills in"
+        order_note = ("Terminal-Bench first, SWE-Bench and TB 4.0 fill in")
     if not rows:
         return _fail(f"no {source or 'zen+go'} model in {data_dir} "
                      f"has benchmark scores")
@@ -314,7 +322,8 @@ def main(argv: list[str] | None = None) -> int:
                              "60%% cached, 20%% out)")
     p_list.add_argument("--benchmark",
                         help="rank on one benchmark instead of combining "
-                             "Terminal-Bench (first) with SWE-Bench")
+                             "Terminal-Bench 2.x (first) with SWE-Bench and "
+                             "Terminal-Bench 4.0")
 
     p_scores = sub.add_parser(
         "scores", help="manage cached arena.ai Elo scores (offline unless --refresh)"

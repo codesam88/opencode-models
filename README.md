@@ -28,20 +28,28 @@ or serve the directory.
 prints three tables: **best value** first, then **worst score** (bottom 30%)
 and **highest cost** (top 30%). The culls are disjoint and cost claims first,
 so a model that is both priciest and lowest-scoring is reported once, under
-cost.
+cost. Cost decides *who* lands in the highest-cost table and score decides
+*who* lands in the worst-score table, but both culls are shown worst-scoring
+first.
 
-By default both providers are merged into one view. A model sold by both gets
-one line per provider — same model, different rate and different monthly
-allowance — tagged in the `PROV` column immediately before the model name
-(`zen`, `go`, or `-` for catalog models in neither tier; those only appear
-with `--source all`). `--source zen` / `--source go` narrows the view to a
-single provider.
+By default both providers are merged into one view. Rows that agree on model,
+score and cost are collapsed to a single line *before* ranking and culling —
+they are one offer, not two — with the providers enumerated in the `PROV`
+column immediately before the model name (`go,zen`, `zen`, `go`, or `-` for
+catalog models in neither tier; those only appear with `--source all`). When
+only some of the named providers fund a line from a monthly allowance, the
+more generous band wins: the line is available that way from at least one of
+them. Rates that differ (off-peak, token window, a limit one provider has and
+the other has not) keep their own line each. `--source zen` / `--source go`
+narrows the view to a single provider.
 
 Best value splits into bands — **free** (use first), **included usage**
 (lines the tier grants a monthly allowance for), **pay-as-you-go** — and is
 ranked by score per dollar *inside* each band. A line's cost is 20% input +
 60% cached read + 20% output; `--price input|output` picks a single rate
-instead.
+instead. Columns are measured from the lines actually being shown (header
+included), so nothing shifts when a price or a provider list outgrows the
+rest.
 
 Ranking combines the two benchmark families: Terminal-Bench rows are ordered
 by score per dollar and SWE-Bench-only rows are inserted at their SWE
@@ -51,9 +59,11 @@ not comparable, so they only indicate relative performance.
 Pricing comes from the tier docs rather than the catalog, which carries one
 Zen-style price per model: documented rates replace it, and every priced
 variant (peak/off-peak, token window) gets its own line. Free lines — `-free`
-tier slugs and zero-priced models — are priced at a tenth of the cheapest
-real price *in the whole view* (across providers) and tagged `[free]`, so
-"free" sorts and divides like any other cost instead of going infinite.
+tier slugs and zero-priced models — are *ranked* at a tenth of the cheapest
+real price *in the whole view* (across providers, one shared scale) and tagged
+`[free]`, so "free" sorts and divides like any other cost instead of going
+infinite, but they are *shown* with an actual `0` price and `free` under
+`SCORE/$` — the nominal price never reaches the console.
 
 Tier membership lists ship in `modelpareto/sources/` as slug files scraped
 from the tier pages; doc-calibrated prices are snapshotted in

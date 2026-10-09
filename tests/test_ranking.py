@@ -4,7 +4,13 @@ import unittest
 
 from modelpareto.data import Model
 from modelpareto.pricing import PriceEntry
-from modelpareto.ranking import build_rows, merge_rows, order_rows, partition_rows
+from modelpareto.ranking import (
+    build_rows,
+    dedupe_providers,
+    merge_rows,
+    order_rows,
+    partition_rows,
+)
 
 TB = "Terminal-Bench 2.1"
 SWE = "SWE-Bench Pro"
@@ -145,6 +151,55 @@ class MergeTest(unittest.TestCase):
         self.assertAlmostEqual(paid[0].price, 0.2)
 
 
+class DedupeTest(unittest.TestCase):
+    def test_the_same_line_from_two_providers_becomes_one_row(self):
+        go = build_rows([_m("l/ds", 1.0, tb=50.0)],
+                        [_entry("ds", 1.0, 1.0, cached=1.0, limit=60.0,
+                                tier="go")], provider="go")
+        zen = build_rows([_m("l/ds", 1.0, tb=50.0)],
+                         [_entry("ds", 1.0, 1.0, cached=1.0, tier="zen")],
+                         provider="zen")
+        rows = dedupe_providers(merge_rows(go, zen))
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0].provider, "go,zen")
+        self.assertEqual(rows[0].price, go[0].price)
+        # identical cost, but only go funds it from a monthly allowance
+        self.assertEqual(rows[0].band, "included")
+
+    def test_lines_that_differ_in_cost_stay_separate(self):
+        go = build_rows([_m("l/ds", 1.0, tb=50.0)],
+                        [_entry("ds", 0.66, 1.98, cached=0.022, limit=15.0,
+                                name="DS (Off-Peak)", tier="go")],
+                        provider="go")
+        zen = build_rows([_m("l/ds", 1.0, tb=50.0)],
+                         [_entry("ds", 1.74, 3.0, cached=0.04, tier="zen")],
+                         provider="zen")
+        rows = dedupe_providers(merge_rows(go, zen))
+        self.assertEqual(len(rows), 2)                 # different cost
+        self.assertEqual([r.provider for r in rows], ["go", "zen"])
+
+    def test_providers_are_enumerated_in_a_stable_order(self):
+        # even with zen handed over first the pair reads 'go,zen'
+        zen = build_rows([_m("l/ds", 1.0, tb=50.0)],
+                         [_entry("ds", 1.0, 1.0, cached=1.0, tier="zen")],
+                         provider="zen")
+        go = build_rows([_m("l/ds", 1.0, tb=50.0)],
+                        [_entry("ds", 1.0, 1.0, cached=1.0, limit=60.0,
+                                tier="go")], provider="go")
+        rows = dedupe_providers(merge_rows(zen, go))
+        self.assertEqual([r.provider for r in rows], ["go,zen"])
+
+    def test_free_lines_from_both_providers_merge_too(self):
+        free = [_entry("gift", 0.0, 0.0, free=True)]
+        go = build_rows([_m("l/gift", 5.0, tb=40.0)], free, provider="go")
+        zen = build_rows([_m("l/gift", 5.0, tb=40.0)], free, provider="zen")
+        rows = dedupe_providers(merge_rows(go, zen))
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0].provider, "go,zen")
+        self.assertEqual(rows[0].band, "free")
+        self.assertTrue(rows[0].name.endswith("[free]"))
+
+
 class OrderTest(unittest.TestCase):
     def test_terminal_bench_rows_lead_in_value_order(self):
         models = [_m("l/b", 1.0, tb=60.0), _m("l/a", 2.0, tb=80.0)]
@@ -195,7 +250,9 @@ class PartitionTest(unittest.TestCase):
 
     def test_three_disjoint_tables_and_who_goes_where(self):
         main, worst, pricey = partition_rows(self._grid())
-        self.assertEqual([r.name for r in pricey], ["M10", "M09", "M08"])
+        # pricey still *selects* the three dearest, but every cull table is
+        # *shown* worst-scoring first
+        self.assertEqual([r.name for r in pricey], ["M08", "M09", "M10"])
         self.assertEqual([r.name for r in worst], ["M01", "M02", "M03"])
         self.assertEqual([r.name for r in main], ["M07", "M06", "M05", "M04"])
         seen = [r.name for group in (main, worst, pricey) for r in group]

@@ -175,6 +175,35 @@ def merge_rows(*groups: list[Row]) -> list[Row]:
     return [replace(row, price=nominal) if row.free else row for row in rows]
 
 
+#: How generous a band is, for picking the best deal out of a merged line.
+_BAND_RANK = {BAND_FREE: 0, BAND_INCLUDED: 1, BAND_PAYG: 2}
+
+
+def dedupe_providers(rows: list[Row]) -> list[Row]:
+    """One line per (model, variant, score, cost), providers enumerated.
+
+    zen and go sell many models at the same rate for the same score, so the
+    pair is one offer rather than two: the providers are listed together
+    (``go,zen``). When only some of the providers fund the line from a
+    monthly allowance, the more generous band wins — the line is available
+    that way from at least one of the providers named on it.
+    """
+    merged: dict[tuple, Row] = {}
+    keys: list[tuple] = []
+    for row in rows:
+        key = (row.model.model_id, row.name, row.score, round(row.price, 9))
+        if key not in merged:
+            merged[key] = row
+            keys.append(key)
+            continue
+        current = merged[key]
+        keep = current if _BAND_RANK[current.band] <= _BAND_RANK[row.band] else row
+        providers = sorted({p for side in (current.provider, row.provider)
+                            for p in side.split(",")})
+        merged[key] = replace(keep, provider=",".join(providers))
+    return [merged[key] for key in keys]
+
+
 def order_rows(rows: list[Row]) -> list[Row]:
     """Terminal-Bench first, then greedily place the SWE-Bench-only rows.
 
@@ -247,10 +276,12 @@ def partition_rows(rows: list[Row], fraction: float = CULL_FRACTION
     weakest_set = set(weakest)
 
     main = [rows[i] for i in rest if i not in weakest_set]
-    worst = [rows[i] for i in sorted(weakest, key=lambda i: (
+    # both cull tables read worst-scoring first; the expensive group still
+    # *selects* on price, it just no longer sorts by it
+    by_score = lambda i: (  # noqa: E731
         rows[i].score if rows[i].score is not None else float("inf"),
         -rows[i].price,
-    ))]
-    pricey = [rows[i] for i in sorted(expensive,
-                                      key=lambda i: (-rows[i].price,))]
+    )
+    worst = [rows[i] for i in sorted(weakest, key=by_score)]
+    pricey = [rows[i] for i in sorted(expensive, key=by_score)]
     return main, worst, pricey

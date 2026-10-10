@@ -53,6 +53,16 @@ TB4_FAMILY = "Terminal-Bench 4.0"
 #: Fill-in axes, applied after the primary skeleton is built.
 SECONDARY_AXES = (SECONDARY_FAMILY, TB4_FAMILY)
 
+#: The ordering axes shown side by side in the console: (key, column label,
+#: benchmark family, versioned?). ``tb2`` is versioned so only real 2.x/3.x
+#: runs count — Terminal-Bench Hard and Science are separate benchmarks that
+#: merely share the prefix, and 4.0 is its own scale.
+AXES = (
+    ("tb2", "TB2", PRIMARY_FAMILY, True),
+    ("tb4", "TB4", TB4_FAMILY, False),
+    ("swe", "SWE", SECONDARY_FAMILY, False),
+)
+
 #: Share of the list culled into each side table.
 CULL_FRACTION = 0.3
 
@@ -294,6 +304,21 @@ def order_rows(rows: list[Row]) -> list[Row]:
     scored = {id(r) for r in result}
     result += [r for r in rows if id(r) not in scored and r.free]
     return result
+
+
+def axis_scores(model: Model) -> dict[str, float | None]:
+    """Each axis's raw score for *model*, None where it carries none.
+
+    The console prints these side by side so the viewer sees the base
+    scores the ordering is built from instead of one merged number.
+    """
+    out: dict[str, float | None] = {}
+    for key, _label, family, versioned in AXES:
+        best = _best(model.scores, family,
+                     skip=TB4_FAMILY if key == "tb2" else None,
+                     versioned=versioned)
+        out[key] = best[1] if best else None
+    return out
 
 
 def grade_symbols(count: int) -> list[str]:

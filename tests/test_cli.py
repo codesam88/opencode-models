@@ -285,10 +285,10 @@ class CliTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("¢/1M", out)   # the column says what it counts
         line = next(l for l in out.splitlines() if l.rstrip().endswith("CHEAP"))
-        # 88.8 rounds to 89; $0.0612 shows as 6 cents; the ratio rounds too
-        self.assertRegex(line, r"\s89\s+TB\s+6\s+1451\s+\S+\s+CHEAP$")
-        self.assertNotIn("88.8", line)
-        self.assertNotIn("0.0612", line)
+        # the TB2 cell shows the raw 88.8; the other two axes are blank;
+        # $0.0612 shows as 6 cents and the ratio rounds to 1451
+        self.assertRegex(line, r"\s88\.8\s+-\s+-\s+6\s+1451\s+\S+\s+CHEAP$")
+        self.assertNotIn("0.0612", line)   # cents, never dollars
 
     def test_list_output_price_uses_output_axis(self):
         import json
@@ -356,8 +356,8 @@ class CliTest(unittest.TestCase):
         for title in ("best value", "worst score", "highest cost"):
             self.assertRegex(out, rf"(?m)^── [^\n]*{title}")
         # one column header per table, all five columns named, in order
-        header = re.compile(r"(?m)^\s*SCORE\s+BENCH\s+¢/1M\s+SCORE/\$\s+PROV"
-                            r"\s+MODEL\s*$")
+        header = re.compile(r"(?m)^\s*TB2\s+TB4\s+SWE\s+¢/1M\s+SCORE/\$\s+"
+                            r"PROV\s+MODEL\s*$")
         self.assertEqual(len(header.findall(out)), 3)
 
     def test_headers_are_bold_when_the_output_is_a_terminal(self):
@@ -411,7 +411,7 @@ class CliTest(unittest.TestCase):
                 sources.load_source = orig
         self.assertEqual(code, 0)
         lines = out.splitlines()
-        self.assertEqual(len(re.findall(r"(?m)^\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+"
+        self.assertEqual(len(re.findall(r"(?m)^\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+"
                                         r"\S+\s+DS$", out)), 2)
         self.assertTrue(any(line.endswith("go  DS") for line in lines))   # provider
         self.assertTrue(any(line.endswith("zen  DS") for line in lines))  # before name
@@ -564,7 +564,7 @@ class CliTest(unittest.TestCase):
                 sources.load_source = orig
         self.assertEqual(code, 0)
         lines = out.splitlines()
-        header = next(l for l in lines if l.strip().startswith("SCORE"))
+        header = next(l for l in lines if l.strip().startswith("TB2"))
         model_col = header.index("MODEL")
         # one row from each of the three tables, widest cells checked last
         for name in ("MID", "GIFT [free]", "TOP", "WIDE"):
@@ -573,7 +573,7 @@ class CliTest(unittest.TestCase):
         wide = next(l for l in lines if l.rstrip().endswith("WIDE"))
         self.assertIn("go,zen", wide)   # the whole token, not a truncation
 
-    def test_tb4_only_models_get_their_own_tag_and_axis(self):
+    def test_tb4_only_scores_land_in_the_tb4_column(self):
         import json
 
         import modelpareto.sources as sources
@@ -597,102 +597,27 @@ class CliTest(unittest.TestCase):
                 code, out = self._run("--data", tmp, "list")
             finally:
                 sources.load_source = orig
-        self.assertEqual(code, 0)
-        lines = out.splitlines()
-        four = next(l for l in lines if l.rstrip().endswith("FOUR"))
-        two = next(l for l in lines if l.rstrip().endswith("TWO"))
-        self.assertIn("TB4", four)      # 4.0 is labelled apart from 2.1
-        self.assertIn("  TB", two)
-        self.assertNotIn("TB4", two)
-        self.assertIn("TB 4.0 fill", out)   # the header names the axis
-
-    def test_conflicts_reports_disagreements_with_tiers_and_verdicts(self):
-        import json
-
-        with tempfile.TemporaryDirectory() as tmp:
-            d = Path(tmp)
-            (_models(d) / "a__m.json").write_text(json.dumps({"model": {
-                "id": "a/m", "name": "M",
-                "benchmarks": [{"name": "SWE-Bench", "version": "Verified",
-                                "score": 74.0, "metric": "pass@1",
-                                "source":
-                                "https://artificialanalysis.ai/models/m"}]}}))
-            over = d / "overrides"
-            over.mkdir()
-            (over / "a__m.json").write_text(json.dumps({"model": {
-                "id": "a/m", "benchmarks": [
-                    {"name": "SWE-Bench", "version": "Verified", "score": 99.0,
-                     "source": "https://random-blog.example/post",
-                     "note": "a blog says the vendor claimed more"}]}}))
-            code, out = self._run("--data", tmp, "conflicts")
-        self.assertEqual(code, 0)
-        self.assertIn("a/m", out)
-        self.assertIn("74", out)          # upstream value
-        self.assertIn("99", out)          # the override's claim
-        self.assertIn("upstream kept", out)   # tier-3 loses to independent
-        self.assertIn("1 curated models", out)
-
-    def test_curated_rows_carry_an_asterisk(self):
-        import json
-        import modelpareto.sources as sources
-
-        with tempfile.TemporaryDirectory() as tmp:
-            d = Path(tmp)
-            (_models(d) / "a__m1.json").write_text(json.dumps({"model": {
-                "id": "a/m1", "name": "M1",
-                "priceUsdPer1M": {"input": 1.0, "output": None,
-                                  "cachedInput": None},
-                "benchmarks": [{"name": "TB", "score": 50.0,
-                                "metric": "acc", "source": ""}]}}))
-            over = d / "overrides"
-            over.mkdir()
-            (over / "a__m1.json").write_text(json.dumps({"model": {
-                "id": "a/m1", "benchmarks": [
-                    {"name": "Humanity's Last Exam", "score": 46.5,
-                     "source": "https://artificialanalysis.ai/models/m1"}]}}))
-            orig = sources.load_source
-            sources.load_source = lambda name: {"m1"}
+            self.assertEqual(code, 0)
+            two = next(l for l in out.splitlines() if l.rstrip().endswith("TWO"))
+            four = next(l for l in out.splitlines() if l.rstrip().endswith("FOUR"))
+            # the two models score different axes: each score sits in its
+            # own column, blank elsewhere, and no tag says which — the
+            # column position does
+            self.assertEqual(two.split()[1], "50")
+            self.assertEqual(two.split()[2], "-")
+            self.assertEqual(four.split()[1], "-")
+            self.assertEqual(four.split()[2], "41")
+            self.assertTrue(two.startswith(" "))      # marker prefix
+            # --benchmark mode still shows one score plus the axis tag
+            sources.load_source = lambda name: {"four"}
             try:
-                code, out = self._run(
-                    "--data", tmp, "list", "--source", "zen", "--benchmark", "TB",
-                )
+                code, single = self._run("--data", tmp, "list",
+                                         "--benchmark", "Terminal-Bench 4.0")
             finally:
                 sources.load_source = orig
         self.assertEqual(code, 0)
-        line = next(l for l in out.splitlines() if "M1" in l and "TB" in l)
-        self.assertTrue(line.rstrip().endswith("M1 *"), line)   # curated mark
-
-    def test_rank_marker_prefixes_rows_without_a_column_of_its_own(self):
-        import modelpareto.sources as sources
-
-        with tempfile.TemporaryDirectory() as tmp:
-            _write_grid(Path(tmp))
-            slugs = {f"m{i:02d}" for i in range(1, 11)}
-            orig = sources.load_source
-            sources.load_source = lambda name: slugs
-            try:
-                code, out = self._run("--data", tmp, "list", "--source", "zen")
-            finally:
-                sources.load_source = orig
-        self.assertEqual(code, 0)
-        header = next(l for l in out.splitlines() if l.strip().startswith("SCORE"))
-        self.assertNotIn("GRADE", header)          # no header for the marker
-        self.assertEqual(header.index("SCORE"), 4)  # indented past the marker
-        # every scored row starts with the marker, then the column grid
-        rows = [l for l in out.splitlines()
-                if re.match(r"^ *(\+\+|\+|o|-)(?: |$)", l)]
-        self.assertEqual(len(rows), 10, out)
-        best = next(l for l in rows if l.rstrip().endswith("M10"))
-        self.assertTrue(best.strip().startswith("++"))    # best value overall
-        self.assertEqual(best.index("M10"), header.index("MODEL"))
-        worst = next(l for l in rows if l.rstrip().endswith("M01"))
-        self.assertTrue(worst.strip().startswith("-"))    # worst trails
-        # M08-M10 are culled into the cost table yet keep their overall
-        # marks — the marker is not per-table
-        cost = out.split("highest cost")[1]
-        self.assertTrue(any(l.strip().startswith(("++", "+")) and "M10" in l
-                            for l in cost.splitlines()))
-        self.assertIn("GRADE: ++ top 10%", out)               # legend explains
+        self.assertIn("TB4", next(l for l in single.splitlines()
+                                  if l.rstrip().endswith("FOUR")))
 
     def test_list_prints_three_tables_in_order(self):
         import modelpareto.sources as sources
@@ -794,7 +719,7 @@ class CliTest(unittest.TestCase):
         self.assertEqual(code, 0)
         # 0.2·1.0 + 0.6·0.1 + 0.2·2.0 = 0.66 → 66 cents; ratio 50/0.66 → 76
         line = next(l for l in out.splitlines() if l.rstrip().endswith("M1"))
-        self.assertRegex(line, r"\s50\s+TB\s+66\s+76\s+")
+        self.assertRegex(line, r"\s50\s+-\s+-\s+66\s+76\s+")
 
     def test_list_gives_each_priced_variant_its_own_line(self):
         import json

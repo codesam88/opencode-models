@@ -48,11 +48,19 @@ Best value splits into bands — **free** (use first), **included usage**
 (lines the tier grants a monthly allowance for), **pay-as-you-go** — and is
 ranked by score per dollar *inside* each band. A line's cost is 20% input +
 60% cached read + 20% output; `--price input|output` picks a single rate
-instead. The numbers are all rounded integers: `SCORE` and `SCORE/$` round to
+instead. The numbers are all rounded integers: `SCORE/$` rounds to
 whole numbers, and the cost column counts cents (`¢/1M` = round(price·100)),
 so a $0.0612 line reads as `6`, not `0.0612`. Columns are measured from the
 lines actually being shown (header included), so nothing shifts when a price
 or a provider list outgrows the rest.
+
+The score columns show **every ordering axis side by side** — `TB2`, `TB4`,
+`SWE` — each carrying the model's raw best run on that axis, blank where it
+has none. A row therefore displays both base scores the ordering is built
+from instead of one merged number plus a "which axis" tag, and the axes
+stay comparable because 2.x and 4.0 never share a column (a 55.8 next to an
+83 reads as a regression otherwise). `--benchmark X` switches to the
+single-score layout: that benchmark's score and its tag.
 
 Each line is prefixed with a rank marker — `++` the top decile of the
 ordering, `+` the next tenth, `o` the middle, `-` the bottom fifth, `·` a row

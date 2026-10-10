@@ -34,6 +34,7 @@ from .ranking import (
     partition_rows,
     ratio,
 )
+from .ranking import AXES, axis_scores
 from .render import render_html
 from . import arena as arena_mod
 from . import sources
@@ -50,12 +51,20 @@ BAND_LABELS = (
 )
 #: Fixed columns, right-aligned; the model name takes the rest of the line.
 #: Costs count cents ($/100) so a cheap line is a readable number.
-HEADERS = ("SCORE", "BENCH", "¢/1M", "SCORE/$", "PROV")
+#:
+#: Two layouts: the default shows every ordering axis's raw score side by
+#: side, so a row carries both base scores instead of one merged number and
+#: a "which axis" tag. ``--benchmark X`` ranks on one benchmark and shows
+#: that single score with its tag.
+AXIS_HEADERS = tuple(label for _, label, *_ in AXES) + (
+    "¢/1M", "SCORE/$", "PROV")
+SINGLE_HEADERS = ("SCORE", "BENCH", "¢/1M", "SCORE/$", "PROV")
 
 #: Every row is prefixed by its rank marker, outside the column grid and
 #: without a header of its own: ++ top decile, + next tenth, o the middle,
-#: - the bottom fifth of the ordering, · unranked (no score at all).
-GRADE_WIDTH = 4
+#: - the bottom fifth of the ordering, · unranked (no score at all). The
+#: header line is indented by the same width so the columns still line up.
+GRADE_WIDTH = 5
 RULE_WIDTH = 60
 
 
@@ -68,15 +77,17 @@ def _row_line(cells: tuple[str, ...], widths: tuple[int, ...]) -> str:
     return "  ".join(cell.rjust(width) for cell, width in zip(cells, widths))
 
 
-def _header(widths: tuple[int, ...]) -> str:
-    return _style(_row_line(HEADERS, widths) + "  MODEL")
+def _header(widths: tuple[int, ...], axis: bool = True) -> str:
+    headings = AXIS_HEADERS if axis else SINGLE_HEADERS
+    return _style(_row_line(headings, widths) + "  MODEL")
 
 
-def _section(title: str, widths: tuple[int, ...]) -> None:
+def _section(title: str, widths: tuple[int, ...],
+             axis: bool = True) -> None:
     """Open a table: blank line, rule-wrapped title, highlighted header."""
     print()
     print(f"── {title} " + "─" * max(4, RULE_WIDTH - len(title)))
-    print(" " * GRADE_WIDTH + _header(widths))
+    print(" " * GRADE_WIDTH + _header(widths, axis))
 
 
 def _fail(msg: str) -> int:
@@ -226,14 +237,15 @@ def _bench_tag(benchmark: str | None) -> str:
     return benchmark[:5]
 
 
-def _cells(row) -> tuple[str, str, str, str, str]:
-    """The five fixed columns of one row, as text.
+def _cells(row, axis: bool = True) -> tuple[str, ...]:
+    """The fixed columns of one row, as text.
 
-    Everything is shown as a rounded integer — scores and score-per-dollar
-    round to whole numbers, and costs are shown in cents (round(n*100)) so
-    a $0.0612 line reads as 6 rather than 0.0612.
+    *axis* prints the raw score of every ordering axis the row carries —
+    Terminal-Bench 2.x, Terminal-Bench 4.0, SWE-Bench — so the viewer sees
+    the base scores the ordering is built from. The single-benchmark layout
+    instead prints the one score it ranks on plus that benchmark's tag.
+    Prices are cents and ratios rounded integers, as elsewhere.
     """
-    # a free line is free whatever price it was re-priced to for ranking
     no_cost = row.free or row.price == 0
     price = "0" if no_cost else f"{round(row.price * 100)}"
     if no_cost:
@@ -242,23 +254,29 @@ def _cells(row) -> tuple[str, str, str, str, str]:
         value = "-"
     else:
         value = f"{round(ratio(row.score, row.price))}"
-    score = "-" if row.score is None else f"{round(row.score)}"
-    return score, _bench_tag(row.benchmark), price, value, row.provider
+    if axis:
+        scores = tuple("-" if v is None else f"{v:g}"
+                       for v in axis_scores(row.model).values())
+    else:
+        scores = ("-" if row.score is None else f"{row.score:g}",
+                  _bench_tag(row.benchmark))
+    return scores + (price, value, row.provider)
 
 
-def _widths(rows) -> tuple[int, ...]:
+def _widths(rows, axis: bool = True) -> tuple[int, ...]:
     """Widest cell per column across the whole view, header included."""
+    headings = AXIS_HEADERS if axis else SINGLE_HEADERS
     return tuple(
         max([len(heading)] + [len(cells[i]) for cells in map(_cells, rows)])
-        for i, heading in enumerate(HEADERS)
+        for i, heading in enumerate(headings)
     )
 
 
-def _print_row(row, widths: tuple[int, ...], curated: set[str] = frozenset()
-               ) -> None:
+def _print_row(row, widths: tuple[int, ...], curated: set[str] = frozenset(),
+               axis: bool = True) -> None:
     name = f"{row.name} *" if row.model.model_id in curated else row.name
-    print(f"{row.grade:>{GRADE_WIDTH}}" + _row_line(_cells(row), widths)
-          + f"  {name}")
+    print(f"{row.grade:>{GRADE_WIDTH - 1}} "
+          + _row_line(_cells(row, axis), widths) + f"  {name}")
 
 
 def _cmd_list(args: argparse.Namespace) -> int:
@@ -316,6 +334,8 @@ def _cmd_list(args: argparse.Namespace) -> int:
     # the rank marker rides on position in the whole ordering, so a row in
     # the cost or worst-score table still shows how it ranked overall
     rows = grade_rows(rows)
+    # the layout: every axis side by side, or the single ranked benchmark
+    axis = not args.benchmark
     if not rows:
         return _fail(f"no {source or 'zen+go'} model in {data_dir} "
                      f"has benchmark scores")
@@ -335,23 +355,23 @@ def _cmd_list(args: argparse.Namespace) -> int:
     main, worst, pricey = partition_rows(rows)
     # one set of column widths for the whole view, so the three tables line
     # up with each other too
-    widths = _widths(rows)
+    widths = _widths(rows, axis)
 
-    _section(f"best value · {len(main)} lines", widths)
+    _section(f"best value · {len(main)} lines", widths, axis)
     for band, label in BAND_LABELS:
         group = [r for r in main if r.band == band]
         if group:
             print(f"  {label} · {len(group)}")
             for row in group:
-                _print_row(row, widths, curated.curated)
+                _print_row(row, widths, curated.curated, axis)
 
-    _section(f"worst score (bottom 30%) · {len(worst)} lines", widths)
+    _section(f"worst score (bottom 30%) · {len(worst)} lines", widths, axis)
     for row in worst:
-        _print_row(row, widths, curated.curated)
+        _print_row(row, widths, curated.curated, axis)
 
-    _section(f"highest cost (top 30%) · {len(pricey)} lines", widths)
+    _section(f"highest cost (top 30%) · {len(pricey)} lines", widths, axis)
     for row in pricey:
-        _print_row(row, widths, curated.curated)
+        _print_row(row, widths, curated.curated, axis)
     return 0
 
 

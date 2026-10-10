@@ -17,8 +17,12 @@ test:
 
 # Full check: tests + the entry point resolving + a wheel build
 check: test
-    uv run --no-sync opencode-rank --data data list --source zen >/dev/null
+    uv run --no-sync opencode-rank --help >/dev/null
     uv build
+
+# Console smoke test — needs the dataset on disk (fetch, or the local-data branch)
+smoke:
+    uv run --no-sync opencode-rank --data data list --source zen
 
 # Refresh model data from opencode.ai
 fetch:

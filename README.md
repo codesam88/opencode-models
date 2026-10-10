@@ -124,20 +124,29 @@ from the tier pages; doc-calibrated prices are snapshotted in
 Refresh the slugs manually when the tiers change.
 
 Stdlib-only, Python ≥ 3.10, no dependencies. Tests: `just test`
-(`uv run python -m unittest discover -s tests`). What the tool touches on the
+(`uv run python -m unittest discover -s tests`); `just check` adds a wheel
+build. CI runs the suite on 3.10/3.12/3.14 without the dataset, since CI
+never fetches third-party records. What the tool touches on the
 network, the scraper etiquette and how to report a security issue are in
 [SECURITY.md](SECURITY.md).
 
 ## Data
 
-`data/` is split by who writes it:
+`data/` is split by who writes it — and **the scraped layers are fetched, not
+committed**. They are third-party records, they go stale, and they are large;
+`opencode-rank fetch` populates them into your data directory, and a private
+`local-data` branch keeps a committed copy for offline work (see below).
 
-| directory | contents | written by |
-|---|---|---|
-| `opencode/` | upstream records, one JSON per model, verbatim from `https://opencode.ai/data/<lab>/<model>.json` | `fetch` only |
-| `aiarena/` | arena.ai (LMArena) Elo cache, `{slug: elo}` | `scores --refresh` |
-| `overrides/` | hand-written sparse overlays: only the benchmark entries we vouched for (see `data/overrides/README.md`) | nobody — `fetch` reports disagreements via `conflicts` |
-| `tier_prices/` | snapshots of the Console tier pricing tables | `fetch` |
+| directory | contents | written by | in the repo? |
+|---|---|---|---|
+| `opencode/` | upstream records, one JSON per model, verbatim from `https://opencode.ai/data/<lab>/<model>.json` | `fetch` only | no — `.gitignore`d |
+| `aiarena/` | arena.ai (LMArena) Elo cache, `{slug: elo}` | `scores --refresh` | no — `.gitignore`d |
+| `tier_prices/` | snapshots of the Console tier pricing tables | `fetch` | no — `.gitignore`d |
+| `overrides/` | hand-written sparse overlays: only the benchmark entries we vouched for (see `data/overrides/README.md`) | nobody — `fetch` reports disagreements via `conflicts` | **yes** |
+
+Working from a checkout: `just fetch` (or `opencode-rank fetch`) once, then the
+`--data data` recipes work. If you want the dataset committed rather than
+fetched, use the `local-data` branch — it is intentionally never pushed.
 
 The upstream layer is never edited: curated scores are merged at load time,
 keyed by (benchmark name, version), so an overlay can *add* a benchmark the

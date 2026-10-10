@@ -21,8 +21,9 @@ jobs:
         run: uv sync --python ${{ matrix.python-version }}
       - name: unit tests
         run: uv run --no-sync python -m unittest discover -s tests -v
-      - name: the console runs from the installed entry point
-        run: uv run --no-sync opencode-rank list --source zen | head -4
+      - name: the console resolves and runs from the entry point
+        # no scraped dataset in CI: it is fetched on demand (see README)
+        run: uv run --no-sync opencode-rank --help
 
   build:
     runs-on: ubuntu-latest

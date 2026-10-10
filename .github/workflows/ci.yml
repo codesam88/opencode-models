@@ -2,7 +2,7 @@ name: ci
 
 on:
   push:
-    branches: [master, pre-mixed-score]
+    branches: [main, master]
   pull_request:
 
 jobs:

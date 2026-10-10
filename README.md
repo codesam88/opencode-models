@@ -54,6 +54,12 @@ so a $0.0612 line reads as `6`, not `0.0612`. Columns are measured from the
 lines actually being shown (header included), so nothing shifts when a price
 or a provider list outgrows the rest.
 
+Each line is prefixed with a rank marker — `++` the top decile of the
+ordering, `+` the next tenth, `o` the middle, `-` the bottom fifth, `·` a row
+no benchmark reaches (unranked, not last). The marker rides on position in
+the *whole* ordering, so a row in the worst-score or highest-cost table still
+shows how it ranked overall — a priciest-model row can be `++`.
+
 Ranking combines three benchmark axes: Terminal-Bench 2.x rows are ordered by
 score per dollar and build the skeleton; rows that carry only SWE-Bench, or
 only the harder Terminal-Bench 4.0, are inserted at their own axis' percentile

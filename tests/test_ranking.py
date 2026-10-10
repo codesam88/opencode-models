@@ -6,6 +6,8 @@ from modelpareto.data import Model
 from modelpareto.pricing import PriceEntry
 from modelpareto.ranking import (
     build_rows,
+    grade_rows,
+    grade_symbols,
     dedupe_providers,
     merge_rows,
     order_rows,
@@ -236,6 +238,63 @@ class DedupeTest(unittest.TestCase):
         self.assertEqual(rows[0].provider, "go,zen")
         self.assertEqual(rows[0].band, "free")
         self.assertTrue(rows[0].name.endswith("[free]"))
+
+
+class GradeTest(unittest.TestCase):
+    """The rank marker: ++ top decile, + next tenth, o middle, - bottom fifth."""
+
+    def test_a_twenty_row_list_splits_ten_ten_sixty_twenty(self):
+        symbols = grade_symbols(20)
+        self.assertEqual(symbols.count("++"), 2)    # top 10%
+        self.assertEqual(symbols.count("+"), 2)     # next 10%
+        self.assertEqual(symbols.count("-"), 4)     # bottom 20%
+        self.assertEqual(symbols.count("o"), 12)
+        self.assertEqual(symbols[0], "++")
+        self.assertEqual(symbols[1], "++")
+        self.assertEqual(symbols[2], "+")
+        self.assertEqual(symbols[-1], "-")
+
+    def test_short_lists_still_mark_every_band(self):
+        # five rows cannot fill four bands exactly, but none may vanish
+        symbols = grade_symbols(5)
+        self.assertEqual(symbols.count("++"), 1)
+        self.assertEqual(symbols.count("-"), 1)
+        self.assertEqual(len(symbols), 5)
+        self.assertEqual(symbols[0], "++")
+        self.assertEqual(symbols[-1], "-")
+
+    def test_a_lone_row_is_its_own_best(self):
+        self.assertEqual(grade_symbols(1), ["++"])
+        self.assertEqual(grade_symbols(0), [])
+
+    def test_bands_never_overlap_on_tiny_lists(self):
+        for n in range(1, 40):
+            symbols = grade_symbols(n)
+            self.assertEqual(len(symbols), n, n)
+            self.assertEqual(symbols.count("++"), max(1, round(0.1 * n)), n)
+            if n > 1:   # the lone row is its own best, so nothing is `-`
+                self.assertEqual(symbols.count("-"),
+                                 max(1, round(0.2 * n)), n)
+
+    def test_unscored_rows_are_unranked_not_last(self):
+        # a free model nobody benchmarks is not the bottom of the table,
+        # it is simply unranked — shown as · so nobody reads it as a verdict
+        models = [_m("l/tb", 1.0, tb=70.0), _m("l/freebie", 5.0)]
+        entries = [_entry("freebie", 0.0, 0.0, free=True)]
+        graded = grade_rows(order_rows(build_rows(models, entries)))
+        self.assertEqual([r.grade for r in graded], ["++", "·"])
+        self.assertIsNone(graded[1].score)
+
+    def test_grades_ride_on_the_rows_best_first(self):
+        models = [_m(f"l/m{i:02d}", float(i), tb=float(i * i))
+                  for i in range(1, 11)]
+        graded = grade_rows(order_rows(build_rows(models)))
+        self.assertEqual([r.grade for r in graded][:1], ["++"])
+        self.assertEqual(graded[-1].grade, "-")
+        # value order: m10 scores 100 at $10 → the best points per dollar,
+        # m01 the worst, so the marks follow the value ranking not the score
+        self.assertEqual(graded[0].model.model_id, "l/m10")
+        self.assertEqual(graded[-1].model.model_id, "l/m01")
 
 
 class OrderTest(unittest.TestCase):

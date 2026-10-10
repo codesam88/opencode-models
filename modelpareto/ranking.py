@@ -56,6 +56,14 @@ SECONDARY_AXES = (SECONDARY_FAMILY, TB4_FAMILY)
 #: Share of the list culled into each side table.
 CULL_FRACTION = 0.3
 
+#: Rank grades for the console's marker column, best first: the top decile
+#: is `++`, the next tenth `+`, the bottom fifth `-`, and everything between
+#: `o`. Sizes are shares of the ranked list, not fixed counts, so a five-row
+#: view still marks every band once.
+GRADE_TOP = 0.10
+GRADE_NEXT = 0.10
+GRADE_BOTTOM = 0.20
+
 BAND_FREE = "free"
 BAND_INCLUDED = "included"
 BAND_PAYG = "payg"
@@ -72,6 +80,7 @@ class Row:
     band: str
     score: float | None          # primary family score, else secondary
     benchmark: str | None        # the key `score` came from
+    grade: str = "o"             # rank marker: ++ / + / o / -
     provider: str = "-"          # zen / go, "-" when in neither tier
     entry: object | None = None  # pricing.PriceEntry when doc-priced
 
@@ -285,6 +294,46 @@ def order_rows(rows: list[Row]) -> list[Row]:
     scored = {id(r) for r in result}
     result += [r for r in rows if id(r) not in scored and r.free]
     return result
+
+
+def grade_symbols(count: int) -> list[str]:
+    """A rank marker per row position, best first.
+
+    The bottom band is checked before the next band so that on a tiny list
+    the worst row is not robbed of its `-` by the tenth-above rule. Rows
+    that could not be ranked sit at the end of the ordering and share the
+    tail's marks — the column reports position in this ranking, not a
+    capability verdict, so a free unscored model shows `-` for sorting
+    last, not for being bad.
+    """
+    if count <= 0:
+        return []
+    top = max(1, round(GRADE_TOP * count))
+    nxt = max(1, round(GRADE_NEXT * count))
+    bottom = max(1, round(GRADE_BOTTOM * count))
+    symbols: list[str] = []
+    for position in range(count):
+        if position < top:
+            symbols.append("++")
+        elif position >= count - bottom:
+            symbols.append("-")
+        elif position < top + nxt:
+            symbols.append("+")
+        else:
+            symbols.append("o")
+    return symbols
+
+
+def grade_rows(rows: list[Row]) -> list[Row]:
+    """Tag every row with its rank marker, keeping the given order.
+
+    Rows with no score are unranked rather than last: they show ``·``, so a
+    free model nobody benchmarks is not mistaken for the bottom of the
+    table.
+    """
+    graded = grade_symbols(len(rows))
+    return [replace(r, grade=symbol if r.score is not None else "·")
+            for r, symbol in zip(rows, graded)]
 
 
 def partition_rows(rows: list[Row], fraction: float = CULL_FRACTION

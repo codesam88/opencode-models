@@ -28,6 +28,7 @@ from .ranking import (
     BAND_PAYG,
     build_rows,
     dedupe_providers,
+    grade_rows,
     merge_rows,
     order_rows,
     partition_rows,
@@ -50,6 +51,11 @@ BAND_LABELS = (
 #: Fixed columns, right-aligned; the model name takes the rest of the line.
 #: Costs count cents ($/100) so a cheap line is a readable number.
 HEADERS = ("SCORE", "BENCH", "¢/1M", "SCORE/$", "PROV")
+
+#: Every row is prefixed by its rank marker, outside the column grid and
+#: without a header of its own: ++ top decile, + next tenth, o the middle,
+#: - the bottom fifth of the ordering, · unranked (no score at all).
+GRADE_WIDTH = 4
 RULE_WIDTH = 60
 
 
@@ -70,7 +76,7 @@ def _section(title: str, widths: tuple[int, ...]) -> None:
     """Open a table: blank line, rule-wrapped title, highlighted header."""
     print()
     print(f"── {title} " + "─" * max(4, RULE_WIDTH - len(title)))
-    print(_header(widths))
+    print(" " * GRADE_WIDTH + _header(widths))
 
 
 def _fail(msg: str) -> int:
@@ -251,7 +257,8 @@ def _widths(rows) -> tuple[int, ...]:
 def _print_row(row, widths: tuple[int, ...], curated: set[str] = frozenset()
                ) -> None:
     name = f"{row.name} *" if row.model.model_id in curated else row.name
-    print(_row_line(_cells(row), widths) + f"  {name}")
+    print(f"{row.grade:>{GRADE_WIDTH}}" + _row_line(_cells(row), widths)
+          + f"  {name}")
 
 
 def _cmd_list(args: argparse.Namespace) -> int:
@@ -306,6 +313,9 @@ def _cmd_list(args: argparse.Namespace) -> int:
     else:
         rows = order_rows(rows)
         order_note = ("Terminal-Bench first, SWE-Bench and TB 4.0 fill in")
+    # the rank marker rides on position in the whole ordering, so a row in
+    # the cost or worst-score table still shows how it ranked overall
+    rows = grade_rows(rows)
     if not rows:
         return _fail(f"no {source or 'zen+go'} model in {data_dir} "
                      f"has benchmark scores")
@@ -319,6 +329,8 @@ def _cmd_list(args: argparse.Namespace) -> int:
     else:
         head = f"all: {len(models)} models in catalog"
     print(f"{head} · {len(rows)} lines · {order_note} · {COST_NOTE}")
+    print("GRADE: ++ top 10% · + next 10% · o middle · - bottom 20% · "
+          "· unranked (position in the whole ordering, not per table)")
 
     main, worst, pricey = partition_rows(rows)
     # one set of column widths for the whole view, so the three tables line

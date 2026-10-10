@@ -411,8 +411,8 @@ class CliTest(unittest.TestCase):
                 sources.load_source = orig
         self.assertEqual(code, 0)
         lines = out.splitlines()
-        self.assertEqual(len(re.findall(r"(?m)^\s+\S+\s+\S+\s+\S+\s+\S+\s+"
-                                        r"\S+  DS$", out)), 2)
+        self.assertEqual(len(re.findall(r"(?m)^\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+"
+                                        r"\S+\s+DS$", out)), 2)
         self.assertTrue(any(line.endswith("go  DS") for line in lines))   # provider
         self.assertTrue(any(line.endswith("zen  DS") for line in lines))  # before name
         self.assertIn("PROV  MODEL", out)            # column header
@@ -661,6 +661,38 @@ class CliTest(unittest.TestCase):
         self.assertEqual(code, 0)
         line = next(l for l in out.splitlines() if "M1" in l and "TB" in l)
         self.assertTrue(line.rstrip().endswith("M1 *"), line)   # curated mark
+
+    def test_rank_marker_prefixes_rows_without_a_column_of_its_own(self):
+        import modelpareto.sources as sources
+
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_grid(Path(tmp))
+            slugs = {f"m{i:02d}" for i in range(1, 11)}
+            orig = sources.load_source
+            sources.load_source = lambda name: slugs
+            try:
+                code, out = self._run("--data", tmp, "list", "--source", "zen")
+            finally:
+                sources.load_source = orig
+        self.assertEqual(code, 0)
+        header = next(l for l in out.splitlines() if l.strip().startswith("SCORE"))
+        self.assertNotIn("GRADE", header)          # no header for the marker
+        self.assertEqual(header.index("SCORE"), 4)  # indented past the marker
+        # every scored row starts with the marker, then the column grid
+        rows = [l for l in out.splitlines()
+                if re.match(r"^ *(\+\+|\+|o|-)(?: |$)", l)]
+        self.assertEqual(len(rows), 10, out)
+        best = next(l for l in rows if l.rstrip().endswith("M10"))
+        self.assertTrue(best.strip().startswith("++"))    # best value overall
+        self.assertEqual(best.index("M10"), header.index("MODEL"))
+        worst = next(l for l in rows if l.rstrip().endswith("M01"))
+        self.assertTrue(worst.strip().startswith("-"))    # worst trails
+        # M08-M10 are culled into the cost table yet keep their overall
+        # marks — the marker is not per-table
+        cost = out.split("highest cost")[1]
+        self.assertTrue(any(l.strip().startswith(("++", "+")) and "M10" in l
+                            for l in cost.splitlines()))
+        self.assertIn("GRADE: ++ top 10%", out)               # legend explains
 
     def test_list_prints_three_tables_in_order(self):
         import modelpareto.sources as sources

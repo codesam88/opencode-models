@@ -5,6 +5,7 @@ import unittest
 from modelpareto.data import Model
 from modelpareto.pricing import PriceEntry
 from modelpareto.ranking import (
+    axis_scores,
     build_rows,
     grade_rows,
     grade_symbols,
@@ -238,6 +239,34 @@ class DedupeTest(unittest.TestCase):
         self.assertEqual(rows[0].provider, "go,zen")
         self.assertEqual(rows[0].band, "free")
         self.assertTrue(rows[0].name.endswith("[free]"))
+
+
+class AxisScoresTest(unittest.TestCase):
+    """The console shows every ordering axis's raw score side by side."""
+
+    def test_a_model_carrying_both_axes_shows_both(self):
+        m = _m("l/both", 1.0, tb=88.0, swe=64.0)
+        self.assertEqual(axis_scores(m), {"tb2": 88.0, "tb4": None,
+                                          "swe": 64.0})
+
+    def test_tb2_never_shows_the_4_run_or_a_sibling_benchmark(self):
+        m = _m("l/four", 1.0, tb40=55.8,
+               scores={"Terminal-Bench Hard": 20.5,
+                       "Terminal-Bench-Science 0.1": 52.6})
+        scores = axis_scores(m)
+        self.assertIsNone(scores["tb2"])      # no 2.x run on this model
+        self.assertEqual(scores["tb4"], 55.8)
+
+    def test_a_bare_terminal_bench_key_without_a_version_counts_for_nothing(self):
+        # 'Terminal-Bench' with no version is not a versioned run; a model
+        # carrying only it has no axis score at all
+        m = _m("l/bare", 1.0, scores={"Terminal-Bench": 70.0})
+        self.assertEqual(axis_scores(m), {"tb2": None, "tb4": None,
+                                          "swe": None})
+
+    def test_the_swe_axis_takes_the_best_bench_run(self):
+        m = _m("l/swe", 1.0, scores={"SWE-Bench Verified": 71.0})
+        self.assertEqual(axis_scores(m)["swe"], 71.0)
 
 
 class GradeTest(unittest.TestCase):

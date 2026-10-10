@@ -3,38 +3,51 @@
 help:
     @just --list
 
+# Install the tool: uv sync for the repo, or a global entry point
+bootstrap:
+    uv sync
+
+# Install the CLI onto your PATH (uv's tool dir, or pipx/uvx)
+install:
+    uv tool install --force .
+
+# Unit tests
+test:
+    uv run --no-sync python -m unittest discover -s tests
+
+# Full check: tests + the entry point resolving + a wheel build
+check: test
+    uv run --no-sync opencode-rank --data data list --source zen >/dev/null
+    uv build
+
 # Refresh model data from opencode.ai
 fetch:
-    python3 -m opencode_rank fetch
+    uv run --no-sync opencode-rank --data data fetch
 
 # Curated overrides that disagree with upstream
 conflicts:
-    python3 -m opencode_rank conflicts
+    uv run --no-sync opencode-rank --data data conflicts
 
 # List benchmarks with coverage
 benchmarks:
-    python3 -m opencode_rank benchmarks
+    uv run --no-sync opencode-rank --data data benchmarks
 
 # Render Pareto HTML report
 render:
-    python3 -m opencode_rank render
+    uv run --no-sync opencode-rank --data data render
 
 # Text table: both providers merged, best value first
 list:
-    python3 -m opencode_rank list
+    uv run --no-sync opencode-rank --data data list
 
 # Text table: zen provider only
 list-zen:
-    python3 -m opencode_rank list --source zen
+    uv run --no-sync opencode-rank --data data list --source zen
 
 # Text table: go provider only
 list-go:
-    python3 -m opencode_rank list --source go
+    uv run --no-sync opencode-rank --data data list --source go
 
 # Text table: full catalog, incl. models in neither provider
 list-all:
-    python3 -m opencode_rank list --source all
-
-# Run tests
-test:
-    python3 -m unittest discover -s tests
+    uv run --no-sync opencode-rank --data data list --source all

@@ -13,17 +13,42 @@ input price (log scale) and lists the **Pareto frontier**: models where no
 other model is both cheaper and scores higher. Frontier membership is the
 claim; everything else is context.
 
+## Install
+
+The tool is stdlib-only and installs with anything that understands Python
+packages — [uv](https://docs.astral.sh/uv/) is the recommended path:
+
+```sh
+uv tool install .            # install the `opencode-rank` binary to $PATH
+uvx --from . opencode-rank   # or run it once without installing
+```
+
+A fresh install has no data yet, so populate it once (this is the only
+network-touching command):
+
+```sh
+opencode-rank fetch          # downloads into your user data dir
+```
+
+Data lives in `$OPENCODE_RANK_DATA`, else the XDG user data dir
+(`~/.local/share/opencode-rank`). Working from a checkout instead? Point at
+the committed dataset with `--data data` (or `OPENCODE_RANK_DATA=data`).
+
+For development, `uv sync` creates the repo virtualenv; `just test`, `just
+list` and `just check` wrap `uv run` so the console and the tests run without
+installing anything.
+
 ## Usage
 
 ```sh
-python3 -m opencode_rank fetch                     # refresh data/ from opencode.ai
-python3 -m opencode_rank conflicts                 # curated overrides vs upstream
-python3 -m opencode_rank benchmarks                # list benchmarks + coverage
-python3 -m opencode_rank render                    # pareto.html, best-covered benchmark
-python3 -m opencode_rank render --benchmark "SWE-Bench Verified" --out swe.html
-python3 -m opencode_rank list                      # both providers merged, three tables
-python3 -m opencode_rank list --source zen         # one provider only
-python3 -m opencode_rank list --source all --benchmark "SWE-Bench Verified"
+opencode-rank fetch                     # refresh the data from opencode.ai
+opencode-rank conflicts                 # curated overrides vs upstream
+opencode-rank benchmarks                # list benchmarks + coverage
+opencode-rank render                    # pareto.html, best-covered benchmark
+opencode-rank render --benchmark "SWE-Bench Verified" --out swe.html
+opencode-rank list                      # both providers merged, three tables
+opencode-rank list --source zen         # one provider only
+opencode-rank list --source all --benchmark "SWE-Bench Verified"
 ```
 
 `render` defaults to the benchmark covering the most models. The output is one
@@ -98,7 +123,10 @@ from the tier pages; doc-calibrated prices are snapshotted in
 `data/tier_prices/` and refreshed by `fetch` (nothing else fetches docs).
 Refresh the slugs manually when the tiers change.
 
-Stdlib-only, Python ≥ 3.10, no dependencies. Tests: `python3 -m unittest discover -s tests`.
+Stdlib-only, Python ≥ 3.10, no dependencies. Tests: `just test`
+(`uv run python -m unittest discover -s tests`). What the tool touches on the
+network, the scraper etiquette and how to report a security issue are in
+[SECURITY.md](SECURITY.md).
 
 ## Data
 

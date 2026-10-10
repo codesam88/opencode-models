@@ -163,6 +163,19 @@ class CliTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual([e["model_id"] for e in entries], ["m1"])
 
+    def test_default_data_dir_honours_the_environment(self):
+        import os
+
+        import opencode_rank.cli as cli
+
+        with mock.patch.dict(os.environ, {"OPENCODE_RANK_DATA": "/tmp/x"}):
+            self.assertEqual(cli.default_data_dir(), Path("/tmp/x"))
+        with mock.patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(cli.default_data_dir(),
+                             Path(os.environ.get("XDG_DATA_HOME",
+                                                 str(Path.home() / ".local" / "share")))
+                             / "opencode-rank")
+
     def test_missing_data_dir_is_a_clear_error(self):
         code, out = self._run("--data", "/nonexistent/xyz", "benchmarks")
         self.assertEqual(code, 1)

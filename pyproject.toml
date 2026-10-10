@@ -1,0 +1,35 @@
+[project]
+name = "opencode-rank"
+version = "0.1.0"
+description = "Ranked console of AI models: benchmark scores against real per-token prices"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "codesam", email = "tedsamhain@gmail.com" }]
+keywords = ["llm", "benchmarks", "pricing", "ranking", "cli"]
+classifiers = [
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Topic :: Utilities",
+]
+# The tool is stdlib-only on purpose: nothing to audit, patch or pin at
+# runtime, and `uv tool install` has no dependency tree to resolve.
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/codesam88/opencode-rank"
+Repository = "https://github.com/codesam88/opencode-rank"
+Issues = "https://github.com/codesam88/opencode-rank/issues"
+
+[project.scripts]
+opencode-rank = "opencode_rank.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["opencode_rank"]

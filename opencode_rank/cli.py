@@ -12,6 +12,7 @@ Exit codes: 0 success, 1 usage or data error (message on stdout).
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from dataclasses import replace
 from pathlib import Path
@@ -39,7 +40,23 @@ from .render import render_html
 from . import arena as arena_mod
 from . import sources
 
-DEFAULT_DATA = Path(__file__).resolve().parent.parent / "data"
+#: Where the data lives for an installed tool: $OPENCODE_RANK_DATA, else the
+#: XDG user-data dir (~/.local/share/opencode-rank). `fetch` populates it and
+#: every other command reads it; a repo checkout passes --data ./data.
+DATA_ENV = "OPENCODE_RANK_DATA"
+
+
+def default_data_dir() -> Path:
+    """The user data directory: $OPENCODE_RANK_DATA, else XDG."""
+    env = os.environ.get(DATA_ENV)
+    if env:
+        return Path(env)
+    xdg = os.environ.get("XDG_DATA_HOME")
+    base = Path(xdg) if xdg else Path.home() / ".local" / "share"
+    return base / "opencode-rank"
+
+
+DEFAULT_DATA = default_data_dir()
 DEFAULT_OUT = Path(__file__).resolve().parent.parent / "pareto.html"
 
 #: Representative cost: 20% input, 60% cached read, 20% output.
@@ -377,7 +394,7 @@ def _cmd_list(args: argparse.Namespace) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        prog="opencode_rank",
+        prog="opencode-rank",
         description="Price/score Pareto frontier of models from opencode.ai/data",
     )
     parser.add_argument("--data", default=str(DEFAULT_DATA),

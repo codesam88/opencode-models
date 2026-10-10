@@ -2,8 +2,8 @@
 
 import unittest
 
-from modelpareto.benchmarks import available
-from modelpareto.data import Model
+from opencode_rank.benchmarks import available
+from opencode_rank.data import Model
 
 
 def _m(model_id, scores):

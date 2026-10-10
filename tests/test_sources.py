@@ -2,9 +2,9 @@
 
 import unittest
 
-from modelpareto.ranking import by_score_per_price
-from modelpareto.sources import available_sources, load_source, members
-from modelpareto.data import Model
+from opencode_rank.ranking import by_score_per_price
+from opencode_rank.sources import available_sources, load_source, members
+from opencode_rank.data import Model
 
 
 def _m(model_id, price, score, output=None):

@@ -4,8 +4,8 @@ import json
 import unittest
 from pathlib import Path
 
-from modelpareto.data import Model
-from modelpareto.overrides import (
+from opencode_rank.data import Model
+from opencode_rank.overrides import (
     TIER_INDEPENDENT,
     TIER_OFFICIAL,
     TIER_SELF_REPORTED,

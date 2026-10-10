@@ -9,7 +9,7 @@ from pathlib import Path
 import tempfile
 from unittest import mock
 
-from modelpareto.cli import main
+from opencode_rank.cli import main
 
 
 def _write_sample(data_dir: Path):
@@ -115,7 +115,7 @@ class CliTest(unittest.TestCase):
                         'x/y</loc></url></urlset>')
             return "{}"
 
-        import modelpareto.cli as cli
+        import opencode_rank.cli as cli
 
         with tempfile.TemporaryDirectory() as tmp:
             orig = cli.http_get
@@ -149,7 +149,7 @@ class CliTest(unittest.TestCase):
                 return endpoints + pricing
             return "{}"
 
-        import modelpareto.cli as cli
+        import opencode_rank.cli as cli
 
         with tempfile.TemporaryDirectory() as tmp:
             orig = cli.http_get
@@ -177,7 +177,7 @@ class CliTest(unittest.TestCase):
         self.assertNotIn("failed", out.lower())
 
     def test_scores_refresh_uses_injected_lookup_and_saves_cache(self):
-        import modelpareto.arena as arena
+        import opencode_rank.arena as arena
 
         with tempfile.TemporaryDirectory() as tmp:
             _write_sample(Path(tmp))
@@ -187,7 +187,7 @@ class CliTest(unittest.TestCase):
                 code, out = self._run("--data", tmp, "scores", "--refresh")
             finally:
                 arena.lookup_arena_elo = orig
-            from modelpareto.arena import ArenaCache
+            from opencode_rank.arena import ArenaCache
             cached = ArenaCache(Path(tmp) / "aiarena").load()
         self.assertEqual(code, 0)
         self.assertEqual(cached, {"m1": 1500.0, "m2": 1400.0})
@@ -195,7 +195,7 @@ class CliTest(unittest.TestCase):
 
     def test_list_merged_benchmark_list_includes_arena_axis(self):
         import json
-        from modelpareto.arena import ArenaCache
+        from opencode_rank.arena import ArenaCache
 
         with tempfile.TemporaryDirectory() as tmp:
             _write_sample(Path(tmp))
@@ -205,7 +205,7 @@ class CliTest(unittest.TestCase):
         self.assertIn("LMArena Elo", out)
 
     def test_list_source_sorted_by_score_per_price(self):
-        import modelpareto.sources as sources
+        import opencode_rank.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
             _write_sample(Path(tmp))
@@ -227,7 +227,7 @@ class CliTest(unittest.TestCase):
         self.assertIn("highest cost", out)
 
     def test_list_filters_to_source_members_only(self):
-        import modelpareto.sources as sources
+        import opencode_rank.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
             _write_sample(Path(tmp))
@@ -245,7 +245,7 @@ class CliTest(unittest.TestCase):
         self.assertNotIn("M2", out)
 
     def test_list_shows_score_price_and_ratio_columns(self):
-        import modelpareto.sources as sources
+        import opencode_rank.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
             _write_sample(Path(tmp))
@@ -265,7 +265,7 @@ class CliTest(unittest.TestCase):
     def test_numbers_are_shown_as_rounded_integers(self):
         import json
 
-        import modelpareto.sources as sources
+        import opencode_rank.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
@@ -292,7 +292,7 @@ class CliTest(unittest.TestCase):
 
     def test_list_output_price_uses_output_axis(self):
         import json
-        import modelpareto.sources as sources
+        import opencode_rank.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
@@ -340,7 +340,7 @@ class CliTest(unittest.TestCase):
 
 
     def test_the_three_tables_are_visually_separated(self):
-        import modelpareto.sources as sources
+        import opencode_rank.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
             _write_grid(Path(tmp))
@@ -361,7 +361,7 @@ class CliTest(unittest.TestCase):
         self.assertEqual(len(header.findall(out)), 3)
 
     def test_headers_are_bold_when_the_output_is_a_terminal(self):
-        import modelpareto.cli as cli
+        import opencode_rank.cli as cli
 
         with mock.patch.object(sys.stdout, "isatty", return_value=True):
             self.assertEqual(cli._style("hi"), "\033[1mhi\033[0m")
@@ -370,7 +370,7 @@ class CliTest(unittest.TestCase):
     def test_list_defaults_to_both_providers_merged(self):
         import json
 
-        import modelpareto.sources as sources
+        import opencode_rank.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
@@ -420,7 +420,7 @@ class CliTest(unittest.TestCase):
         self.assertIn("pay-as-you-go", out)          # zen does not
 
     def test_list_all_adds_a_dash_provider_for_catalog_only_models(self):
-        import modelpareto.sources as sources
+        import opencode_rank.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
             _write_sample(Path(tmp))
@@ -442,7 +442,7 @@ class CliTest(unittest.TestCase):
     def test_list_collapses_a_pair_priced_the_same_into_one_line(self):
         import json
 
-        import modelpareto.sources as sources
+        import opencode_rank.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
@@ -475,7 +475,7 @@ class CliTest(unittest.TestCase):
     def test_free_lines_show_a_zero_price_tag(self):
         import json
 
-        import modelpareto.sources as sources
+        import opencode_rank.sources as sources
 
         def doc(mid, price, score):
             return json.dumps({"model": {
@@ -519,7 +519,7 @@ class CliTest(unittest.TestCase):
         """
         import json
 
-        import modelpareto.sources as sources
+        import opencode_rank.sources as sources
 
         def doc(mid, price, score):
             return json.dumps({"model": {
@@ -576,7 +576,7 @@ class CliTest(unittest.TestCase):
     def test_tb4_only_scores_land_in_the_tb4_column(self):
         import json
 
-        import modelpareto.sources as sources
+        import opencode_rank.sources as sources
 
         def doc(mid, version, score):
             return json.dumps({"model": {
@@ -620,7 +620,7 @@ class CliTest(unittest.TestCase):
                                   if l.rstrip().endswith("FOUR")))
 
     def test_list_prints_three_tables_in_order(self):
-        import modelpareto.sources as sources
+        import opencode_rank.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
             _write_grid(Path(tmp))
@@ -637,7 +637,7 @@ class CliTest(unittest.TestCase):
         self.assertLess(out.index("worst score"), out.index("highest cost"))
 
     def test_list_culls_are_disjoint_and_cover_every_line(self):
-        import modelpareto.sources as sources
+        import opencode_rank.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
             _write_grid(Path(tmp))
@@ -655,8 +655,8 @@ class CliTest(unittest.TestCase):
     def test_list_splits_best_value_into_free_included_and_payg(self):
         import json
 
-        import modelpareto.sources as sources
-        from modelpareto.pricing import PriceEntry
+        import opencode_rank.sources as sources
+        from opencode_rank.pricing import PriceEntry
 
         def doc(mid, price, score):
             return json.dumps({"model": {
@@ -700,7 +700,7 @@ class CliTest(unittest.TestCase):
     def test_list_shows_the_representative_cost_not_the_bare_input(self):
         import json
 
-        import modelpareto.sources as sources
+        import opencode_rank.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
@@ -724,7 +724,7 @@ class CliTest(unittest.TestCase):
     def test_list_gives_each_priced_variant_its_own_line(self):
         import json
 
-        import modelpareto.sources as sources
+        import opencode_rank.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)

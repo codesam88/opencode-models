@@ -2,9 +2,9 @@
 
 Usage::
 
-    python3 -m modelpareto fetch            # refresh data/ from opencode.ai
-    python3 -m modelpareto benchmarks       # list benchmarks and coverage
-    python3 -m modelpareto render [...]     # write the Pareto HTML report
+    python3 -m opencode_rank fetch            # refresh data/ from opencode.ai
+    python3 -m opencode_rank benchmarks       # list benchmarks and coverage
+    python3 -m opencode_rank render [...]     # write the Pareto HTML report
 
 Exit codes: 0 success, 1 usage or data error (message on stdout).
 """
@@ -377,7 +377,7 @@ def _cmd_list(args: argparse.Namespace) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        prog="modelpareto",
+        prog="opencode_rank",
         description="Price/score Pareto frontier of models from opencode.ai/data",
     )
     parser.add_argument("--data", default=str(DEFAULT_DATA),

@@ -10,7 +10,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from modelpareto.pricing import (
+from opencode_rank.pricing import (
     PriceEntry,
     load_prices,
     parse_pricing,

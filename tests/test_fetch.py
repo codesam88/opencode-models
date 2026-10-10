@@ -7,7 +7,7 @@ import urllib.error
 from pathlib import Path
 import tempfile
 
-from modelpareto.fetch import SITEMAP_URL, refresh, urls_from_sitemap
+from opencode_rank.fetch import SITEMAP_URL, refresh, urls_from_sitemap
 
 
 SITEMAP_XML = """<?xml version="1.0" encoding="UTF-8"?>

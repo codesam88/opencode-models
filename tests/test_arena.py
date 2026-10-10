@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from modelpareto.arena import (
+from opencode_rank.arena import (
     ARENA_BENCHMARK,
     ArenaCache,
     lookup_arena_elo,
@@ -12,7 +12,7 @@ from modelpareto.arena import (
     merge_arena_scores,
     merge_from_file,
 )
-from modelpareto.data import Model
+from opencode_rank.data import Model
 
 
 def _m(model_id, price=1.0, scores=None):

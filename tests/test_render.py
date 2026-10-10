@@ -2,8 +2,8 @@
 
 import unittest
 
-from modelpareto.data import Model
-from modelpareto.render import render_html
+from opencode_rank.data import Model
+from opencode_rank.render import render_html
 
 
 def _m(model_id, price, score, lab="x"):

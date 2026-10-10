@@ -28,7 +28,7 @@ Rules:
    value upstream also carries.
 3. `fetch` writes **only** the upstream records; nothing ever writes here.
    When upstream drifts away from a pinned value, the override still wins
-   the view and the disagreement is reported (`modelpareto conflicts`).
+   the view and the disagreement is reported (`opencode_rank conflicts`).
    To accept upstream, delete the entry.
 4. Sources are tiered by comparability (`overrides.py:source_tier`), and a
    pinned value only applies when its source is at least as good as

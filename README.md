@@ -1,4 +1,4 @@
-# model-pareto
+# opencode-rank
 
 Price/score Pareto frontier of AI models, from the
 [opencode.ai/data](https://opencode.ai/data) catalog.
@@ -11,14 +11,14 @@ claim; everything else is context.
 ## Usage
 
 ```sh
-python3 -m modelpareto fetch                     # refresh data/ from opencode.ai
-python3 -m modelpareto conflicts                 # curated overrides vs upstream
-python3 -m modelpareto benchmarks                # list benchmarks + coverage
-python3 -m modelpareto render                    # pareto.html, best-covered benchmark
-python3 -m modelpareto render --benchmark "SWE-Bench Verified" --out swe.html
-python3 -m modelpareto list                      # both providers merged, three tables
-python3 -m modelpareto list --source zen         # one provider only
-python3 -m modelpareto list --source all --benchmark "SWE-Bench Verified"
+python3 -m opencode_rank fetch                     # refresh data/ from opencode.ai
+python3 -m opencode_rank conflicts                 # curated overrides vs upstream
+python3 -m opencode_rank benchmarks                # list benchmarks + coverage
+python3 -m opencode_rank render                    # pareto.html, best-covered benchmark
+python3 -m opencode_rank render --benchmark "SWE-Bench Verified" --out swe.html
+python3 -m opencode_rank list                      # both providers merged, three tables
+python3 -m opencode_rank list --source zen         # one provider only
+python3 -m opencode_rank list --source all --benchmark "SWE-Bench Verified"
 ```
 
 `render` defaults to the benchmark covering the most models. The output is one
@@ -88,7 +88,7 @@ real price *in the whole view* (across providers, one shared scale) and tagged
 infinite, but they are *shown* with an actual `0` price and `free` under
 `SCORE/$` — the nominal price never reaches the console.
 
-Tier membership lists ship in `modelpareto/sources/` as slug files scraped
+Tier membership lists ship in `opencode_rank/sources/` as slug files scraped
 from the tier pages; doc-calibrated prices are snapshotted in
 `data/tier_prices/` and refreshed by `fetch` (nothing else fetches docs).
 Refresh the slugs manually when the tiers change.

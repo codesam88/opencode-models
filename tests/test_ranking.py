@@ -2,9 +2,9 @@
 
 import unittest
 
-from modelpareto.data import Model
-from modelpareto.pricing import PriceEntry
-from modelpareto.ranking import (
+from opencode_rank.data import Model
+from opencode_rank.pricing import PriceEntry
+from opencode_rank.ranking import (
     axis_scores,
     build_rows,
     grade_rows,

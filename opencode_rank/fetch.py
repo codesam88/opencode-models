@@ -20,7 +20,7 @@ _SITEMAP_NS = "{http://www.sitemaps.org/schemas/sitemap/0.9}"
 
 def http_get(url: str) -> str:
     """Real transport: plain GET with a browser-ish user agent."""
-    req = urllib.request.Request(url, headers={"User-Agent": "model-pareto/0.1"})
+    req = urllib.request.Request(url, headers={"User-Agent": "opencode-rank/0.1"})
     with urllib.request.urlopen(req, timeout=30) as resp:
         return resp.read().decode("utf-8", errors="replace")
 

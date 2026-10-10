@@ -3,6 +3,11 @@
 Price/score Pareto frontier of AI models, from the
 [opencode.ai/data](https://opencode.ai/data) catalog.
 
+Unrelated to the opencode coding agent (`sst/opencode`): this tool ranks
+*models* — the name follows the data lineage, since opencode's catalog is
+the primary source (with tbench.ai, Artificial Analysis and the arena
+dataset behind it).
+
 For a chosen benchmark, the tool plots every priced model's score against its
 input price (log scale) and lists the **Pareto frontier**: models where no
 other model is both cheaper and scores higher. Frontier membership is the

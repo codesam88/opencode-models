@@ -21,6 +21,8 @@ from .arena import ARENA_BENCHMARK, ArenaCache, merge_from_file
 from .benchmarks import available
 from .data import load_models
 from .fetch import http_get, refresh
+from .boards import (fetch_boards, load_boards, merge_boards,
+                    save_boards)
 from .overrides import TIER_LABELS, load_curated, off_band_models, source_tier
 from .pricing import load_prices, refresh_prices
 from .ranking import (
@@ -113,20 +115,23 @@ def _fail(msg: str) -> int:
 
 
 def _load(data_dir: Path):
-    """Upstream records, curated overlays and arena scores all applied.
+    """Upstream records, arena scores, curated overlays and official boards.
 
-    Returns the models and the set of model ids carrying an override (the
-    console marks those rows so a curated number is never invisible).
+    Returns the models, the curated layer (which models carry overrides), and
+    the board-vs-registry disagreements — so the console can mark curated rows
+    and `conflicts` can report the boards' numbers replacing self-reports.
     """
     curated = load_curated(data_dir / "opencode", data_dir / "overrides")
-    return merge_from_file(curated.models, data_dir / "aiarena"), curated
+    models = merge_from_file(curated.models, data_dir / "aiarena")
+    models, board_conflicts = merge_boards(models, load_boards(data_dir / "boards"))
+    return models, curated, board_conflicts
 
 
 def _cmd_benchmarks(args: argparse.Namespace) -> int:
     data_dir = Path(args.data)
     if not data_dir.is_dir():
         return _fail(f"no data directory at {data_dir} — run `fetch` first")
-    models, _ = _load(data_dir)
+    models, _, _ = _load(data_dir)
     for name, count in available(models):
         print(f"{count:4d}  {name}")
     return 0
@@ -136,7 +141,7 @@ def _cmd_render(args: argparse.Namespace) -> int:
     data_dir = Path(args.data)
     if not data_dir.is_dir():
         return _fail(f"no data directory at {data_dir} — run `fetch` first")
-    models, _ = _load(data_dir)
+    models, _, _ = _load(data_dir)
     choices = available(models)
     if not choices:
         return _fail(f"no benchmark scores found in {data_dir} — run `fetch`")
@@ -152,20 +157,21 @@ def _cmd_render(args: argparse.Namespace) -> int:
     return 0
 
 
-def _print_conflicts(curated) -> int:
+def _print_conflicts(conflicts, orphans=()) -> int:
     """Override-vs-upstream disagreements, and overrides nothing matched."""
-    for c in curated.conflicts:
+    for c in conflicts:
         verdict = ("override wins"
-                   if c.override_wins else "override noted, upstream kept")
+                   if c.override_wins and c.applied
+                   else "override noted, upstream kept")
         print(f"{c.model_id}  {c.benchmark}: "
               f"{c.upstream} [{TIER_LABELS[source_tier(c.upstream_source)]}] "
               f"→ {c.override} [{TIER_LABELS[source_tier(c.override_source)]}]"
               f"  · {verdict}")
         if c.reason:
             print(f"    {c.reason}")
-    for model_id in sorted(curated.orphans):
+    for model_id in sorted(orphans):
         print(f"{model_id}  override file has no upstream record")
-    return len(curated.conflicts) + len(curated.orphans)
+    return len(conflicts) + len(orphans)
 
 
 def _cmd_conflicts(args: argparse.Namespace) -> int:
@@ -179,12 +185,16 @@ def _cmd_conflicts(args: argparse.Namespace) -> int:
     data_dir = Path(args.data)
     if not data_dir.is_dir():
         return _fail(f"no data directory at {data_dir} — run `fetch` first")
-    curated = load_curated(data_dir / "opencode", data_dir / "overrides")
-    n = _print_conflicts(curated)
+    models, curated, board_conflicts = _load(data_dir)
+    n = _print_conflicts(curated.conflicts, curated.orphans)
+    if board_conflicts:
+        print("— official boards —")
+        _print_conflicts(board_conflicts)
     for mid, s21, s40, resid in off_band_models(curated.models):
         print(f"{mid}  Terminal-Bench 2.1 {s21} vs 4.0 {s40} — "
               f"{resid:+.0f} off the 2.1→4.0 band, check the run")
-    print(f"{len(curated.curated)} curated models · {n} to review")
+    print(f"{len(curated.curated)} curated models · {n} curated "
+          f"disagreements · {len(board_conflicts)} from official boards")
     return 0
 
 
@@ -203,10 +213,16 @@ def _cmd_fetch(args: argparse.Namespace) -> int:
             print("warning: tier pricing docs parsed to nothing, "
                   "keeping existing snapshots")
     curated = load_curated(data_dir / "opencode", data_dir / "overrides")
-    n = _print_conflicts(curated)
+    n = _print_conflicts(curated.conflicts, curated.orphans)
     if n:
         print(f"{n} curated override(s) disagree with upstream — "
               f"run `conflicts` to review")
+    boards = fetch_boards(get=http_get)
+    saved = save_boards(data_dir / "boards", boards)
+    rows = sum(len(v) for v in boards.values())
+    if saved:
+        print(f"saved {rows} board rows from {', '.join(saved)} "
+              f"to {data_dir / 'boards'}")
     return 0
 
 
@@ -314,7 +330,7 @@ def _cmd_list(args: argparse.Namespace) -> int:
         return _fail(f"unknown source {source!r} — available: "
                      f"{', '.join(tiers)}, all")
 
-    models, curated = _load(data_dir)
+    models, curated, _ = _load(data_dir)
     groups, listed, counts, tier_slugs = [], [], {}, {}
     covered: set[str] = set()
     for provider in selected:

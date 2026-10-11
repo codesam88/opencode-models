@@ -89,6 +89,10 @@ class Conflict:
     upstream_source: str | None
     override_source: str | None
     reason: str
+    #: Whether the override actually landed (tier decided). A same-tier
+    #: disagreement is reported and *kept as upstream* — the console must
+    #: not claim an application that did not happen.
+    applied: bool = True
 
     @property
     def override_wins(self) -> bool:
@@ -149,7 +153,8 @@ def apply(model: Model, override: dict) -> tuple[Model, list[Conflict]]:
                 override_source=entry.get("source"),
                 reason=entry.get("note") or note,
             )
-            conflicts.append(conflict)
+            conflicts.append(replace(conflict,
+                                     applied=conflict.override_wins))
             if not conflict.override_wins:
                 continue
         scores[key] = value

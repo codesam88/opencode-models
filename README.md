@@ -142,7 +142,33 @@ committed**. They are third-party records, they go stale, and they are large;
 | `opencode/` | upstream records, one JSON per model, verbatim from `https://opencode.ai/data/<lab>/<model>.json` | `fetch` only | no — `.gitignore`d |
 | `aiarena/` | arena.ai (LMArena) Elo cache, `{slug: elo}` | `scores --refresh` | no — `.gitignore`d |
 | `tier_prices/` | snapshots of the Console tier pricing tables | `fetch` | no — `.gitignore`d |
+| `boards/` | official benchmark boards, fetched from whoever runs them (see below) | `fetch` | no — `.gitignore`d |
 | `overrides/` | hand-written sparse overlays: only the benchmark entries we vouched for (see `data/overrides/README.md`) | nobody — `fetch` reports disagreements via `conflicts` | **yes** |
+
+### Official boards, fetched from their owners
+
+`fetch` also pulls the boards themselves, so the axes are anchored on the
+numbers of whoever runs each benchmark rather than on one registry's
+transcription (which is ~93% vendor self-report):
+
+| board | where it comes from | what it carries |
+|---|---|---|
+| Terminal-Bench 4.0 | the official board page's own data payload (tbench.ai; the page renders in a browser, but streams the leaderboard it renders from) | accuracy ± CI95, the agent, the reasoning effort and the date per board row |
+| SWE-bench (Verified, Multilingual, Multimodal, Lite) | swebench.com's embedded leaderboard | `resolved` per checked submission, with the agent that ran it |
+
+A board row replaces a model's score only when its source is *strictly*
+better tiered than what the model already carries — an official board beats
+a vendor's own number (MiniMax-M2's self-reported 69.4 on SWE-bench Verified
+yields to the board's 61.0), but it never displaces an independent run, and
+every replacement or disagreement is printed by `conflicts`. Sources that
+only render numbers in a browser with no embedded data (Artificial Analysis,
+Vals AI, Scale's SWE-Atlas, DeepSWE) are not fetched; their numbers arrive
+via the registry or a curated override. A JS-rendered page is not
+automatically a dead end, though — tbench.ai looked like one and is not,
+because a Next.js page streams the data it renders from. aider's polyglot
+board *is* static HTML but was dropped as stale and redundant: its newest
+entry is GPT-5-era (Aug 2025), and diff-editing is already covered by
+SWE-bench and Terminal-Bench.
 
 Working from a checkout: `just fetch` (or `opencode-rank fetch`) once, then the
 `--data data` recipes work. If you want the dataset committed rather than

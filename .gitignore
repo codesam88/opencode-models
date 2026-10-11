@@ -3,6 +3,10 @@ __pycache__/
 *.egg-info/
 .venv/
 dist/
+# No fetched page or payload is committed. This `*.html` rule also caught the
+# test fixtures once, silently: nothing under tests/ is HTML any more (the
+# board shapes are written out in tests/test_boards.py), and a `git add -A`
+# that skips a file is easy to miss until CI fails on a clean checkout.
 *.html
 !README.md
 
@@ -12,3 +16,4 @@ dist/
 data/opencode/
 data/tier_prices/
 data/aiarena/
+data/boards/

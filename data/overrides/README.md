@@ -47,19 +47,35 @@ Rules:
    see the Step 5 Terminal-Bench 2.1 entry, which is flagged because it is
    absent from the official tbench.ai 2.1 leaderboard.
 
-Current files:
+## Currently empty — and that is the intent
 
-- `stepfun__step-5-preview.json` — AA/BenchLM scores for a model the
-  catalog ships with `benchmarks: []`.
-- `xai__grok-4-6.json` — AA's Terminal-Bench 2.1 (88.4) fills the primary
-  axis upstream lacks entirely; its 4.0 value is kept but re-attributed to
-  the official tbench.ai board. Without this, 4.6 ranked on the 4.0
-  fill-in axis only and looked far weaker than models it beats.
-- `xai__grok-4-7.json` — Terminal-Bench 4.0 pinned to AA's independent 33
-  over x.ai's own 37.6 (a live `conflicts` entry).
-- `inclusionai__ling-3-1-flash.json` — BenchmarkList/BenchLM captures for a
-  model the catalog ships with `benchmarks: []`.
-- `inclusionai__ling-3-1-flash.json` — BenchmarkList/BenchLM scores;
-  also records that inclusionAI is Ant Group's AGI initiative.
-- LongCat-2.5-Preview is deliberately absent: no attributable scores exist
-  yet (even opencode's own pages say "no comparable benchmark").
+The four files this directory held are gone. `fetch` now pulls the boards
+themselves (Terminal-Bench 4.0 from its own board page, SWE-bench from
+swebench.com), which is where provenance should come from: a number with a
+source and a date that refreshes itself, rather than a value someone typed
+in and has to remember to revisit.
+
+What removing them costs, measured by diffing every model's scores with and
+without the files:
+
+- **Grok 4.7** — the pin to Artificial Analysis's 33.0 is replaced by the
+  official board's own 37.58. The two disagree by more than the board's
+  CI95, so this is a real evaluator disagreement, not a correction; the
+  board's number is the one a reader expects to see.
+- **Grok 4.6** — Terminal-Bench 2.1 (88.4) has no fetched equivalent, since
+  the board we can read is 4.0 only. Without the pin the model ranks on its
+  4.0 value alone (20.3) and reads as far weaker than it is. This is the
+  real gap: a 2.1 leaderboard worth fetching would close it properly.
+- **Step 5 and Ling 3.1 Flash** — the catalog ships both with
+  `benchmarks: []`, so every value they had came from these files. They now
+  show no axis and rank as unranked. Their numbers were also the weakest
+  provenance available (BenchmarkList/BenchLM, tier 3).
+
+The layer stays: `overrides.py` still parses this directory, applies the
+tier policy and reports disagreements, and the loader refuses any entry
+without a `source` — an untierable value cannot be pinned. Adding a file
+back needs no code, only a good reason.
+
+LongCat-2.5-Preview is deliberately absent, as it was before: no
+attributable scores exist yet (even opencode's own pages say "no comparable
+benchmark").

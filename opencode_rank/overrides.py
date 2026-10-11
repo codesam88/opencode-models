@@ -107,11 +107,15 @@ class Conflict:
 
 
 def load_overrides(overrides_dir: Path) -> dict[str, dict]:
-    """Parse ``*.json`` in *overrides_dir* into ``{model id: document}``.
+    """Parse ``*.json`` in *overrides_dir* into ``{model id: document}*.
 
     Matching is on the ``model.id`` the file pins, not on the filename, so a
-    renamed file still finds its model; a file without a usable id is
-    skipped rather than trusted.
+    renamed file still finds its model. A file without a usable id is
+    skipped rather than trusted, and so is any *entry* without a source: an
+    unattributed score cannot be tiered, so the tier policy would quietly
+    treat it as a vendor self-report — the worst case. Dropping it here
+    means a hand-written override either carries its provenance or does not
+    land at all.
     """
     found: dict[str, dict] = {}
     for path in sorted(Path(overrides_dir).glob("*.json")):
@@ -120,6 +124,8 @@ def load_overrides(overrides_dir: Path) -> dict[str, dict]:
             model_id = doc["id"]
         except (json.JSONDecodeError, KeyError, TypeError):
             continue
+        doc = {**doc, "benchmarks": [e for e in (doc.get("benchmarks") or [])
+                                     if isinstance(e, dict) and e.get("source")]}
         found[model_id] = doc
     return found
 

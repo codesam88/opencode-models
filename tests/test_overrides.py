@@ -1,6 +1,7 @@
 """The curated overlay layer: tiers, merging and conflict reporting."""
 
 import json
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -158,6 +159,111 @@ class OffBandTest(unittest.TestCase):
         self.assertEqual([row[0] for row in out], ["x/gemini"])
         self.assertEqual(out[0][1:3], (89.4, 19.1))
         self.assertAlmostEqual(out[0][3], 19.1 - (1.131 * 89.4 - 71.39), places=1)
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+class CommittedOverridesTest(unittest.TestCase):
+    """Whatever we ship in data/overrides must be well formed.
+
+    The directory is empty today and may stay that way — the official
+    boards now carry the provenance the overrides were patching in by hand.
+    These tests pass vacuously on an empty directory and hold the moment
+    someone adds a file.
+    """
+
+    def _files(self):
+        root = Path(__file__).resolve().parent.parent / "data" / "overrides"
+        return sorted(p for p in root.glob("*.json"))
+
+    def test_every_entry_cites_a_source(self):
+        for path in self._files():
+            payload = json.loads(path.read_text())["model"]
+            for entry in payload["benchmarks"]:
+                with self.subTest(override=path.name, benchmark=entry.get("name")):
+                    self.assertTrue(entry.get("source"),
+                                    f"{path.name}: {entry.get('name')} "
+                                    f"{entry.get('version')} has no source — "
+                                    "an uncited value cannot be tiered")
+
+    def test_every_model_id_names_its_lab(self):
+        for path in self._files():
+            model_id = json.loads(path.read_text())["model"]["id"]
+            with self.subTest(override=path.name):
+                self.assertIn("/", model_id)
+
+
+class OverrideRulesTest(unittest.TestCase):
+    """The rules, enforced by the loader rather than by scanning the repo.
+
+    An override is hand-written, so the guard has to live where a new file
+    meets the code: these use synthetic files to prove what the loader
+    refuses, whatever the shipped directory happens to hold.
+    """
+
+    def _write(self, tmp: Path, *entries, name="vendor/model-x"):
+        (tmp / "vendor__model-x.json").write_text(json.dumps({"model": {
+            "id": name, "benchmarks": list(entries)}}))
+        return load_overrides(tmp)
+
+    def _entry(self, **over):
+        return {"name": "Terminal-Bench", "version": "2.1", "score": 80.0,
+                "source": "https://example.org/run", **over}
+
+    def test_a_sourced_entry_loads(self):
+        with tempfile.TemporaryDirectory() as d:
+            found = self._write(Path(d), self._entry())
+            self.assertEqual(len(found["vendor/model-x"]["benchmarks"]), 1)
+
+    def test_an_entry_without_a_source_is_dropped(self):
+        # an unattributed score cannot be tiered, and would be treated as
+        # the worst source there is — better absent than believed
+        with tempfile.TemporaryDirectory() as d:
+            found = self._write(Path(d), self._entry(source=None))
+            self.assertEqual(found["vendor/model-x"]["benchmarks"], [])
+
+    def test_an_entry_missing_the_source_key_entirely_is_dropped(self):
+        # forgetting the key is the likelier slip; a missing key must not
+        # read as an empty-but-present one
+        with tempfile.TemporaryDirectory() as d:
+            entry = self._entry()
+            del entry["source"]
+            found = self._write(Path(d), entry)
+            self.assertEqual(found["vendor/model-x"]["benchmarks"], [])
+
+    def test_a_sourced_entry_survives_alongside_an_unsourced_one(self):
+        with tempfile.TemporaryDirectory() as d:
+            found = self._write(Path(d),
+                                self._entry(source=None),
+                                self._entry(name="SciCode"))
+            kept = [e["name"] for e in found["vendor/model-x"]["benchmarks"]]
+            self.assertEqual(kept, ["SciCode"])
+
+    def test_an_empty_directory_loads_nothing(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(load_overrides(Path(d)), {})
+
+    def test_an_entry_lands_under_its_own_key(self):
+        from opencode_rank.overrides import benchmark_key
+        with tempfile.TemporaryDirectory() as d:
+            found = self._write(Path(d), self._entry(score=88.4))
+            doc = found["vendor/model-x"]
+            model, _ = apply(_m("vendor/model-x"), doc)
+            key = benchmark_key(doc["benchmarks"][0])
+            self.assertEqual(model.scores[key], 88.4)
+            self.assertEqual(model.sources[key], "https://example.org/run")
+
+    def test_an_entry_with_a_non_numeric_score_lands_nothing(self):
+        # a half-filled entry is inert rather than wrong
+        from opencode_rank.overrides import benchmark_key
+        with tempfile.TemporaryDirectory() as d:
+            found = self._write(Path(d), self._entry(score="88.4"))
+            doc = found["vendor/model-x"]
+            model, _ = apply(_m("vendor/model-x"), doc)
+            self.assertEqual(model.scores, {})
+            self.assertNotIn(benchmark_key(doc["benchmarks"][0]), model.scores)
 
 
 if __name__ == "__main__":

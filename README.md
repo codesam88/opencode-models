@@ -143,7 +143,7 @@ committed**. They are third-party records, they go stale, and they are large;
 | `aiarena/` | arena.ai (LMArena) Elo cache, `{slug: elo}` | `scores --refresh` | no — `.gitignore`d |
 | `tier_prices/` | snapshots of the Console tier pricing tables | `fetch` | no — `.gitignore`d |
 | `boards/` | official benchmark boards, fetched from whoever runs them (see below) | `fetch` | no — `.gitignore`d |
-| `overrides/` | hand-written sparse overlays: only the benchmark entries we vouched for (see `data/overrides/README.md`) | nobody — `fetch` reports disagreements via `conflicts` | **yes** |
+| `overrides/` | an escape hatch for hand-pinned benchmark values — currently empty, since `fetch` brings the boards themselves (see `data/overrides/README.md`) | nobody — `fetch` reports disagreements via `conflicts` | **yes** (the directory, no data) |
 
 ### Official boards, fetched from their owners
 

@@ -523,16 +523,20 @@ class CliTest(unittest.TestCase):
             (_models(d) / "l__e2.json").write_text(model_doc("l/e2", 6.0, 20.0))
             prices_dir = d / "tier_prices"
             prices_dir.mkdir()
-            (prices_dir / "zen_prices.json").write_text(json.dumps([
-                {"tier": "zen", "model_id": "ds", "name": "DS", "input": 2.0,
-                 "output": 2.0, "cached_read": 2.0, "limit": None,
-                 "free": False},
-            ]))
-            (prices_dir / "go_prices.json").write_text(json.dumps([
-                {"tier": "go", "model_id": "ds", "name": "DS", "input": 1.0,
-                 "output": 1.0, "cached_read": 1.0, "limit": 60.0,
-                 "free": False},
-            ]))
+            # the snapshot is also the availability record now, so it lists
+            # every model these plans offer, not only the priced one
+            (prices_dir / "zen_prices.json").write_text(json.dumps(
+                [dict(tier="zen", model_id="ds", name="DS", input=2.0,
+                      output=2.0, cached_read=2.0, limit=None, free=False)]
+                + [dict(tier="zen", model_id=mid, name=mid.upper(), input=9.0,
+                        output=9.0, cached_read=9.0, limit=None, free=False)
+                   for mid in ("e1", "e2")]))
+            (prices_dir / "go_prices.json").write_text(json.dumps(
+                [dict(tier="go", model_id="ds", name="DS", input=1.0,
+                      output=1.0, cached_read=1.0, limit=60.0, free=False)]
+                + [dict(tier="go", model_id=mid, name=mid.upper(), input=9.0,
+                        output=9.0, cached_read=9.0, limit=None, free=False)
+                   for mid in ("e1", "e2")]))
             orig = sources.load_source
             sources.load_source = lambda name: {"ds", "e1", "e2"}
             try:
@@ -864,7 +868,12 @@ class CliTest(unittest.TestCase):
                  "output": 1.0, "cached_read": 1.0, "limit": 60.0, "free": False},
                 {"tier": "go", "model_id": "gift", "name": "Gift", "input": 0.0,
                  "output": 0.0, "cached_read": 0.0, "limit": None, "free": True},
-            ]))
+                # the snapshot is also the availability record: the fillers
+                # this test needs are offered even though they are unpriced
+            ] + [{"tier": "go", "model_id": mid, "name": mid.upper(),
+                  "input": 9.0, "output": 9.0, "cached_read": 9.0,
+                  "limit": None, "free": False}
+                 for mid in ("p1", "p2", "p3", "p4", "p5")]))
             orig = sources.load_source
             sources.load_source = lambda name: {"p1", "p2", "p3", "p4", "p5",
                                                 "inc", "gift"}
@@ -995,6 +1004,132 @@ class CliTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertNotIn("scored", next(l for l in out.splitlines()
                                         if "SEC-Bench Pro" in l))
+
+
+class AvailabilityTest(unittest.TestCase):
+    """A model the plans no longer offer is not shown, scored or ranked.
+
+    Providers unlist models and move them between plans, and the committed
+    membership lists drift: 13 Go slugs were still on offer after the
+    provider's own docs dropped them.
+    """
+
+    def _run(self, *argv):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = main(list(argv))
+        return code, out.getvalue()
+
+    def _data(self, tmp, *, offered, shipped):
+        import json
+        d = Path(tmp)
+        # the unlisted model is the *strongest* one, so nothing but the
+        # availability filter can hide it: a weak row would be culled out of
+        # best value anyway and the test would pass for the wrong reason
+        for mid, score in [("a/kept", 80.0), ("a/gone", 95.0),
+                           ("a/third", 60.0), ("a/fourth", 50.0)]:
+            (_models(d) / f"{mid.replace('/', '__')}.json").write_text(json.dumps({
+                "model": {"id": mid, "name": mid.split("/")[1].upper(),
+                          "lab": "a",
+                          "priceUsdPer1M": {"input": 1.0, "output": None,
+                                            "cachedInput": None},
+                          "benchmarks": [
+                              {"name": "Terminal-Bench", "version": "2.1",
+                               "score": score, "metric": "acc", "source": ""},
+                              {"name": "SWE-Bench", "version": "Verified",
+                               "score": score / 2, "metric": "acc",
+                               "source": ""}]}}))
+        prices = d / "tier_prices"
+        prices.mkdir(parents=True, exist_ok=True)
+        (prices / "zen_prices.json").write_text(json.dumps(
+            [{"tier": "zen", "model_id": m, "name": m, "input": 1.0,
+              "output": 1.0, "cached_read": None, "limit": None, "free": False}
+             for m in offered]))
+        # no go snapshot at all: unknown, not "offers nothing"
+        import opencode_rank.sources as sources
+        orig = sources.load_source
+        sources.load_source = lambda tier: set(shipped)
+        self.addCleanup(setattr, sources, "load_source", orig)
+        return d
+
+    def test_list_hides_a_model_the_plan_dropped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._data(tmp, offered=["kept", "third", "fourth"],
+                       shipped=["kept", "third", "fourth", "gone"])
+            code, out = self._run("--data", tmp, "list", "--source", "zen")
+        self.assertEqual(code, 0)
+        self.assertIn("KEPT", out)
+        self.assertNotIn("GONE", out)
+
+    def test_list_shows_it_again_with_all_models(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._data(tmp, offered=["kept", "third", "fourth"],
+                       shipped=["kept", "third", "fourth", "gone"])
+            code, out = self._run("--data", tmp, "list", "--source", "zen",
+                                  "--all-models")
+        self.assertEqual(code, 0)
+        self.assertIn("KEPT", out)
+        self.assertIn("GONE", out)
+        self.assertNotIn("no longer listed", out)
+
+    def test_all_is_an_alias_for_all_models(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._data(tmp, offered=["kept", "third", "fourth"],
+                       shipped=["kept", "third", "fourth", "gone"])
+            _code, short = self._run("--data", tmp, "list", "--source", "zen",
+                                     "--all")
+            _code, long = self._run("--data", tmp, "list", "--source", "zen",
+                                    "--all-models")
+        self.assertEqual(short, long)
+
+    def test_the_hidden_model_is_the_strongest_one(self):
+        # guards the guard: the row that must disappear leads the table when
+        # it is shown, so this cannot pass on a cull or an ordering change
+        with tempfile.TemporaryDirectory() as tmp:
+            self._data(tmp, offered=["kept", "third", "fourth"],
+                       shipped=["kept", "third", "fourth", "gone"])
+            _c, every = self._run("--data", tmp, "scores", "--all-models")
+        first = next(l for l in every.splitlines() if "GONE" in l)
+        self.assertEqual(first.split()[0], "GONE")
+
+    def test_scores_hides_a_model_the_plan_dropped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._data(tmp, offered=["kept", "third", "fourth"],
+                       shipped=["kept", "third", "fourth", "gone"])
+            code, out = self._run("--data", tmp, "scores")
+        self.assertEqual(code, 0)
+        self.assertIn("KEPT", out)
+        self.assertNotIn("GONE", out)
+
+    def test_scores_shows_it_again_with_all_models(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._data(tmp, offered=["kept", "third", "fourth"],
+                       shipped=["kept", "third", "fourth", "gone"])
+            code, out = self._run("--data", tmp, "scores", "--all-models")
+        self.assertEqual(code, 0)
+        self.assertIn("GONE", out)
+
+    def test_a_dropped_model_is_reported_not_just_hidden(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._data(tmp, offered=["kept", "third", "fourth"],
+                       shipped=["kept", "third", "fourth", "gone"])
+            code, out = self._run("--data", tmp, "list", "--source", "zen")
+        self.assertEqual(code, 0)
+        self.assertIn("no longer listed", out)
+        self.assertIn("gone", out)
+
+    def test_the_scales_still_span_the_whole_catalog(self):
+        # a model you cannot buy still says where the field is, so a score
+        # does not change when a plan drops something
+        with tempfile.TemporaryDirectory() as tmp:
+            self._data(tmp, offered=["kept", "third", "fourth"],
+                       shipped=["kept", "third", "fourth", "gone"])
+            _c, shown = self._run("--data", tmp, "scores")
+            _c, every = self._run("--data", tmp, "scores", "--all-models")
+        kept_line = next(l for l in shown.splitlines() if "KEPT" in l)
+        every_line = next(l for l in every.splitlines() if "KEPT" in l)
+        self.assertEqual(kept_line.split()[1:],
+                         every_line.split()[1:])
 
 
 class ScoresCommandTest(unittest.TestCase):

@@ -43,6 +43,7 @@ from .ranking import (
 from .ranking import AXES, axis_scores
 from .render import render_html
 from . import arena as arena_mod
+from .availability import available_ids, load_available, unlisted
 from . import sources
 
 #: Where the data lives for an installed tool: $OPENCODE_RANK_DATA, else the
@@ -309,9 +310,13 @@ def _cmd_scores(args: argparse.Namespace) -> int:
 
     models, _curated, _boards = _load(data_dir)
     table = scales(models)
-    ranked = sorted((m for m in models if m.scores),
+    on_offer = available_ids(data_dir)
+    shown = models if getattr(args, "all_models", False) or not on_offer else [
+        m for m in models if m.model_id in on_offer
+        or m.model_id.split("/")[-1] in on_offer]
+    ranked = sorted((m for m in shown if m.scores),
                     key=lambda m: -(combined(derived_scores(m, table)) or 0))
-    unscored = [m for m in models if not m.scores]
+    unscored = [m for m in shown if not m.scores]
     columns = _score_columns(models, table)
 
     print(f"{len(models)} models · {len(columns)} benchmarks scored on · "
@@ -427,13 +432,20 @@ def _select(data_dir: Path, source: str | None,
     return None
 
 
-def _rows_for(data_dir: Path, selected: list[str], price: str):
+def _rows_for(data_dir: Path, selected: list[str], price: str,
+              all_models: bool = False):
     """Build, merge and dedupe the rows for *selected* providers.
 
     Shared by `list` and `next` so a recommendation can never disagree with
     the ranking it was drawn from.
+
+    Unless *all_models*, a row is a model the plans actually offer: the
+    provider's own snapshot is the record, and a model it has dropped is
+    neither listed nor scored. The scales are still built over the whole
+    catalog, so a score does not move when a plan changes what it sells.
     """
     models, curated, _ = _load(data_dir)
+    on_offer = available_ids(data_dir)
     # one scale for the whole catalog: per-tier scales would make the same
     # score mean two different things in the merged view
     table = scales(models)
@@ -446,6 +458,12 @@ def _rows_for(data_dir: Path, selected: list[str], price: str):
         else:
             tier_slugs[provider] = sources.load_source(provider)
             pool, free_ids = sources.members(models, tier_slugs[provider])
+            on_offer = load_available(data_dir).get(provider)
+            if not all_models and on_offer is not None:
+                pool = [m for m in pool
+                        if m.model_id.split("/")[-1] in on_offer
+                        or m.model_id in on_offer]
+                free_ids &= {m.model_id for m in pool}
             counts[provider] = len(pool)
             covered |= {m.model_id for m in pool}
         listed += pool
@@ -469,7 +487,7 @@ def _cmd_list(args: argparse.Namespace) -> int:
     selected, scope = chosen
 
     rows, listed, curated, counts, tier_slugs, models = _rows_for(
-        data_dir, selected, args.price)
+        data_dir, selected, args.price, getattr(args, "all_models", False))
     if not listed:
         return _fail(f"no model of {source or 'zen+go'} is in {data_dir} "
                      f"— run `fetch`")
@@ -505,6 +523,12 @@ def _cmd_list(args: argparse.Namespace) -> int:
     else:
         head = f"all: {len(models)} models in catalog"
     print(f"{head} · {len(rows)} lines · {order_note} · {COST_NOTE}")
+    if not getattr(args, "all_models", False):
+        for tier, slugs in sorted(unlisted(data_dir).items()):
+            shown_slugs = ", ".join(sorted(slugs)[:6])
+            more = f" (+{len(slugs) - 6} more)" if len(slugs) > 6 else ""
+            print(f"{tier}: {len(slugs)} no longer listed by the provider, "
+                  f"hidden here — {shown_slugs}{more} · --all-models to see them")
     print("GRADE: ++ top 10% · + next 10% · o middle · - bottom 20% · "
           "· unranked (position in the whole ordering, not per table)")
 
@@ -629,6 +653,10 @@ def main(argv: list[str] | None = None) -> int:
                              "also print the worst-score and highest-cost "
                              "tables. Either way the cull happens — those "
                              "rows are out of best value (default: %(default)s)")
+    p_list.add_argument("--all-models", "--all", dest="all_models",
+                        action="store_true",
+                        help="include models the plans no longer offer; the "
+                             "default shows only what a plan currently lists")
     p_list.add_argument("--benchmark",
                         help="rank on one benchmark instead of combining "
                              "Terminal-Bench 2.x (first) with SWE-Bench and "
@@ -650,6 +678,10 @@ def main(argv: list[str] | None = None) -> int:
     p_scores = sub.add_parser(
         "scores", help="manage cached arena.ai Elo scores (offline unless --refresh)"
     )
+    p_scores.add_argument("--all-models", "--all", dest="all_models",
+                          action="store_true",
+                          help="include models the plans no longer offer; the "
+                               "default shows only what a plan currently lists")
     p_scores.add_argument("--refresh", action="store_true",
                           help="look up arena.ai and rewrite the cache")
 

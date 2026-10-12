@@ -50,9 +50,11 @@ opencode-rank list                      # both providers merged, best value
 opencode-rank list --tables all         # also worst-score and highest-cost
 opencode-rank list --source zen         # one provider only
 opencode-rank list --source all --benchmark "SWE-Bench Verified"
+opencode-rank list --all-models                # include models a plan has dropped
+opencode-rank scores --all-models              # the whole catalog, not just offered
 opencode-rank next                      # the next 4 models to use, in order
 opencode-rank next --count 6 --source go
-opencode-rank scores                    # every model's score, one column per benchmark
+opencode-rank scores                    # offered models, one column per benchmark
 ```
 
 `render` defaults to the benchmark covering the most models. The output is one
@@ -281,9 +283,37 @@ committed**. They are third-party records, they go stale, and they are large;
 |---|---|---|---|
 | `opencode/` | upstream records, one JSON per model, verbatim from `https://opencode.ai/data/<lab>/<model>.json` | `fetch` only | no — `.gitignore`d |
 | `aiarena/` | arena.ai (LMArena) Elo cache, `{slug: elo}` | `scores --refresh` | no — `.gitignore`d |
-| `tier_prices/` | snapshots of the Console tier pricing tables | `fetch` | no — `.gitignore`d |
+| `tier_prices/` | snapshots of the Console tier pricing tables — **and the record of which models the plans offer** (see below) | `fetch` | no — `.gitignore`d |
 | `boards/` | official benchmark boards, fetched from whoever runs them (see below) | `fetch` | no — `.gitignore`d |
 | `overrides/` | an escape hatch for hand-pinned benchmark values — currently empty, since `fetch` brings the boards themselves (see `data/overrides/README.md`) | nobody — `fetch` reports disagreements via `conflicts` | **yes** (the directory, no data) |
+
+### Which models the plans actually offer
+
+Providers unlist models and move them between plans, so "which models can I
+use" is a fact about today, not a property of the codebase. It used to come
+from committed text files — `opencode_rank/sources/zen.txt` and `go.txt` —
+which are hand-maintained and drifted in both directions. In the live data 13
+Go models were still being listed, scored and recommended after the provider's
+own documentation had stopped listing them, among them `hy3-preview` and
+`glm-5`, two of the models an active backfill was chasing numbers for.
+
+`fetch` already snapshots each tier's documentation for prices, and every row
+of that snapshot names a model the plan offers. That snapshot is now the
+availability record (`opencode_rank/availability.py`), so availability comes
+from the same source as the prices and is current by construction.
+
+- **`list` and `scores` show only what a plan lists.** `next` therefore never
+  recommends a model that has been dropped.
+- **`--all-models`** (alias `--all`) lists the whole catalog instead, which is
+  what you want when auditing rather than choosing.
+- **A dropped model is reported, not just hidden** — `list` names them, so a
+  model quietly disappearing from a plan is a change the console tells you
+  about rather than one you notice is missing.
+- **A tier with no snapshot is unknown, not empty.** Offline and before the
+  first `fetch`, nothing is filtered; restricting the console to an empty set
+  because nobody fetched would hide everything.
+- **The scales do not move.** A model you cannot buy still marks where the
+  field is, so a score never changes because a plan changed what it sells.
 
 ### Official boards, fetched from their owners
 

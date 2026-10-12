@@ -30,16 +30,21 @@ PYTHONPATH=. uv run python -c "
 from pathlib import Path
 from opencode_rank.cli import _load
 from opencode_rank.scoring import scales, derived_scores, canonical, _TRACKED
-import opencode_rank.sources as sources
+from opencode_rank.availability import load_available
+from opencode_rank import sources
 
 models, *_ = _load(Path('data'))
 table = scales(models)
-plans = {svc: {m.model_id for m in sources.members(models, sources.load_source(svc))[0]}
-         for svc in ('zen', 'go')}
+# availability is the provider's own snapshot, not the committed slug lists:
+# a model a plan has dropped is not worth a number
+offered = {m.model_id for tier, ids in load_available(Path('data')).items()
+           if ids for m in sources.members(models, ids)[0]}
 for m in models:
     derived = derived_scores(m, table)
-    plan = next((s for s in ('zen', 'go') if m.model_id in plans[s]), None)
-    if not (plan and len(derived) == 1):
+    plan = next((t for t, ids in load_available(Path('data')).items()
+                 if ids and (m.model_id in ids
+                              or m.model_id.split('/')[-1] in ids)), None)
+    if not plan or len(derived) != 1:
         continue
     has = canonical(next(iter(derived)))
     missing = [b.replace('Terminal-Bench ', 'TB ').replace('SWE-Bench ', 'SWE ')

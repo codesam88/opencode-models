@@ -128,7 +128,8 @@ Stdlib-only, Python ≥ 3.10, no dependencies. Tests: `just test`
 build. CI runs the suite on 3.10/3.12/3.14 without the dataset, since CI
 never fetches third-party records. What the tool touches on the
 network, the scraper etiquette and how to report a security issue are in
-[SECURITY.md](SECURITY.md).
+[SECURITY.md](SECURITY.md). What the *plans* actually meter — Zen's credits,
+Go's per-model dollar limits and windows — is in [LIMITS.md](LIMITS.md).
 
 ## Data
 

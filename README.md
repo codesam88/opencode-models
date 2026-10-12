@@ -112,11 +112,11 @@ Best value splits into bands — **free** (use first), **included usage**
 (lines the tier grants a monthly allowance for), **pay-as-you-go** — and is
 ranked by score per dollar *inside* each band. A line's cost is 20% input +
 60% cached read + 20% output; `--price input|output` picks a single rate
-instead. The numbers are all rounded integers: `SCORE/$` rounds to
-whole numbers, and the cost column counts cents (`¢/1M` = round(price·100)),
-so a $0.0612 line reads as `6`, not `0.0612`. Columns are measured from the
-lines actually being shown (header included), so nothing shifts when a price
-or a provider list outgrows the rest.
+instead. The numbers are all rounded integers: the score is the model's
+calculated 0–100 number, and the cost column counts cents (`¢/1M` =
+round(price·100)), so a $0.0612 line reads as `6`, not `0.0612`. Columns are
+measured from the lines actually being shown (header included), so nothing
+shifts when a price or a provider list outgrows the rest.
 
 ### Which benchmarks are scored
 
@@ -244,16 +244,13 @@ The console prints what it measured and points here for the arithmetic;
 column headers are short (`TB 2.1`, `SWE Verified`) and the legend under the
 table spells out which benchmark each one is.
 
-The score columns show **every ordering axis side by side** — `TB2`, `TB4`,
-`SWE` — each carrying the model's raw best run on that axis, blank where it
-has none. A row therefore displays both base scores the ordering is built
-from instead of one merged number plus a "which axis" tag, and the axes
-stay comparable because 2.x and 4.0 never share a column (a 55.8 next to an
-83 reads as a regression otherwise). `--benchmark X` switches to the
-single-score layout: that benchmark's score and its tag.
+Each row shows the model's **calculated score**, its cost, and which plan
+lists it — the per-axis raw numbers live in `scores`, not here. `--benchmark
+X` switches to the single-score layout: that benchmark's raw score and its
+tag.
 
 Each line is prefixed with a rank marker — `++` the top decile of the
-ordering, `+` the next tenth, `o` the middle, `-` the bottom fifth, `·` a row
+ordering, `+` the next tenth, `o` the middle, `--` the bottom fifth, `·` a row
 no benchmark reaches (unranked, not last). The marker rides on position in
 the *whole* ordering, so a row in the worst-score or highest-cost table still
 shows how it ranked overall — a priciest-model row can be `++`.
@@ -263,7 +260,8 @@ score per dollar and build the skeleton; rows that carry only SWE-Bench, or
 only the harder Terminal-Bench 4.0, are inserted at their own axis' percentile
 (`--benchmark X` ranks on one benchmark instead). 4.0 is a harder task set —
 its leaders reach ~58 where 2.1's reach ~87 — so a 4.0 score never competes
-directly with 2.x numbers and is tagged `TB4` in the table. 2.1 builds the
+directly with 2.x numbers, and `--benchmark X` tags which benchmark a row
+was ranked on. 2.1 builds the
 skeleton while it has the coverage (37 tier models against 12); when that
 inverts, promote 4.0 to primary by changing `TB4_FAMILY`'s role in
 `ranking.py`. The axes are not comparable, so they only indicate relative
@@ -272,11 +270,11 @@ performance.
 Pricing comes from the tier docs rather than the catalog, which carries one
 Zen-style price per model: documented rates replace it, and every priced
 variant (peak/off-peak, token window) gets its own line. Free lines — `-free`
-tier slugs and zero-priced models — are *ranked* at a tenth of the cheapest
-real price *in the whole view* (across providers, one shared scale) and tagged
-`[free]`, so "free" sorts and divides like any other cost instead of going
-infinite, but they are *shown* with an actual `0` price and `free` under
-`SCORE/$` — the nominal price never reaches the console.
+tier slugs and zero-priced models — are *ranked* at their model's nominal
+free-tier rate (`pricing.FREE_TIER_NOMINAL_RATES`, recomputed on every
+`fetch` from the usage export; see LIMITS.md), so "free" sorts and divides
+like any other cost instead of going infinite, but they are *shown* with an
+actual `0` price — the nominal price never reaches the console.
 
 Tier membership lists ship in `opencode_rank/sources/` as slug files scraped
 from the tier pages; doc-calibrated prices are snapshotted in

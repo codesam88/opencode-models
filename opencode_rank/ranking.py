@@ -91,7 +91,7 @@ class Row:
     band: str
     score: float | None          # primary family score, else secondary
     benchmark: str | None        # the key `score` came from
-    grade: str = "o"             # rank marker: ++ / + / o / -
+    grade: str = "o"             # rank marker: ++ / + / o / -- / ·
     provider: str = "-"          # zen / go, "-" when in neither tier
     entry: object | None = None  # pricing.PriceEntry when doc-priced
 
@@ -325,10 +325,10 @@ def grade_symbols(count: int) -> list[str]:
     """A rank marker per row position, best first.
 
     The bottom band is checked before the next band so that on a tiny list
-    the worst row is not robbed of its `-` by the tenth-above rule. Rows
+    the worst row is not robbed of its `--` by the tenth-above rule. Rows
     that could not be ranked sit at the end of the ordering and share the
     tail's marks — the column reports position in this ranking, not a
-    capability verdict, so a free unscored model shows `-` for sorting
+    capability verdict, so a free unscored model shows `--` for sorting
     last, not for being bad.
     """
     if count <= 0:
@@ -341,7 +341,7 @@ def grade_symbols(count: int) -> list[str]:
         if position < top:
             symbols.append("++")
         elif position >= count - bottom:
-            symbols.append("-")
+            symbols.append("--")
         elif position < top + nxt:
             symbols.append("+")
         else:

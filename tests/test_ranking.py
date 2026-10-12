@@ -368,27 +368,27 @@ class AxisScoresTest(unittest.TestCase):
 
 
 class GradeTest(unittest.TestCase):
-    """The rank marker: ++ top decile, + next tenth, o middle, - bottom fifth."""
+    """The rank marker: ++ top decile, + next tenth, o middle, -- bottom fifth."""
 
     def test_a_twenty_row_list_splits_ten_ten_sixty_twenty(self):
         symbols = grade_symbols(20)
         self.assertEqual(symbols.count("++"), 2)    # top 10%
         self.assertEqual(symbols.count("+"), 2)     # next 10%
-        self.assertEqual(symbols.count("-"), 4)     # bottom 20%
+        self.assertEqual(symbols.count("--"), 4)    # bottom 20%
         self.assertEqual(symbols.count("o"), 12)
         self.assertEqual(symbols[0], "++")
         self.assertEqual(symbols[1], "++")
         self.assertEqual(symbols[2], "+")
-        self.assertEqual(symbols[-1], "-")
+        self.assertEqual(symbols[-1], "--")
 
     def test_short_lists_still_mark_every_band(self):
         # five rows cannot fill four bands exactly, but none may vanish
         symbols = grade_symbols(5)
         self.assertEqual(symbols.count("++"), 1)
-        self.assertEqual(symbols.count("-"), 1)
+        self.assertEqual(symbols.count("--"), 1)
         self.assertEqual(len(symbols), 5)
         self.assertEqual(symbols[0], "++")
-        self.assertEqual(symbols[-1], "-")
+        self.assertEqual(symbols[-1], "--")
 
     def test_a_lone_row_is_its_own_best(self):
         self.assertEqual(grade_symbols(1), ["++"])
@@ -400,7 +400,7 @@ class GradeTest(unittest.TestCase):
             self.assertEqual(len(symbols), n, n)
             self.assertEqual(symbols.count("++"), max(1, round(0.1 * n)), n)
             if n > 1:   # the lone row is its own best, so nothing is `-`
-                self.assertEqual(symbols.count("-"),
+                self.assertEqual(symbols.count("--"),
                                  max(1, round(0.2 * n)), n)
 
     def test_unscored_rows_are_unranked_not_last(self):
@@ -418,7 +418,7 @@ class GradeTest(unittest.TestCase):
                   for i in range(1, 11)]
         graded = grade_rows(order_rows(build_rows(models)))
         self.assertEqual([r.grade for r in graded][:1], ["++"])
-        self.assertEqual(graded[-1].grade, "-")
+        self.assertEqual(graded[-1].grade, "--")
         # value order: m10 scores 100 at $10 → the best points per dollar,
         # m01 the worst, so the marks follow the value ranking not the score
         self.assertEqual(graded[0].model.model_id, "l/m10")
@@ -587,7 +587,7 @@ class GradeByScoreTest(unittest.TestCase):
         self.assertNotEqual(graded["M01"], "++")
         # and the bands follow the scores, top to bottom
         self.assertEqual([graded[f"M{i:02d}"] for i in range(5)],
-                         ["++", "+", "o", "o", "-"])
+                         ["++", "+", "o", "o", "--"])
 
     def test_the_grades_do_not_depend_on_price_at_all(self):
         cheap = grade_rows(self._rows([(90.0, 100.0), (50.0, 0.0)]))

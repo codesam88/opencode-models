@@ -379,7 +379,7 @@ class CliTest(unittest.TestCase):
         self.assertIn("M1", out)
         self.assertNotIn("M2", out)
 
-    def test_list_shows_score_price_and_ratio_columns(self):
+    def test_list_shows_score_cost_and_plan_columns(self):
         import opencode_rank.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -395,8 +395,8 @@ class CliTest(unittest.TestCase):
                 sources.load_source = orig
         self.assertEqual(code, 0)
         line = next(l for l in out.splitlines() if l.rstrip().endswith("M1"))
-        # everything integer: score 50, $1.00 shown as 100 cents, ratio 50
-        self.assertRegex(line, r"\s50\s+TB\s+100\s+50\s+")
+        # the calculated score, the benchmark tag, $1.00 as 100 cents
+        self.assertRegex(line, r"\s50\s+TB\s+100\s+zen\s+M1$")
 
     def test_numbers_are_shown_as_rounded_integers(self):
         import json
@@ -440,10 +440,9 @@ class CliTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("¢/1M", out)   # the column says what it counts
         line = next(l for l in out.splitlines() if l.rstrip().endswith("CHEAP"))
-        # the TB2 cell shows the raw 88.8; the other two axes are blank;
-        # $0.0612 shows as 6 cents, and the ratio divides the derived score
-        # (100, the best of the 40-88.8 range) by the cost: 100/0.0612 → 1634
-        self.assertRegex(line, r"\s88\.8\s+-\s+88\.8\s+6\s+1634\s+\S+\s+CHEAP$")
+        # the calculated score (100, the best of the 40-88.8 range);
+        # $0.0612 shows as 6 cents
+        self.assertRegex(line, r"\s100\s+6\s+go,zen\s+CHEAP$")
         self.assertNotIn("0.0612", line)   # cents, never dollars
 
     def test_list_output_price_uses_output_axis(self):
@@ -474,7 +473,7 @@ class CliTest(unittest.TestCase):
         self.assertEqual(code, 0)
         # output price $5.00 shown as 500 cents; ratio 50/5 → 10
         line = next(l for l in out.splitlines() if l.rstrip().endswith("M1"))
-        self.assertRegex(line, r"\s50\s+TB\s+500\s+10\s+")
+        self.assertRegex(line, r"\s50\s+TB\s+500\s+zen\s+M1$")
 
     def test_list_unknown_source_errors(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -517,6 +516,23 @@ class CliTest(unittest.TestCase):
             code, out = self._run("--data", tmp, "next", "--source", "all")
         self.assertEqual(code, 0)
         self.assertIn("LIMITS.md", out)
+
+    def test_next_shows_free_for_free_lines_and_the_ratio_for_paid(self):
+        from opencode_rank.cli import _pick_value
+        from opencode_rank.ranking import Row
+        from opencode_rank.data import Model
+
+        def row(price, score, free=False):
+            model = Model(model_id="l/m", name="M", lab="l",
+                          price_input=price, price_output=price,
+                          price_cached_input=price, scores={})
+            return Row(model=model, name="M", price=price, free=free,
+                       band="included", score=score, benchmark=None,
+                       provider="go", grade="o", entry=None)
+
+        self.assertEqual(_pick_value(row(0.0, 90.0, free=True)), "free")
+        self.assertEqual(_pick_value(row(1.0, None)), "-")
+        self.assertEqual(_pick_value(row(0.5, 50.0)), "100")
 
     def test_next_numbers_the_picks_in_order(self):
         import re
@@ -598,9 +614,8 @@ class CliTest(unittest.TestCase):
         self.assertEqual(out.count("\n\n──"), 3)   # blank line before each table
         for title in ("best value", "worst score", "highest cost"):
             self.assertRegex(out, rf"(?m)^── [^\n]*{title}")
-        # one column header per table, all five columns named, in order
-        header = re.compile(r"(?m)^\s*TB2\s+TB4\s+SWE\s+¢/1M\s+SCORE/\$\s+"
-                            r"PROV\s+MODEL\s*$")
+        # one column header per table: score, cost, plan, in order
+        header = re.compile(r"(?m)^\s*SCORE\s+¢/1M\s+PROV\s+MODEL\s*$")
         self.assertEqual(len(header.findall(out)), 3)
 
     def test_headers_are_bold_when_the_output_is_a_terminal(self):
@@ -658,8 +673,8 @@ class CliTest(unittest.TestCase):
                 sources.load_source = orig
         self.assertEqual(code, 0)
         lines = out.splitlines()
-        self.assertEqual(len(re.findall(r"(?m)^\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+"
-                                        r"\S+\s+DS$", out)), 2)
+        self.assertEqual(len(re.findall(r"(?m)^\s+\S+\s+\S+\s+\S+\s+\S+\s+"
+                                        r"DS$", out)), 2)
         self.assertTrue(any(line.endswith("go  DS") for line in lines))   # provider
         self.assertTrue(any(line.endswith("zen  DS") for line in lines))  # before name
         self.assertIn("PROV  MODEL", out)            # column header
@@ -755,7 +770,7 @@ class CliTest(unittest.TestCase):
         gift = [l for l in out.splitlines() if "GIFT [free]" in l]
         self.assertEqual(len(gift), 1, out)
         self.assertNotIn("0.1", gift[0])       # the nominal price stays hidden
-        self.assertRegex(gift[0], r"\s0\s+free\s+\S+\s+GIFT \[free\]$")
+        self.assertRegex(gift[0], r"-\s+0\s+go\s+GIFT \[free\]$")
 
     def test_columns_stay_aligned_whatever_the_cell_widths(self):
         """Column widths are measured once, across the whole view.
@@ -812,7 +827,7 @@ class CliTest(unittest.TestCase):
                 sources.load_source = orig
         self.assertEqual(code, 0)
         lines = out.splitlines()
-        header = next(l for l in lines if l.strip().startswith("TB2"))
+        header = next(l for l in lines if l.strip().startswith("SCORE"))
         model_col = header.index("MODEL")
         # one row from each of the three tables, widest cells checked last
         for name in ("MID", "GIFT [free]", "TOP", "WIDE"):
@@ -821,24 +836,28 @@ class CliTest(unittest.TestCase):
         wide = next(l for l in lines if l.rstrip().endswith("WIDE"))
         self.assertIn("go,zen", wide)   # the whole token, not a truncation
 
-    def test_tb4_only_scores_land_in_the_tb4_column(self):
+    def test_models_with_different_coverage_share_one_score_column(self):
         import json
 
         import opencode_rank.sources as sources
 
-        def doc(mid, version, score):
+        def doc(mid, tb, swe):
             return json.dumps({"model": {
                 "id": mid, "name": mid.split("/")[1].upper(), "lab": "l",
                 "priceUsdPer1M": {"input": 1.0, "output": None,
                                   "cachedInput": None},
-                "benchmarks": [{"name": "Terminal-Bench", "version": version,
-                                "score": score, "metric": "acc", "source": ""}],
+                # the same two axes each, or neither scale has spread
+                "benchmarks": [
+                    {"name": "Terminal-Bench", "version": "2.1",
+                     "score": tb, "metric": "acc", "source": ""},
+                    {"name": "SWE-Bench", "version": "Verified",
+                     "score": swe, "metric": "acc", "source": ""}],
             }})
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
-            (_models(d) / "l__two.json").write_text(doc("l/two", "2.1", 50.0))
-            (_models(d) / "l__four.json").write_text(doc("l/four", "4.0", 41.0))
+            (_models(d) / "l__two.json").write_text(doc("l/two", 50.0, 40.0))
+            (_models(d) / "l__four.json").write_text(doc("l/four", 90.0, 80.0))
             orig = sources.load_source
             sources.load_source = lambda name: {"two", "four"}
             try:
@@ -848,24 +867,22 @@ class CliTest(unittest.TestCase):
             self.assertEqual(code, 0)
             two = next(l for l in out.splitlines() if l.rstrip().endswith("TWO"))
             four = next(l for l in out.splitlines() if l.rstrip().endswith("FOUR"))
-            # the two models score different axes: each score sits in its
-            # own column, blank elsewhere, and no tag says which — the
-            # column position does
-            self.assertEqual(two.split()[1], "50")
-            self.assertEqual(two.split()[2], "-")
-            self.assertEqual(four.split()[1], "-")
-            self.assertEqual(four.split()[2], "41")
+            # one SCORE column: the weaker model derives 0 on both
+            # scales, the stronger 100 on both
+            self.assertEqual(two.split()[1], "0")
+            self.assertEqual(four.split()[1], "100")
             self.assertTrue(two.startswith(" "))      # marker prefix
             # --benchmark mode still shows one score plus the axis tag
             sources.load_source = lambda name: {"four"}
             try:
                 code, single = self._run("--data", tmp, "list", "--tables", "all",
-                                         "--benchmark", "Terminal-Bench 4.0")
+                                         "--benchmark", "Terminal-Bench 2.1")
             finally:
                 sources.load_source = orig
         self.assertEqual(code, 0)
-        self.assertIn("TB4", next(l for l in single.splitlines()
-                                  if l.rstrip().endswith("FOUR")))
+        self.assertRegex(next(l for l in single.splitlines()
+                                if l.rstrip().endswith("FOUR")),
+                           r"\s90\s+TB\s+100\s+")
 
     def test_list_shows_only_best_value_by_default(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -933,7 +950,7 @@ class CliTest(unittest.TestCase):
             finally:
                 sources.load_source = orig
         self.assertEqual(code, 0)
-        self.assertEqual(out.count("SCORE/$"), 3)   # one column header per table
+        self.assertEqual(out.count("PROV"), 3)   # one column header per table
         self.assertLess(out.index("best value"), out.index("worst score"))
         self.assertLess(out.index("worst score"), out.index("highest cost"))
 
@@ -1033,11 +1050,11 @@ class CliTest(unittest.TestCase):
             finally:
                 sources.load_source = orig
             self.assertEqual(code, 0)
-            # 0.2·1.0 + 0.6·0.1 + 0.2·2.0 = 0.66 → 66 cents. The axis cell is
-            # the raw 50; the ratio divides the derived score (100, the best of
-            # the 25-50 range) by the cost: 100/0.66 → 152
+            # 0.2 in + 0.6 cached + 0.2 out of (1.0, 0.1, 2.0) = 0.66,
+            # shown as 66 cents rather than the bare $1.00 input rate;
+            # the score is the calculated 100 (best of 25-50 on both).
             line = next(l for l in out.splitlines() if l.rstrip().endswith("M1"))
-            self.assertRegex(line, r"\s50\s+-\s+50\s+66\s+152\s+")
+            self.assertRegex(line, r"\s100\s+66\s+zen\s+M1$")
     def test_list_gives_each_priced_variant_its_own_line(self):
         import json
 

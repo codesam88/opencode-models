@@ -43,7 +43,6 @@ from .ranking import (
     partition_rows,
     ratio,
 )
-from .ranking import AXES, axis_scores
 from .render import render_html
 from . import arena as arena_mod
 from .availability import (available_ids, load_available, offered,
@@ -79,17 +78,16 @@ BAND_LABELS = (
 #: Fixed columns, right-aligned; the model name takes the rest of the line.
 #: Costs count cents ($/100) so a cheap line is a readable number.
 #:
-#: Two layouts: the default shows every ordering axis's raw score side by
-#: side, so a row carries both base scores instead of one merged number and
-#: a "which axis" tag. ``--benchmark X`` ranks on one benchmark and shows
-#: that single score with its tag.
-AXIS_HEADERS = tuple(label for _, label, *_ in AXES) + (
-    "¢/1M", "SCORE/$", "PROV")
-SINGLE_HEADERS = ("SCORE", "BENCH", "¢/1M", "SCORE/$", "PROV")
+#: Two layouts, both built around the one score: the default shows the
+#: model's score beside its cost and plan, and ``--benchmark X`` ranks on
+#: one benchmark and adds that benchmark's tag. The per-axis raw numbers
+#: live in `scores`, not here.
+AXIS_HEADERS = ("SCORE", "¢/1M", "PROV")
+SINGLE_HEADERS = ("SCORE", "BENCH", "¢/1M", "PROV")
 
 #: Every row is prefixed by its rank marker, outside the column grid and
 #: without a header of its own: ++ top decile, + next tenth, o the middle,
-#: - the bottom fifth of the ordering, · unranked (no score at all). The
+#: -- the bottom fifth of the ordering, · unranked (no score at all). The
 #: header line is indented by the same width so the columns still line up.
 GRADE_WIDTH = 5
 RULE_WIDTH = 60
@@ -455,36 +453,27 @@ def _bench_tag(benchmark: str | None) -> str:
 
 
 def _cells(row, axis: bool = True) -> tuple[str, ...]:
-    """The fixed columns of one row, as text.
+    """The fixed columns of one row, as text: the score, the cost, the plan.
 
-    *axis* prints the raw score of every ordering axis the row carries —
-    Terminal-Bench 2.x, Terminal-Bench 4.0, SWE-Bench — so the viewer sees
-    the base scores the ordering is built from. The single-benchmark layout
-    instead prints the one score it ranks on plus that benchmark's tag.
-    Prices are cents and ratios rounded integers, as elsewhere.
+    The score is the model's combined 0-100 number, rounded for the column;
+    the grade prefix carries the exact ordering. *axis* is kept for the
+    single-benchmark layout, which adds that benchmark's tag. Prices are
+    cents, as elsewhere.
     """
     no_cost = row.free or row.price == 0
     price = "0" if no_cost else f"{round(row.price * 100)}"
-    if no_cost:
-        value = "free"
-    elif row.score is None:
-        value = "-"
-    else:
-        value = f"{round(ratio(row.score, row.price))}"
+    score = "-" if row.score is None else f"{round(row.score)}"
     if axis:
-        scores = tuple("-" if v is None else f"{v:g}"
-                       for v in axis_scores(row.model).values())
-    else:
-        scores = ("-" if row.score is None else f"{row.score:g}",
-                  _bench_tag(row.benchmark))
-    return scores + (price, value, row.provider)
+        return (score, price, row.provider)
+    return (score, _bench_tag(row.benchmark), price, row.provider)
 
 
 def _widths(rows, axis: bool = True) -> tuple[int, ...]:
     """Widest cell per column across the whole view, header included."""
     headings = AXIS_HEADERS if axis else SINGLE_HEADERS
     return tuple(
-        max([len(heading)] + [len(cells[i]) for cells in map(_cells, rows)])
+        max([len(heading)] + [len(cells[i])
+                              for cells in (_cells(r, axis) for r in rows)])
         for i, heading in enumerate(headings)
     )
 
@@ -587,7 +576,7 @@ def _cmd_list(args: argparse.Namespace) -> int:
         order_note = f"benchmark {wanted} · sorted by score per $"
     else:
         rows = order_rows(rows)
-        order_note = ("Terminal-Bench first, SWE-Bench and TB 4.0 fill in")
+        order_note = ("ranked by score per $, best value first")
     # the rank marker rides on position in the whole ordering, so a row in
     # the cost or worst-score table still shows how it ranked overall
     rows = grade_rows(rows)
@@ -612,7 +601,7 @@ def _cmd_list(args: argparse.Namespace) -> int:
             more = f" (+{len(slugs) - 6} more)" if len(slugs) > 6 else ""
             print(f"{tier}: {len(slugs)} no longer listed by the provider, "
                   f"hidden here — {shown_slugs}{more} · --all-models to see them")
-    print("GRADE: ++ top 10% · + next 10% · o middle · - bottom 20% · "
+    print("GRADE: ++ top 10% · + next 10% · o middle · -- bottom 20% · "
           "· unranked (position in the whole ordering, not per table)")
 
     # the split always happens — the cull is what keeps the worst-scoring
@@ -651,6 +640,15 @@ NEXT_BANDS = {"free": "free", "included": "included", "payg": "payg",
               "catalog": "catalog"}
 
 
+def _pick_value(row) -> str:
+    """A pick's score per dollar: "free" for free lines, "-" with no score."""
+    if row.free or row.price == 0:
+        return "free"
+    if row.score is None:
+        return "-"
+    return f"{round(ratio(row.score, row.price))}"
+
+
 def _next_band(row) -> str:
     # a row sold by both tiers is labelled "go,zen", so membership decides,
     # not equality with a single plan name
@@ -687,10 +685,9 @@ def _cmd_next(args: argparse.Namespace) -> int:
     print(f"  {'#':<2} {'PLAN':<5} {'SCORE':>6} {'¢/1M':>5} {'SCORE/$':>7}  "
           f"{'MODEL':<{width}}  BAND")
     for i, row in enumerate(picks, 1):
-        cells = _cells(row)
-        price, value = cells[-3], cells[-2]   # _cells ends (price, value, prov)
+        _score, price, _prov = _cells(row)
         print(f"  {i:<2} {row.provider:<5} {row.score:>6g} {price:>5} "
-              f"{value:>7}  {row.name:<{width}}  {_next_band(row)}")
+              f"{_pick_value(row):>7}  {row.name:<{width}}  {_next_band(row)}")
     print()
     print(f"within {RECOMMEND_FLOOR:.0%} of the strongest score · "
           f"allowances: LIMITS.md")

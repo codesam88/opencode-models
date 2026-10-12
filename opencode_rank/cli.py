@@ -238,13 +238,12 @@ def _score_parts(model, table: dict) -> tuple[str, str, list[str]]:
     """
     derived = derived_scores(model, table)
     score = combined(derived)
-    parts = []
-    for name in sorted(model.scores, key=lambda n: (-derived.get(n, -1), n)):
-        raw = model.scores[name]
-        parts.append(f"{name} {raw:g}→{derived[name]:.0f}" if name in derived
-                     else f"{name} {raw:g}→—")
+    # only the benchmarks we score on: the catalog carries 212 names and
+    # listing the ignored ones buries the ones that matter
+    parts = [f"{name} {model.scores[name]:g}→{derived[name]:.0f}"
+             for name in sorted(derived, key=lambda n: (-derived[n], n))]
     return (f"{score:.0f}" if score is not None else "—",
-            f"{len(derived)}/{len(model.scores)}", parts)
+            str(len(parts)) if parts else "0", parts)
 
 
 def _cmd_scores(args: argparse.Namespace) -> int:

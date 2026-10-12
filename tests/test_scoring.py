@@ -9,6 +9,7 @@ from opencode_rank.scoring import (
     derived_scores,
     normalise,
     scales,
+    tracked,
     score_of,
 )
 
@@ -21,17 +22,18 @@ def _model(mid, **scores):
 
 class ScalesTest(unittest.TestCase):
     def test_each_benchmark_gets_its_own_floor_and_ceiling(self):
-        models = [_model("a/one", **{"TB 2.1": 50.0}),
-                  _model("a/two", **{"TB 2.1": 90.0}),
-                  _model("a/three", **{"SWE": 10.0}),
-                  _model("a/four", **{"SWE": 30.0})]
+        models = [_model("a/one", **{"Terminal-Bench 2.1": 50.0}),
+                  _model("a/two", **{"Terminal-Bench 2.1": 90.0}),
+                  _model("a/three", **{"SWE-Bench Verified": 10.0}),
+                  _model("a/four", **{"SWE-Bench Verified": 30.0}),
+                  _model("a/five", **{"Terminal-Bench 2.1": 70.0})]
         table = scales(models)
-        self.assertEqual(table["TB 2.1"], (50.0, 90.0))
-        self.assertEqual(table["SWE"], (10.0, 30.0))
+        self.assertEqual(table["Terminal-Bench 2.1"], (50.0, 90.0))
+        self.assertEqual(table["SWE-Bench Verified"], (10.0, 30.0))
 
     def test_a_benchmark_nobody_compares_against_still_spans_itself(self):
-        models = [_model("a/one", **{"Only": 7.0}), _model("a/two", **{"Other": 1.0})]
-        self.assertEqual(scales(models)["Only"], (7.0, 7.0))
+        models = [_model("a/one", **{"Terminal-Bench 2.0": 7.0}), _model("a/two", **{"SWE-Bench Lite": 1.0})]
+        self.assertEqual(scales(models)["Terminal-Bench 2.0"], (7.0, 7.0))
 
 
 class NormaliseTest(unittest.TestCase):
@@ -83,12 +85,53 @@ class CombinedTest(unittest.TestCase):
         self.assertEqual(combined({"only": 42.0}), 42.0)
 
 
+class TrackedTest(unittest.TestCase):
+    """Only the benchmarks the console ranks on are scored.
+
+    Everything else the catalog mentions is context, not signal. A niche
+    evaluation carried by four models gives one of them a hard 0 and drags
+    the median down — "SEC-Bench Pro 17.7→0" was doing exactly that to a
+    model that resolves 82 on SWE-bench Verified.
+    """
+
+    def test_the_axes_are_tracked(self):
+        for name in ("Terminal-Bench 2.1", "Terminal-Bench 2.0",
+                     "Terminal-Bench 4.0", "Terminal Bench 2.1",
+                     "SWE-Bench Verified", "SWE-Bench Multilingual",
+                     "SWE-Bench Pro", "SWE Bench Pro", "LMArena Elo"):
+            with self.subTest(benchmark=name):
+                self.assertTrue(tracked(name))
+
+    def test_a_benchmark_that_shares_the_prefix_is_not_tracked(self):
+        # Terminal-Bench Hard and -Science are separate benchmarks, not runs
+        for name in ("Terminal-Bench Hard", "Terminal-Bench-Science 0.1",
+                     "AutomationBench 1.0.6", "MiMo Code Bench",
+                     "SEC-Bench Pro", "Chartography", "GPQA Diamond"):
+            with self.subTest(benchmark=name):
+                self.assertFalse(tracked(name))
+
+    def test_an_untracked_benchmark_cannot_drag_the_median(self):
+        models = [_model("a/one", **{"Terminal-Bench 2.1": 90.0,
+                                     "SEC-Bench Pro": 17.7}),
+                  _model("a/two", **{"Terminal-Bench 2.1": 50.0,
+                                     "SEC-Bench Pro": 90.0})]
+        table = scales(models)
+        derived = derived_scores(models[0], table)
+        self.assertEqual(derived, {"Terminal-Bench 2.1": 100.0})
+        self.assertEqual(score_of(models[0], table), 100.0)
+
+    def test_a_model_scored_only_on_untracked_benchmarks_has_no_score(self):
+        models = [_model("a/one", **{"SEC-Bench Pro": 17.7}),
+                  _model("a/two", **{"SEC-Bench Pro": 90.0})]
+        self.assertIsNone(score_of(models[0], scales(models)))
+
+
 class ScoreOfTest(unittest.TestCase):
     def test_scales_are_not_mixed_across_benchmarks(self):
         # a 4.0-scale 65 (the best 4.0 run) and a 2.1-scale 90 (the worst
         # 2.1 run) must not be compared as 65 and 90
-        models = [_model("a/low2", **{"TB 2.1": 25.0, "TB 4.0": 65.0}),
-                  _model("a/high2", **{"TB 2.1": 90.0, "TB 4.0": 60.0})]
+        models = [_model("a/low2", **{"Terminal-Bench 2.1": 25.0, "Terminal-Bench 4.0": 65.0}),
+                  _model("a/high2", **{"Terminal-Bench 2.1": 90.0, "Terminal-Bench 4.0": 60.0})]
         table = scales(models)
         low2 = score_of(models[0], table)
         high2 = score_of(models[1], table)
@@ -96,9 +139,9 @@ class ScoreOfTest(unittest.TestCase):
         self.assertEqual(high2, 50.0)     # the mirror image
 
     def test_the_best_model_on_everything_leads(self):
-        models = [_model("a/strong", **{"TB 2.1": 90.0, "SWE": 90.0}),
-                  _model("a/mixed", **{"TB 2.1": 20.0, "SWE": 95.0}),
-                  _model("a/weak", **{"TB 2.1": 10.0, "SWE": 10.0})]
+        models = [_model("a/strong", **{"Terminal-Bench 2.1": 90.0, "SWE-Bench Verified": 90.0}),
+                  _model("a/mixed", **{"Terminal-Bench 2.1": 20.0, "SWE-Bench Verified": 95.0}),
+                  _model("a/weak", **{"Terminal-Bench 2.1": 10.0, "SWE-Bench Verified": 10.0})]
         table = scales(models)
         # no model is best on both scales, so this is about the order, not
         # an absolute: strong everywhere, then lopsided, then weak
@@ -107,20 +150,20 @@ class ScoreOfTest(unittest.TestCase):
         self.assertGreater(mixed, weak)
 
     def test_derived_scores_are_reported_per_benchmark(self):
-        models = [_model("a/one", **{"TB 2.1": 50.0}),
-                  _model("a/two", **{"TB 2.1": 90.0})]
+        models = [_model("a/one", **{"Terminal-Bench 2.1": 50.0}),
+                  _model("a/two", **{"Terminal-Bench 2.1": 90.0})]
         table = scales(models)
-        self.assertEqual(derived_scores(models[0], table), {"TB 2.1": 0.0})
-        self.assertEqual(derived_scores(models[1], table), {"TB 2.1": 100.0})
+        self.assertEqual(derived_scores(models[0], table), {"Terminal-Bench 2.1": 0.0})
+        self.assertEqual(derived_scores(models[1], table), {"Terminal-Bench 2.1": 100.0})
 
     def test_a_benchmark_with_no_spread_is_left_out(self):
-        # only this model carries "Unscored", so it cannot say anything
+        # only this model carries "Terminal-Bench 2.0", so it cannot say anything
         # about it — counting it at the midpoint would drag the median
-        models = [_model("a/one", **{"TB 2.1": 50.0, "Unscored": 1.0}),
-                  _model("a/two", **{"TB 2.1": 90.0})]
+        models = [_model("a/one", **{"Terminal-Bench 2.1": 50.0, "Terminal-Bench 2.0": 1.0}),
+                  _model("a/two", **{"Terminal-Bench 2.1": 90.0})]
         table = scales(models)
-        self.assertEqual(table["Unscored"], (1.0, 1.0))
-        self.assertEqual(derived_scores(models[0], table), {"TB 2.1": 0.0})
+        self.assertEqual(table["Terminal-Bench 2.0"], (1.0, 1.0))
+        self.assertEqual(derived_scores(models[0], table), {"Terminal-Bench 2.1": 0.0})
 
 
 if __name__ == "__main__":

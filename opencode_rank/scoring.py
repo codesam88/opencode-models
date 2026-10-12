@@ -28,8 +28,41 @@ from .data import Model
 #: normalises to the midpoint rather than to 100.
 NEUTRAL = 50.0
 
+#: The benchmarks this tool ranks on. Everything else the catalog mentions
+#: is context, not signal.
+#:
+#: The catalog carries 212 benchmark names, of which 164 are held by one or
+#: two models — a niche evaluation nobody else ran. Counted, they hand a
+#: model a hard 0 (the worst of four is 0) and drag its median down: a model
+#: resolving 82 on SWE-bench Verified was landing on 0 because of a 17.7 on
+#: SEC-Bench Pro. The axes are Terminal-Bench 2.x and 4.0, the SWE-bench
+#: subsets, and arena Elo — the ones the console orders on.
+#:
+#: Terminal-Bench needs care: "Hard" and "-Science" share the prefix and are
+#: separate benchmarks, not runs of it, so only a version number counts.
+#: Terminal-Bench needs care: "Hard" and "-Science" share the prefix and
+#: are separate benchmarks, not runs of it, so only a version number counts.
+#: The SWE-bench subsets are named in words ("Verified", "Multilingual",
+#: "Lite", "Pro"), so any suffix there is a subset and counts.
+_TB_PREFIXES = ("Terminal-Bench", "Terminal Bench")
+_SWE_PREFIXES = ("SWE-Bench", "SWE Bench")
+
+
+def tracked(name: str) -> bool:
+    """Whether *name* is one of the benchmarks this tool scores on."""
+    if name == "LMArena Elo":
+        return True
+    if name.startswith(_SWE_PREFIXES):
+        return True
+    for prefix in _TB_PREFIXES:
+        if name.startswith(prefix):
+            rest = name[len(prefix):].strip()
+            return bool(rest) and rest[0].isdigit()
+    return False
+
+
 def scales(models: list[Model]) -> dict[str, tuple[float, float]]:
-    """The 0–100 range of each benchmark, as ``(lowest score, best score)``.
+    """The 0–100 range of each tracked benchmark, ``(lowest, best)``.
 
     Over the models that actually carry it: the best model in this catalog
     is 100 and the lowest is 0, so the ends move when the catalog does.
@@ -37,7 +70,7 @@ def scales(models: list[Model]) -> dict[str, tuple[float, float]]:
     seen: dict[str, list[float]] = {}
     for model in models:
         for name, value in model.scores.items():
-            if isinstance(value, (int, float)):
+            if tracked(name) and isinstance(value, (int, float)):
                 seen.setdefault(name, []).append(float(value))
     return {name: (min(values), max(values)) for name, values in seen.items()}
 

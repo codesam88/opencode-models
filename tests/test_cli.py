@@ -993,6 +993,24 @@ class ScoresCommandTest(unittest.TestCase):
         self.assertIn("90", line)
         self.assertIn("100", line)
 
+    def test_it_does_not_list_benchmarks_we_do_not_score_on(self):
+        import json
+        with tempfile.TemporaryDirectory() as tmp:
+            self._grid(tmp)
+            (_models(Path(tmp)) / "a__m4.json").write_text(json.dumps({
+                "model": {"id": "a/m4", "name": "M4", "lab": "a",
+                          "priceUsdPer1M": {"input": 1.0, "output": None,
+                                            "cachedInput": None},
+                          "benchmarks": [
+                              {"name": "Terminal-Bench", "version": "2.1",
+                               "score": 70.0, "metric": "a", "source": ""},
+                              {"name": "SEC-Bench Pro", "score": 17.7,
+                               "metric": "a", "source": ""}]}}))
+            code, out = self._run("--data", tmp, "scores")
+        self.assertEqual(code, 0)
+        self.assertNotIn("SEC-Bench", out)
+        self.assertNotIn("17.7", out)   # not counted, so not listed
+
     def test_it_says_where_the_scales_come_from(self):
         with tempfile.TemporaryDirectory() as tmp:
             self._grid(tmp)

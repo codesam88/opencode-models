@@ -1281,6 +1281,48 @@ class AvailabilityTest(unittest.TestCase):
         self.addCleanup(setattr, sources, "load_source", orig)
         return d
 
+    def test_a_free_model_listed_only_under_its_free_slug_is_shown(self):
+        # same shape as the production miss: the snapshot carries
+        # "step-5-preview-free" while the catalog carries
+        # "stepfun/step-5-preview" — the model is offered, and its free row
+        # must appear rather than vanish with every other free line
+        import json
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            for mid, score in [("stepfun/step-5-preview", 80.0),
+                               ("stepfun/other", 60.0),
+                               ("stepfun/third", 40.0)]:
+                (_models(d) / f"{mid.replace('/', '__')}.json").write_text(
+                    json.dumps({"model": {
+                        "id": mid, "name": mid.split("/")[1].upper(),
+                        "lab": "stepfun",
+                        "priceUsdPer1M": {"input": 1.0, "output": None,
+                                          "cachedInput": None},
+                        "benchmarks": [
+                            {"name": "Terminal-Bench", "version": "2.1",
+                             "score": score, "metric": "acc", "source": ""},
+                            {"name": "SWE-Bench", "version": "Verified",
+                             "score": score / 2, "metric": "acc",
+                             "source": ""}]}}))
+            prices = d / "tier_prices"
+            prices.mkdir(parents=True, exist_ok=True)
+            (prices / "zen_prices.json").write_text(json.dumps(
+                [{"tier": "zen", "model_id": m, "name": m, "input": 1.0,
+                  "output": 1.0, "cached_read": None, "limit": None,
+                  "free": m == "step-5-preview-free"}
+                 for m in ("step-5-preview-free", "other", "third")]))
+            import opencode_rank.sources as sources
+            orig = sources.load_source
+            sources.load_source = lambda tier: {"step-5-preview-free",
+                                                "other", "third"}
+            try:
+                code, out = self._run("--data", str(d), "list",
+                                      "--source", "zen", "--tables", "all")
+            finally:
+                sources.load_source = orig
+        self.assertEqual(code, 0)
+        self.assertIn("STEP-5-PREVIEW [free]", out)
+
     def test_list_hides_a_model_the_plan_dropped(self):
         with tempfile.TemporaryDirectory() as tmp:
             self._data(tmp, offered=["kept", "third", "fourth"],

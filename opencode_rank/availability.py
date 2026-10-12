@@ -54,6 +54,21 @@ def available_ids(data_dir: Path) -> set[str] | None:
     return set().union(*known) if known else None
 
 
+def offered(model_id: str, ids: set[str]) -> bool:
+    """Whether *model_id* is in the offered set *ids*.
+
+    The tier pages list free variants under their own slug
+    (``step-5-preview-free``) while the catalog carries one model under the
+    base slug (``stepfun/step-5-preview``) — the same reach
+    :func:`sources.members` implements. Exact matching drops such a model
+    from the pool entirely, which is how every free row once vanished from
+    the list view.
+    """
+    slug = model_id.split("/")[-1]
+    return (slug in ids or model_id in ids
+            or f"{slug}-free" in ids or f"{model_id}-free" in ids)
+
+
 def unlisted(data_dir: Path) -> dict[str, set[str]]:
     """Slugs the shipped lists carry that the provider no longer offers.
 

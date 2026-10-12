@@ -46,7 +46,8 @@ from .ranking import (
 from .ranking import AXES, axis_scores
 from .render import render_html
 from . import arena as arena_mod
-from .availability import available_ids, load_available, unlisted
+from .availability import (available_ids, load_available, offered,
+                          unlisted)
 from . import sources
 
 #: Where the data lives for an installed tool: $OPENCODE_RANK_DATA, else the
@@ -380,9 +381,8 @@ def _cmd_scores(args: argparse.Namespace) -> int:
     models, _curated, _boards = _load(data_dir)
     table = scales(models)
     on_offer = available_ids(data_dir)
-    shown = models if getattr(args, "all_models", False) or not on_offer else [
-        m for m in models if m.model_id in on_offer
-        or m.model_id.split("/")[-1] in on_offer]
+    shown = (models if getattr(args, "all_models", False) or not on_offer
+             else [m for m in models if offered(m.model_id, on_offer)])
     ranked = sorted((m for m in shown if m.scores),
                     key=lambda m: -(combined(derived_scores(m, table)) or 0))
     unscored = [m for m in shown if not m.scores]
@@ -539,9 +539,7 @@ def _rows_for(data_dir: Path, selected: list[str], price: str,
             pool, free_ids = sources.members(models, tier_slugs[provider])
             on_offer = load_available(data_dir).get(provider)
             if not all_models and on_offer is not None:
-                pool = [m for m in pool
-                        if m.model_id.split("/")[-1] in on_offer
-                        or m.model_id in on_offer]
+                pool = [m for m in pool if offered(m.model_id, on_offer)]
                 free_ids &= {m.model_id for m in pool}
             counts[provider] = len(pool)
             covered |= {m.model_id for m in pool}

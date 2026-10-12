@@ -30,7 +30,7 @@ PYTHONPATH=. uv run python -c "
 from pathlib import Path
 from opencode_rank.cli import _load
 from opencode_rank.scoring import scales, derived_scores, canonical, _TRACKED
-from opencode_rank.availability import load_available
+from opencode_rank.availability import load_available, offered
 from opencode_rank import sources
 
 models, *_ = _load(Path('data'))
@@ -42,8 +42,7 @@ offered = {m.model_id for tier, ids in load_available(Path('data')).items()
 for m in models:
     derived = derived_scores(m, table)
     plan = next((t for t, ids in load_available(Path('data')).items()
-                 if ids and (m.model_id in ids
-                              or m.model_id.split('/')[-1] in ids)), None)
+                 if ids and offered(m.model_id, ids)), None)
     if not plan or len(derived) != 1:
         continue
     has = canonical(next(iter(derived)))

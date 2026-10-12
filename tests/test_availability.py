@@ -85,6 +85,19 @@ class AvailabilityTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             self.assertEqual(unlisted(Path(tmp)), {})
 
+    def test_a_model_offered_only_through_a_free_slug_counts_as_offered(self):
+        # the tier pages list free variants under their own slug
+        # ("step-5-preview-free") while the catalog carries one model under
+        # the base slug ("stepfun/step-5-preview"): exact matching drops the
+        # model from the pool entirely, which is how every free row vanished
+        # from the list view
+        from opencode_rank.availability import offered
+        ids = {"step-5-preview-free", "m1"}
+        self.assertTrue(offered("stepfun/step-5-preview", ids))
+        self.assertTrue(offered("a/m1", ids))
+        self.assertFalse(offered("a/gone", ids))
+
 
 if __name__ == "__main__":
     unittest.main()
+

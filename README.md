@@ -186,16 +186,37 @@ number beside where it lands, so the arithmetic is checkable:
 476 models · 4 benchmarks scored on · 175 with scores · 301 without
 
   MODEL                     SCORE  AXES  TB 2.1    TB 4.0     SWE Verified  SWE Pro
-  Claude Opus 5.5                 100     1            64.85→100
-  Claude Opus 5                    99     3            53.94→83   96→100        79.2→99
-  Claude Fable 5                   98     4  88→97     44.55→68   95→99         80.3→100
+  Claude Fable 5                   99     4  88→97     44.55→62   95→100        80.3→100
+  Claude Opus 5                    99     3            53.94→80   96→100        79.2→99
 ```
 
-Two consequences worth knowing. A benchmark only one or two models carry has
-no spread, so it cannot discriminate and is left out of the score — 137 of
-212 benchmarks are in that position. And the score answers "how does this
-model typically do on what it was measured on", so a model evaluated on a
-handful of benchmarks it excels at scores near 100.
+Two more rules decide what counts as evidence.
+
+**A model needs two benchmarks to have a score.** The median of one number
+is that number, so a model measured on a single benchmark it happens to lead
+reads as a top model on the strength of one result — in the live catalog 26
+of 63 scored models were in that position, and 6 of the top 9 rows were,
+including the one leading the whole catalog on a lone Terminal-Bench 4.0 run.
+Those models are unranked, not ranked last, and the `AXES` column shows how
+many benchmarks each score actually rests on.
+
+**The ends of a scale are set by numbers someone else can check** — an
+official board or an independent evaluator, not a vendor's own figure. Min-max
+is only as good as its extremes: counting every number, one uncited 1.5 from
+a launch post was the floor of the Terminal-Bench 4.0 scale, which stretched
+the range and compressed every model's derived score toward the middle. That
+is the rule `scoring.scales` applies, with one guard. Where the checkable
+numbers are a small minority of a benchmark's field, the ends stand aside:
+only 8 of 50 Terminal-Bench 2.1 numbers come from a board, and scaling that
+axis to those eight gave it bounds of 64.3–73.4, which clamped nearly every
+model to 0 or 100 and stopped the primary axis discriminating at all. A scale
+drawn from a few points is a threshold, not a scale.
+
+So: a benchmark only one or two models carry has no spread, so it cannot
+discriminate and is left out — 137 of 212 benchmarks are in that position.
+And the score answers "how does this model typically do on what it was
+measured on", so a model evaluated on a handful of benchmarks it excels at
+still scores near 100.
 
 The console prints what it measured and points here for the arithmetic;
 `scoring.py` carries the reasoning next to the functions that do it. The

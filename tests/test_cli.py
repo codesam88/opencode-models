@@ -42,7 +42,13 @@ def _models(d: Path) -> Path:
 
 
 def _write_grid(data_dir: Path):
-    """Ten models: price i, Terminal-Bench score i² — value climbs with i."""
+    """Ten models: price i, Terminal-Bench score i² — value climbs with i.
+
+    Two scored benchmarks each, because a model measured on one is not
+    ranked at all (scoring.MIN_AXES) and every test here wants an ordering
+    to talk about. The second axis is half the first, so the axes do not
+    agree and a row cannot be read off either one.
+    """
     import json
 
     for i in range(1, 11):
@@ -50,9 +56,11 @@ def _write_grid(data_dir: Path):
             "id": f"l/m{i:02d}", "name": f"M{i:02d}", "lab": "l",
             "priceUsdPer1M": {"input": float(i), "output": None,
                               "cachedInput": None},
-            "benchmarks": [{"name": "Terminal-Bench", "version": "2.1",
-                            "score": float(i * i), "metric": "acc",
-                            "source": ""}],
+            "benchmarks": [
+                {"name": "Terminal-Bench", "version": "2.1",
+                 "score": float(i * i), "metric": "acc", "source": ""},
+                {"name": "SWE-Bench", "version": "Verified",
+                 "score": float(i * i) / 2, "metric": "acc", "source": ""}],
         }})
         (_models(data_dir) / f"l__m{i:02d}.json").write_text(doc)
 
@@ -289,7 +297,8 @@ class CliTest(unittest.TestCase):
                 "priceUsdPer1M": {"input": 0.0612, "output": None,
                                   "cachedInput": None},
                 "benchmarks": [{"name": "Terminal-Bench", "version": "2.1",
-                                "score": 88.8, "metric": "acc", "source": ""}],
+                                "score": 88.8, "metric": "acc", "source": ""}, {"name": "SWE-Bench", "version": "Verified",
+                                 "score": 88.8, "metric": "acc", "source": ""}],
             }}))
             # a peer, so Terminal-Bench has a range to read CHEAP's 88.8 on
             (_models(d) / "l__dear.json").write_text(json.dumps({"model": {
@@ -297,7 +306,8 @@ class CliTest(unittest.TestCase):
                 "priceUsdPer1M": {"input": 9.0, "output": None,
                                   "cachedInput": None},
                 "benchmarks": [{"name": "Terminal-Bench", "version": "2.1",
-                                "score": 40.0, "metric": "acc", "source": ""}],
+                                "score": 40.0, "metric": "acc", "source": ""}, {"name": "SWE-Bench", "version": "Verified",
+                                 "score": 40.0, "metric": "acc", "source": ""}],
             }}))
             # a third line, so the 30% cull leaves best value non-empty
             (_models(d) / "l__mid.json").write_text(json.dumps({"model": {
@@ -305,7 +315,8 @@ class CliTest(unittest.TestCase):
                 "priceUsdPer1M": {"input": 1.0, "output": None,
                                   "cachedInput": None},
                 "benchmarks": [{"name": "Terminal-Bench", "version": "2.1",
-                                "score": 60.0, "metric": "acc", "source": ""}],
+                                "score": 60.0, "metric": "acc", "source": ""}, {"name": "SWE-Bench", "version": "Verified",
+                                 "score": 60.0, "metric": "acc", "source": ""}],
             }}))
             orig = sources.load_source
             sources.load_source = lambda name: {"cheap", "dear", "mid"}
@@ -319,7 +330,7 @@ class CliTest(unittest.TestCase):
         # the TB2 cell shows the raw 88.8; the other two axes are blank;
         # $0.0612 shows as 6 cents, and the ratio divides the derived score
         # (100, the best of the 40-88.8 range) by the cost: 100/0.0612 → 1634
-        self.assertRegex(line, r"\s88\.8\s+-\s+-\s+6\s+1634\s+\S+\s+CHEAP$")
+        self.assertRegex(line, r"\s88\.8\s+-\s+88\.8\s+6\s+1634\s+\S+\s+CHEAP$")
         self.assertNotIn("0.0612", line)   # cents, never dollars
 
     def test_list_output_price_uses_output_axis(self):
@@ -570,7 +581,8 @@ class CliTest(unittest.TestCase):
                 "priceUsdPer1M": {"input": 9.9, "output": None,
                                   "cachedInput": None},
                 "benchmarks": [{"name": "Terminal-Bench", "version": "2.1",
-                                "score": 50.0, "metric": "acc", "source": ""}],
+                                "score": 50.0, "metric": "acc", "source": ""}, {"name": "SWE-Bench", "version": "Verified",
+                                 "score": 50.0, "metric": "acc", "source": ""}],
             }}))
             prices_dir = d / "tier_prices"
             prices_dir.mkdir()
@@ -876,40 +888,34 @@ class CliTest(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
-            (_models(d) / "a__m1.json").write_text(json.dumps({"model": {
-                "id": "a/m1", "name": "M1", "lab": "a",
-                "priceUsdPer1M": {"input": 1.0, "output": 2.0, "cachedInput": 0.1},
-                "benchmarks": [{"name": "Terminal-Bench", "version": "2.1",
-                                "score": 50.0, "metric": "acc", "source": ""}],
-            }}))
-            # a peer, so the benchmark has a range and the score is a
-            # position on it rather than undefined
-            (_models(d) / "a__m2.json").write_text(json.dumps({"model": {
-                "id": "a/m2", "name": "M2", "lab": "a",
-                "priceUsdPer1M": {"input": 1.0, "output": 1.0, "cachedInput": 1.0},
-                "benchmarks": [{"name": "Terminal-Bench", "version": "2.1",
-                                "score": 25.0, "metric": "acc", "source": ""}],
-            }}))
-            # a third line, so the 30% cull leaves best value non-empty
-            (_models(d) / "a__m3.json").write_text(json.dumps({"model": {
-                "id": "a/m3", "name": "M3", "lab": "a",
-                "priceUsdPer1M": {"input": 0.5, "output": 0.5, "cachedInput": 0.5},
-                "benchmarks": [{"name": "Terminal-Bench", "version": "2.1",
-                                "score": 37.5, "metric": "acc", "source": ""}],
-            }}))
+            # three models, each measured on both axes: one benchmark is not a
+            # score, so these are about the cost arithmetic, not the evidence
+            for mid, name, price_in, price_out, cached, score in [
+                    ("a/m1", "M1", 1.0, 2.0, 0.1, 50.0),
+                    ("a/m2", "M2", 1.0, 1.0, 1.0, 25.0),
+                    ("a/m3", "M3", 0.5, 0.5, 0.5, 37.5)]:
+                (_models(d) / f"{mid.replace('/', '__')}.json").write_text(json.dumps({
+                    "model": {
+                        "id": mid, "name": name, "lab": "a",
+                        "priceUsdPer1M": {"input": price_in, "output": price_out,
+                                          "cachedInput": cached},
+                        "benchmarks": [
+                            {"name": "Terminal-Bench", "version": "2.1",
+                             "score": score, "metric": "acc", "source": ""},
+                            {"name": "SWE-Bench", "version": "Verified",
+                             "score": score, "metric": "acc", "source": ""}]}}))
             orig = sources.load_source
             sources.load_source = lambda name: {"m1", "m2", "m3"}
             try:
                 code, out = self._run("--data", tmp, "list", "--source", "zen")
             finally:
                 sources.load_source = orig
-        self.assertEqual(code, 0)
-        # 0.2·1.0 + 0.6·0.1 + 0.2·2.0 = 0.66 → 66 cents. The axis cell is
-        # the raw 50; the ratio divides the derived score (100, the best of
-        # the 25–50 range) by the cost: 100/0.66 → 152
-        line = next(l for l in out.splitlines() if l.rstrip().endswith("M1"))
-        self.assertRegex(line, r"\s50\s+-\s+-\s+66\s+152\s+")
-
+            self.assertEqual(code, 0)
+            # 0.2·1.0 + 0.6·0.1 + 0.2·2.0 = 0.66 → 66 cents. The axis cell is
+            # the raw 50; the ratio divides the derived score (100, the best of
+            # the 25-50 range) by the cost: 100/0.66 → 152
+            line = next(l for l in out.splitlines() if l.rstrip().endswith("M1"))
+            self.assertRegex(line, r"\s50\s+-\s+50\s+66\s+152\s+")
     def test_list_gives_each_priced_variant_its_own_line(self):
         import json
 
@@ -944,13 +950,12 @@ class CliTest(unittest.TestCase):
         self.assertIn("(Peak)", out)
 
 
-if __name__ == "__main__":
-    unittest.main()
+    if __name__ == "__main__":
+        unittest.main()
 
 
-class BenchmarksCommandTest(unittest.TestCase):
-    """`benchmarks` is where a new benchmark's case is argued from."""
-
+    class BenchmarksCommandTest(unittest.TestCase):
+        """`benchmarks` is where a new benchmark's case is argued from."""
     def _run(self, *argv):
         out = io.StringIO()
         with contextlib.redirect_stdout(out):

@@ -15,10 +15,11 @@ from opencode_rank.scoring import (
 )
 
 
-def _model(mid, **scores):
+def _model(mid, sources=None, **scores):
+    """A model to score. *sources* maps benchmark name to its source URL."""
     return Model(model_id=mid, name=mid, lab=mid.split("/")[0],
                  price_input=1.0, price_output=1.0, price_cached_input=1.0,
-                 scores=scores)
+                 scores=scores, sources=sources or {})
 
 
 class ScalesTest(unittest.TestCase):
@@ -36,6 +37,111 @@ class ScalesTest(unittest.TestCase):
         models = [_model("a/one", **{"Terminal-Bench 4.0": 7.0}),
                   _model("a/two", **{"Terminal-Bench 2.1": 1.0})]
         self.assertEqual(scales(models)["Terminal-Bench 4.0"], (7.0, 7.0))
+
+
+#: A host on the official-board list, and one that is not.
+BOARD = "https://www.tbench.ai/leaderboard/terminal-bench/4.0"
+VENDOR = "https://example.invalid/blog/introducing"
+
+
+class ProvenanceTest(unittest.TestCase):
+    """The ends of a scale are set by numbers other labs can check."""
+
+    def test_a_vendor_number_cannot_set_the_floor(self):
+        # one uncited 1.5 would otherwise compress every other model's score
+        models = [_model("a/vendor", {"Terminal-Bench 4.0": VENDOR},
+                         **{"Terminal-Bench 4.0": 1.5}),
+                  _model("a/board", {"Terminal-Bench 4.0": BOARD},
+                         **{"Terminal-Bench 4.0": 20.0}),
+                  _model("a/other", {"Terminal-Bench 4.0": BOARD},
+                         **{"Terminal-Bench 4.0": 40.0})]
+        table = scales(models)
+        self.assertEqual(table["Terminal-Bench 4.0"], (20.0, 40.0))
+        # and the vendor's own number reads as the bottom of that range
+        self.assertEqual(derived_scores(models[0], table),
+                         {"Terminal-Bench 4.0": 0.0})
+
+    def test_an_uncited_number_cannot_set_the_floor_either(self):
+        models = [_model("a/none", **{"Terminal-Bench 4.0": 2.0}),
+                  _model("a/board", {"Terminal-Bench 4.0": BOARD},
+                         **{"Terminal-Bench 4.0": 20.0}),
+                  _model("a/other", {"Terminal-Bench 4.0": BOARD},
+                         **{"Terminal-Bench 4.0": 40.0})]
+        self.assertEqual(scales(models)["Terminal-Bench 4.0"], (20.0, 40.0))
+
+    def test_a_thin_minority_of_board_numbers_does_not_set_the_ends(self):
+        # a scale drawn from 8 of 50 numbers is not a scale, it is a
+        # threshold: it would clamp nearly every model to 0 or 100, which
+        # is how Terminal-Bench 2.1 was briefly reduced to a yes/no
+        models = [_model(f"l/m{i:02d}", {"Terminal-Bench 2.1": VENDOR},
+                         **{"Terminal-Bench 2.1": float(i)})
+                  for i in range(1, 9)]
+        models += [_model(f"b/m{i:02d}", {"Terminal-Bench 2.1": BOARD},
+                          **{"Terminal-Bench 2.1": 60.0 + i})
+                   for i in range(2)]
+        table = scales(models)
+        # 2 of 10 checkable is a minority, so the whole field sets the ends
+        self.assertEqual(table["Terminal-Bench 2.1"], (1.0, 61.0))
+
+    def test_enough_board_numbers_to_set_the_ends(self):
+        models = [_model("a/vendor", {"Terminal-Bench 4.0": VENDOR},
+                         **{"Terminal-Bench 4.0": 1.5})]
+        models += [_model(f"b/m{i:02d}", {"Terminal-Bench 4.0": BOARD},
+                          **{"Terminal-Bench 4.0": 20.0 + i}) for i in range(5)]
+        models += [_model(f"l/m{i:02d}", {"Terminal-Bench 4.0": VENDOR},
+                          **{"Terminal-Bench 4.0": 55.0 + i}) for i in range(5)]
+        # 5 of 11 checkable clears the bar, and the uncited 1.5 is out
+        self.assertEqual(scales(models)["Terminal-Bench 4.0"], (20.0, 24.0))
+
+    def test_a_benchmark_with_nothing_but_vendor_numbers_keeps_its_ends(self):
+        # the rule tightens a scale where it can and stands aside where it
+        # cannot: otherwise those models would score on nothing at all
+        models = [_model("a/one", {"SWE-Bench Verified": VENDOR},
+                         **{"SWE-Bench Verified": 10.0}),
+                  _model("a/two", {"SWE-Bench Verified": VENDOR},
+                         **{"SWE-Bench Verified": 30.0})]
+        table = scales(models)
+        self.assertEqual(table["SWE-Bench Verified"], (10.0, 30.0))
+        # the ends stand aside where they cannot be tightened, so the model
+        # is still measured against the field rather than against nothing
+        self.assertEqual(derived_scores(models[0], table),
+                         {"SWE-Bench Verified": 0.0})
+
+    def test_a_vendor_number_can_still_be_scored(self):
+        # it is excluded from setting the ends, not from being measured
+        models = [_model("a/vendor", {"Terminal-Bench 2.1": VENDOR},
+                         **{"Terminal-Bench 2.1": 89.9}),
+                  _model("a/board", {"Terminal-Bench 2.1": BOARD},
+                         **{"Terminal-Bench 2.1": 20.0}),
+                  _model("a/other", {"Terminal-Bench 2.1": BOARD},
+                         **{"Terminal-Bench 2.1": 40.0})]
+        table = scales(models)
+        self.assertEqual(table["Terminal-Bench 2.1"], (20.0, 40.0))
+        self.assertEqual(derived_scores(models[0], table),
+                         {"Terminal-Bench 2.1": 100.0})
+
+
+class CoverageFloorTest(unittest.TestCase):
+    """One benchmark is not a ranking."""
+
+    def test_a_model_measured_on_one_benchmark_has_no_score(self):
+        models = [_model("a/one", **{"Terminal-Bench 2.1": 90.0,
+                                     "SWE-Bench Verified": 90.0}),
+                  _model("a/two", **{"Terminal-Bench 2.1": 50.0,
+                                     "SWE-Bench Verified": 50.0}),
+                  _model("a/thin", **{"Terminal-Bench 2.1": 89.9})]
+        table = scales(models)
+        # a median of one number is that number, so a single strong result
+        # would otherwise read as a strong model
+        self.assertIsNone(score_of(models[2], table))
+        self.assertEqual(len(derived_scores(models[2], table)), 1)
+
+    def test_two_benchmarks_are_enough(self):
+        models = [_model("a/one", **{"Terminal-Bench 2.1": 90.0,
+                                     "SWE-Bench Verified": 90.0}),
+                  _model("a/two", **{"Terminal-Bench 2.1": 10.0,
+                                     "SWE-Bench Verified": 20.0})]
+        self.assertEqual(score_of(models[0], scales(models)), 100.0)
 
 
 class NormaliseTest(unittest.TestCase):
@@ -83,8 +189,13 @@ class CombinedTest(unittest.TestCase):
     def test_a_model_with_no_benchmarks_has_no_score(self):
         self.assertIsNone(combined({}))
 
-    def test_a_single_benchmark_is_its_own_score(self):
-        self.assertEqual(combined({"only": 42.0}), 42.0)
+    def test_a_single_benchmark_is_not_a_score(self):
+        # the median of one number is that number, so a lone strong result
+        # would read as a strong model
+        self.assertIsNone(combined({"only": 42.0}))
+
+    def test_two_benchmarks_already_are(self):
+        self.assertEqual(combined({"a": 42.0, "b": 60.0}), 51.0)
 
 
 #: Every benchmark name the tests mention, for walking the shortlist.
@@ -153,7 +264,6 @@ class TrackedTest(unittest.TestCase):
         table = scales(models)
         derived = derived_scores(models[0], table)
         self.assertEqual(derived, {"Terminal-Bench 2.1": 100.0})
-        self.assertEqual(score_of(models[0], table), 100.0)
 
     def test_a_model_scored_only_on_untracked_benchmarks_has_no_score(self):
         models = [_model("a/one", **{"SEC-Bench Pro": 17.7}),

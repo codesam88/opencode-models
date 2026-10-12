@@ -26,8 +26,8 @@ from .boards import (fetch_boards, load_boards, merge_boards,
 from .overrides import TIER_LABELS, load_curated, off_band_models, source_tier
 from .pricing import load_prices, refresh_prices
 from .ranking import RECOMMEND_FLOOR, next_up, plans_of
-from .scoring import (_TRACKED, _folded, canonical, combined,
-                     derived_scores, scales, tracked)
+from .scoring import (MIN_AXES, _TRACKED, _folded, canonical,
+                     combined, derived_scores, scales, tracked)
 from .ranking import (
     BAND_FREE,
     BAND_INCLUDED,
@@ -569,8 +569,9 @@ def _cmd_next(args: argparse.Namespace) -> int:
                      f"— run `fetch` first")
     picks = next_up(grade_rows(order_rows(rows)), count=args.count)
     if not picks:
-        return _fail(f"no {RECOMMEND_GRADE} model has a benchmark score in "
-                     f"{data_dir} — nothing to recommend yet")
+        return _fail(f"no model of {args.source or 'zen+go'} scores on "
+                     f"{MIN_AXES}+ benchmarks in {data_dir} — nothing to "
+                     f"recommend yet")
 
     width = max(len(r.name) for r in picks)
     print(f"next {len(picks)} · free first, then best value · "

@@ -23,10 +23,36 @@ from __future__ import annotations
 from statistics import median
 
 from .data import Model
+from .overrides import TIER_OFFICIAL, source_tier
 
 #: A benchmark every model scored the same on carries no information, so it
 #: normalises to the midpoint rather than to 100.
 NEUTRAL = 50.0
+
+#: How much of a benchmark's numbers must be checkable before they are
+#: allowed to set the ends of its scale.
+#:
+#: The rule that a vendor self-report cannot set the floor exists to stop one
+#: uncited number from compressing everyone else's score. Applied blindly it
+#: causes the opposite fault: on Terminal-Bench 2.1 only 8 of 50 numbers
+#: come from a board, and scaling the axis to those turned it into a
+#: threshold - bounds of 64.3-73.4, so nearly every model clamped to 0 or
+#: 100 and the primary axis stopped discriminating. A scale drawn from a
+#: small minority is a threshold, not a scale, so the ends stand aside until
+#: the checkable numbers are a real share of the field.
+CHECKABLE_SHARE = 0.25
+
+#: How many benchmarks a model needs before its score means anything.
+#:
+#: The median of one number is that number. A model measured on one
+#: benchmark it happens to lead reads as a top model on the strength of a
+#: single result - in the live catalog 26 of 63 scored models have one
+#: benchmark and 6 of the top 9 rows are among them, one of them leading the
+#: whole catalog on a lone Terminal-Bench 4.0 run. Two independent axes is
+#: the smallest amount of evidence that is not one measurement, and it costs
+#: coverage deliberately: a model with one number is unscored, not ranked
+#: last.
+MIN_AXES = 2
 
 #: The benchmarks this tool scores on, as an explicit list.
 #:
@@ -95,20 +121,39 @@ def scales(models: list[Model]) -> dict[str, tuple[float, float]]:
     """The 0-100 range of each tracked benchmark, ``(lowest, best)``.
 
     Over the models that actually carry it: the best model in this catalog
-    is 100 and the lowest is 0, so the ends move when the catalog does. A
-    benchmark is keyed by its own name, but its bounds are pooled across the
-    spellings registries use for it - one benchmark means one scale, so a
-    model measured by one registry is not the worst of a pair with a model
+    is 100 and the lowest is 0, so the ends move when the catalog does.
+
+    The ends are set by numbers someone else can check - an official board
+    or an independent evaluator - and not by vendor self-reports. Min-max is
+    only as good as its extremes: with every number counted, one uncited
+    1.5 from a launch post was the floor of the Terminal-Bench 4.0 scale, so
+    64.85 at the top and 1.5 at the bottom stretched the range and
+    compressed every model's derived score into the middle. A benchmark with
+    no board or independent number at all keeps its own ends, since
+    tightening them would leave those models scored against nothing.
+
+    A benchmark is keyed by its own name, but its bounds are pooled across
+    the spellings registries use for it - one benchmark means one scale, so
+    a model measured by one registry is not the worst of a pair with a model
     measured by another.
     """
-    pooled: dict[str, list[float]] = {}
+    all_values: dict[str, list[float]] = {}
+    checkable: dict[str, list[float]] = {}
     names: set[str] = set()
     for model in models:
         for name, value in model.scores.items():
-            if tracked(name) and isinstance(value, (int, float)):
-                names.add(name)
-                pooled.setdefault(canonical(name), []).append(float(value))
-    bounds = {key: (min(values), max(values)) for key, values in pooled.items()}
+            if not (tracked(name) and isinstance(value, (int, float))):
+                continue
+            key = canonical(name)
+            names.add(name)
+            all_values.setdefault(key, []).append(float(value))
+            if source_tier(model.sources.get(name)) <= TIER_OFFICIAL:
+                checkable.setdefault(key, []).append(float(value))
+    tight = {key: (min(values), max(values))
+             for key, values in checkable.items()
+             if len(values) >= CHECKABLE_SHARE * len(all_values[key])}
+    bounds = {key: tight.get(key) or (min(values), max(values))
+              for key, values in all_values.items()}
     return {name: bounds[canonical(name)] for name in sorted(names)}
 
 
@@ -143,8 +188,14 @@ def derived_scores(model: Model,
 
 
 def combined(derived: dict[str, float]) -> float | None:
-    """The model's score: the median of its derived scores, or None."""
-    return median(derived.values()) if derived else None
+    """The model's score: the median of its derived scores, or None.
+
+    None below ``MIN_AXES``, which is what makes a thinly measured model
+    unranked rather than ranked on one number.
+    """
+    if len(derived) < MIN_AXES:
+        return None
+    return median(derived.values())
 
 
 def score_of(model: Model,

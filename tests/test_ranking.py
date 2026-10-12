@@ -22,12 +22,21 @@ SWE = "SWE-Bench Pro"
 
 
 def _m(model_id, price, tb=None, swe=None, output=None, cached=None, name=None,
-       tb40=None, scores=None):
+       tb40=None, scores=None, alone=False):
+    """A model fixture. *alone* keeps it to the one benchmark asked for.
+
+    Unless *alone*, a Terminal-Bench score is paired with the same number on
+    SWE-bench: a model measured on one benchmark carries no score at all
+    (scoring.MIN_AXES), and these tests are about ordering and grading
+    rather than about how much evidence a model has.
+    """
     scores = dict(scores or {})
     if tb is not None:
         scores[TB] = tb
     if swe is not None:
         scores[SWE] = swe
+    elif tb is not None and not alone:
+        scores[SWE] = tb
     if tb40 is not None:
         scores[TB4] = tb40
     lab = model_id.split("/")[0]
@@ -142,12 +151,15 @@ class RowBuildingTest(unittest.TestCase):
 
     def test_a_space_spelled_terminal_bench_version_still_counts(self):
         # catalogs write both "Terminal-Bench 2.1" and "Terminal Bench 2.1"
-        table = {"Terminal Bench 2.1": (40.0, 80.0)}
-        rows = build_rows([_m("a/m1", 1.0, scores={"Terminal Bench 2.1": 71.0}),
-                           _m("a/m2", 1.0, scores={"Terminal Bench 2.1": 50.0})],
+        table = {"Terminal Bench 2.1": (40.0, 80.0), SWE: (20.0, 100.0)}
+        rows = build_rows([_m("a/m1", 1.0, tb=20.0,
+                              scores={"Terminal Bench 2.1": 71.0}),
+                           _m("a/m2", 1.0, tb=100.0,
+                              scores={"Terminal Bench 2.1": 50.0})],
                           table=table)
         self.assertEqual(rows[0].benchmark, "Terminal Bench 2.1")
-        self.assertEqual(rows[0].score, 77.5)      # 71 of 40-80
+        # 71 of 40-80 is 77.5, paired with 20 of 20-100 = 0: median 38.75
+        self.assertEqual(rows[0].score, 38.75)
 
     def test_hard_does_not_contaminate_the_4_run(self):
         # "Terminal-Bench Hard" is a separate benchmark that merely shares
@@ -168,12 +180,21 @@ class RowBuildingTest(unittest.TestCase):
         self.assertAlmostEqual(row.score, 65.75, places=2)
         self.assertGreater(row.score, 55.8)
 
-    def test_a_swe_only_model_is_scored_on_swe(self):
+    def test_a_swe_only_model_is_ordered_on_swe_but_carries_no_score(self):
         table = {SWE: (20.0, 60.0)}
-        rows = build_rows([_m("a/m1", 1.0, swe=40.0),
-                           _m("a/m2", 1.0, swe=30.0)], table=table)
+        rows = build_rows([_m("a/m1", 1.0, swe=40.0, alone=True),
+                           _m("a/m2", 1.0, swe=30.0, alone=True)], table=table)
         self.assertEqual(rows[0].benchmark, SWE)
-        self.assertEqual(rows[0].score, 50.0)
+        self.assertIsNone(rows[0].score)
+
+    def test_a_swe_measured_model_is_scored_against_the_swe_bounds(self):
+        table = {SWE: (20.0, 60.0), TB: (20.0, 100.0)}
+        rows = build_rows([_m("a/m1", 1.0, tb=20.0, swe=40.0),
+                           _m("a/m2", 1.0, tb=20.0, swe=30.0)], table=table)
+        by_id = {r.model.model_id: r for r in rows}
+        self.assertEqual(by_id["a/m1"].benchmark, SWE)
+        # 40 of the SWE range 20-60 is 50, 20 of the 2.x range 20-100 is 0
+        self.assertEqual(by_id["a/m1"].score, 25.0)
 
     def test_both_scores_land_on_one_comparable_scale(self):
         # 4.0 is a harder task set (top score ~58 vs ~87): its raw numbers
@@ -187,12 +208,28 @@ class RowBuildingTest(unittest.TestCase):
         self.assertAlmostEqual(rows[0].score, 55.0)
         self.assertGreater(rows[1].score, rows[0].score)
 
-    def test_a_4_only_model_is_scored_on_the_4_scale_alone(self):
+    def test_a_4_only_model_is_ordered_on_the_4_scale_but_carries_no_score(self):
+        # the axis is still Terminal-Bench 4.0, and it is still read on the
+        # 4.0 scale - but one benchmark is not a score, so the row is
+        # unranked rather than placed on a single measurement
         table = {TB4: (20.0, 60.0)}
-        rows = build_rows([_m("l/weak", 1.0, tb40=30.0),
-                           _m("l/strong", 1.0, tb40=50.0)], table=table)
+        rows = build_rows([_m("l/weak", 1.0, tb40=30.0, alone=True),
+                           _m("l/strong", 1.0, tb40=50.0, alone=True)],
+                          table=table)
         self.assertEqual(rows[0].benchmark, TB4)
-        self.assertEqual([r.score for r in rows], [25.0, 75.0])
+        self.assertEqual([r.score for r in rows], [None, None])
+
+    def test_a_4_measured_model_is_scored_against_the_4_bounds(self):
+        # with a second axis to pair it, the 4.0 number is scaled on the 4.0
+        # range: 30 of 20-60 is 25, whatever the 2.x scale would say
+        table = {TB4: (20.0, 60.0), TB: (20.0, 100.0)}
+        rows = build_rows([_m("l/weak", 1.0, tb=20.0, tb40=30.0),
+                           _m("l/strong", 1.0, tb=20.0, tb40=50.0)], table=table)
+        by_id = {r.model.model_id: r for r in rows}
+        self.assertEqual(by_id["l/weak"].benchmark, TB4)
+        # 30 of the 4.0 range 20-60 is 25, and 20 on 2.x is 0: the axis and
+        # the number both come from Terminal-Bench 4.0
+        self.assertEqual(by_id["l/weak"].score, 12.5)
 
 
 class MergeTest(unittest.TestCase):
@@ -336,8 +373,8 @@ class GradeTest(unittest.TestCase):
         # it is simply unranked — shown as · so nobody reads it as a verdict
         models = [_m("l/tb", 1.0, tb=70.0), _m("l/freebie", 5.0)]
         entries = [_entry("freebie", 0.0, 0.0, free=True)]
-        graded = grade_rows(order_rows(build_rows(models, entries,
-                                                 table={TB: (20.0, 80.0)})))
+        graded = grade_rows(order_rows(build_rows(
+            models, entries, table={TB: (20.0, 80.0), SWE: (20.0, 80.0)})))
         self.assertEqual([r.grade for r in graded], ["++", "·"])
         self.assertIsNone(graded[1].score)
 

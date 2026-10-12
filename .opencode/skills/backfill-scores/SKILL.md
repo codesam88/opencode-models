@@ -160,6 +160,7 @@ model is unbenchmarked, exactly as LongCat-2.5-Preview was.
 
 ### Verified NOT scrapable — do not waste a pass
 
+StepFun's model pages (JS shell, ~2KB served; numbers render in a browser),
 Artificial Analysis (per-model pages are 4MB app shells, no data API), Vals
 AI, Scale's SWE-Atlas, DeepSWE, LiveBench, the Epoch AI benchmarking
 dashboard, and the Open LLM Leaderboard HF space: all render their numbers in

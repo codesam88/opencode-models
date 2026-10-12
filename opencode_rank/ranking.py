@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 
 from .data import Model
-from .scoring import combined, derived_scores, scales
+from .scoring import combined, derived_scores, scales, tracked
 from .pricing import nominal_free_rate, variant_of, weighted_cost
 
 _PRICE_FIELDS = ("price_input", "price_output")
@@ -262,48 +262,32 @@ def dedupe_providers(rows: list[Row]) -> list[Row]:
 
 
 def order_rows(rows: list[Row]) -> list[Row]:
-    """Terminal-Bench 2.x first, then the fill-in axes by their own score.
+    """Best score per dollar first; the rest cannot be valued.
 
-    The benchmark families are not comparable (versions, harnesses,
-    difficulty), so they are only an indication of relative performance:
-    the Terminal-Bench 2.x rows build the skeleton in score-per-dollar
-    order, and each row that has only SWE-Bench — or only the harder
-    Terminal-Bench 4.0 — is inserted at the slot its own axis' percentile
-    maps to. Unscored rows cannot be ranked and drop — except free ones,
-    which are listed last (they cost nothing whatever).
+    The score is already comparable across axes — each benchmark reads on
+    its own 0-100 scale and the median combines them — so there is no
+    skeleton to build and no percentile to insert at. Value order is the
+    combined score divided by the price, ties toward the higher score, and
+    a free scored line leads everything paid (infinite value sorts first,
+    not last). Rows no benchmark reaches cannot be valued at all: free ones
+    close the listing (they cost nothing whatever — maximising free usage
+    means seeing them), paid ones follow behind, and rows nothing reaches
+    and nobody sells free drop out.
     """
+    scored = sorted((r for r in rows if r.score is not None),
+                    key=lambda r: (-ratio(r.score, r.price), -r.score))
+    listed = {id(r) for r in scored}
+    tail = [r for r in rows
+            if r.score is None and id(r) not in listed
+            and (r.free or _measured(r))]
+    free = [r for r in tail if r.free]
+    paid = [r for r in tail if not r.free]
+    return scored + free + paid
 
-    def primary_of(row: Row):
-        return _best(row.model.scores, PRIMARY_FAMILY, skip=TB4_FAMILY,
-                     versioned=True)
 
-    def score_on(row: Row, axis: str):
-        return _best(row.model.scores, axis)
-
-    def value_key(row: Row, score: float):
-        return (-ratio(score, row.price), -score)
-
-    skeleton = sorted((r for r in rows if primary_of(r)),
-                      key=lambda r: value_key(r, primary_of(r)[1]))
-
-    result = list(skeleton)
-    for axis in SECONDARY_AXES:
-        placed = 0  # insertion positions only move forward within an axis
-        fillers = sorted((r for r in rows if score_on(r, axis)),
-                         key=lambda r: -ratio(score_on(r, axis)[1], r.price))
-        rank = {id(r): i for i, r in enumerate(fillers)}
-        count = len(fillers)
-        for row in (r for r in fillers if not primary_of(r)):
-            percentile = rank[id(row)] / (count - 1) if count > 1 else 0.0
-            slot = round(percentile * len(skeleton))
-            slot = min(max(slot, placed), len(result))
-            result.insert(slot, row)
-            placed = slot
-    # free lines no benchmark covers: ranked last, not dropped — maximising
-    # free usage means seeing them even though they cannot be scored
-    scored = {id(r) for r in result}
-    result += [r for r in rows if id(r) not in scored and r.free]
-    return result
+def _measured(row: Row) -> bool:
+    """Whether any scored benchmark reaches this row's model."""
+    return any(tracked(name) for name in row.model.scores)
 
 
 def axis_scores(model: Model) -> dict[str, float | None]:

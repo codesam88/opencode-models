@@ -255,17 +255,17 @@ no benchmark reaches (unranked, not last). The marker rides on position in
 the *whole* ordering, so a row in the worst-score or highest-cost table still
 shows how it ranked overall — a priciest-model row can be `++`.
 
-Ranking combines three benchmark axes: Terminal-Bench 2.x rows are ordered by
-score per dollar and build the skeleton; rows that carry only SWE-Bench, or
-only the harder Terminal-Bench 4.0, are inserted at their own axis' percentile
-(`--benchmark X` ranks on one benchmark instead). 4.0 is a harder task set —
-its leaders reach ~58 where 2.1's reach ~87 — so a 4.0 score never competes
-directly with 2.x numbers, and `--benchmark X` tags which benchmark a row
-was ranked on. 2.1 builds the
-skeleton while it has the coverage (37 tier models against 12); when that
-inverts, promote 4.0 to primary by changing `TB4_FAMILY`'s role in
-`ranking.py`. The axes are not comparable, so they only indicate relative
-performance.
+Ranking is best score per dollar first. The score is already comparable
+across axes — each benchmark reads on its own 0–100 scale and the median
+combines them — so there is no skeleton to build and no axis whose
+percentile a row is inserted at: value order is the combined score divided
+by the price, ties toward the higher score. Rows no benchmark reaches
+cannot be valued — free ones close the listing, paid ones follow, and rows
+nothing reaches drop out (`--benchmark X` ranks on one benchmark instead).
+4.0 is a harder task set — its leaders reach ~58 where 2.1's reach ~87 —
+so a 4.0 score never competes directly with 2.x numbers, and `--benchmark X`
+tags which benchmark a row was ranked on. The axes are not comparable, so
+they only indicate relative performance.
 
 Pricing comes from the tier docs rather than the catalog, which carries one
 Zen-style price per model: documented rates replace it, and every priced

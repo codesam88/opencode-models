@@ -426,30 +426,39 @@ class GradeTest(unittest.TestCase):
 
 
 class OrderTest(unittest.TestCase):
-    def test_terminal_bench_rows_lead_in_value_order(self):
-        models = [_m("l/b", 1.0, tb=60.0), _m("l/a", 2.0, tb=80.0)]
+    def test_rows_lead_in_score_per_dollar_order(self):
+        # the SCORE column is one comparable number, so value order is
+        # score divided by price - no skeleton, no percentile insertion
+        models = [_m("l/b", 1.0, tb=60.0, swe=60.0),
+                  _m("l/a", 2.0, tb=80.0, swe=80.0)]
         ordered = order_rows(build_rows(models))
-        # b: 60/1 = 60, a: 80/2 = 40 → b leads on value despite the lower score
-        self.assertEqual([r.model.model_id for r in ordered], ["l/b", "l/a"])
+        # b derives 0 on both scales, a derives 100 on both: 0/1 vs 100/2
+        self.assertEqual([r.model.model_id for r in ordered], ["l/a", "l/b"])
 
-    def test_swe_only_row_is_greedily_placed_at_its_percentile(self):
-        # skeleton: five Terminal-Bench models; one strong SWE-only model must
-        # land near the top rather than below every TB row
-        models = [_m(f"l/tb{i}", 1.0, tb=t, swe=s)
-                  for i, (t, s) in enumerate(
-                      [(100, 90), (80, 70), (60, 50), (40, 30), (20, 10)], 1)]
-        models.append(_m("l/swen", 1.0, swe=85.0))
+    def test_axes_do_not_matter_only_score_and_price_do(self):
+        # a strong SWE pair outranks a weak Terminal-Bench pair at the same
+        # price: the benchmark family never enters the ordering
+        models = [_m("l/tb", 1.0, tb=20.0, swe=20.0),
+                  _m("l/swe", 1.0, tb=90.0, swe=90.0)]
         ordered = [r.model.model_id for r in order_rows(build_rows(models))]
-        # 85 ranks 2nd of 6 on SWE → 1/5 of the way down the TB skeleton
-        self.assertEqual(ordered, ["l/tb1", "l/swen", "l/tb2", "l/tb3",
-                                   "l/tb4", "l/tb5"])
+        self.assertEqual(ordered, ["l/swe", "l/tb"])
+
+    def test_ties_break_toward_the_higher_score(self):
+        models = [_m("l/cheap", 1.0, tb=50.0, swe=50.0),
+                  _m("l/dear", 2.0, tb=100.0, swe=100.0)]
+        ordered = [r.model.model_id for r in order_rows(build_rows(models))]
+        # 50/1 == 100/2 == 50 per dollar, so the higher score leads
+        self.assertEqual(ordered, ["l/dear", "l/cheap"])
 
     def test_weak_secondary_row_fills_the_tail(self):
         models = [_m(f"l/tb{i}", 1.0, tb=t, swe=s)
                   for i, (t, s) in enumerate([(90, 90), (70, 70), (50, 50)], 1)]
-        models.append(_m("l/sweweak", 1.0, swe=10.0))
-        ordered = [r.model.model_id for r in order_rows(build_rows(models))]
-        self.assertEqual(ordered[-1], "l/sweweak")
+        models.append(_m("l/sweweak", 1.0, swe=10.0, alone=True))
+        ordered = order_rows(build_rows(models))
+        self.assertEqual([r.model.model_id for r in ordered][-1], "l/sweweak")
+        self.assertIsNone(
+            next(r for r in ordered
+                 if r.model.model_id == "l/sweweak").score)
 
     def test_a_terminal_bench_hard_row_does_not_split_the_skeleton(self):
         # the ordering's primary lookup must be as strict as the row
@@ -471,32 +480,38 @@ class OrderTest(unittest.TestCase):
     def test_a_free_row_without_benchmark_scores_is_still_listed(self):
         # Go offers two free models no benchmark covers — maximising free
         # usage means showing them, ranked below everything that is scored
+        # (the table needs real spread, or nothing scores at all)
         models = [_m("l/tb", 1.0, tb=70.0), _m("l/freebie", 5.0)]
         entries = [_entry("freebie", 0.0, 0.0, free=True)]
-        ordered = order_rows(build_rows(models, entries))
+        ordered = order_rows(build_rows(
+            models, entries, table={TB: (20.0, 80.0), SWE: (20.0, 80.0)}))
         self.assertEqual([r.model.model_id for r in ordered],
                          ["l/tb", "l/freebie"])
 
-    def test_tb4_only_rows_fill_in_at_their_percentile(self):
-        # 4.0 scores are their own axis: inserted like SWE rows, never
-        # sorted against 2.1 numbers
+    def test_single_axis_rows_sort_after_everything_scored(self):
+        # one benchmark is not a score on any axis, 4.0 included: these rows
+        # cannot be valued and sort after the scored ones, hot or not
         models = [_m(f"l/tb{i}", 1.0, tb=t)
                   for i, t in enumerate([100, 80, 60, 40, 20], 1)]
-        models += [_m("l/fourhot", 1.0, tb40=88.0),
-                   _m("l/fourcool", 1.0, tb40=22.0)]
+        models += [_m("l/fourhot", 1.0, tb40=88.0, alone=True),
+                   _m("l/fourcool", 1.0, tb40=22.0, alone=True)]
         ordered = [r.model.model_id for r in order_rows(build_rows(models))]
-        # 22 is last of the two 4.0 rows → the bottom slot
-        self.assertEqual(ordered, ["l/fourhot", "l/tb1", "l/tb2", "l/tb3",
-                                   "l/tb4", "l/fourcool", "l/tb5"])
+        self.assertEqual(ordered, ["l/tb1", "l/tb2", "l/tb3",
+                                   "l/tb4", "l/tb5", "l/fourhot",
+                                   "l/fourcool"])
 
-    def test_a_free_tb4_row_is_listed_once(self):
-        # a free 4.0-only row is placed as a filler — not also appended to
-        # the free tail that follows the scored rows
-        models = [_m("l/tb", 1.0, tb=70.0), _m("l/free4", 5.0, tb40=30.0)]
+    def test_a_free_single_axis_row_sorts_with_the_unscored(self):
+        # free does not promote a row past scored ones: without a score it
+        # belongs with the tail, ahead of paid unscored rows
+        models = [_m("l/tb", 1.0, tb=70.0, swe=70.0),
+                  _m("l/paidweak", 1.0, tb=10.0, alone=True),
+                  _m("l/free4", 5.0, tb40=30.0, alone=True)]
         entries = [_entry("free4", 0.0, 0.0, free=True)]
-        ordered = order_rows(build_rows(models, entries))
+        ordered = order_rows(build_rows(
+            models, entries, table={TB: (10.0, 70.0), SWE: (10.0, 70.0),
+                                    TB4: (10.0, 70.0)}))
         self.assertEqual([r.model.model_id for r in ordered],
-                         ["l/free4", "l/tb"])
+                         ["l/tb", "l/free4", "l/paidweak"])
 
 
 class PartitionTest(unittest.TestCase):

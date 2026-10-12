@@ -1252,6 +1252,187 @@ class OverridesCommandTest(unittest.TestCase):
         self.assertRegex(out, r"1 curated disagreement|0 curated disagreements")
 
 
+class ListViewContractTest(unittest.TestCase):
+    """What the printed `list` guarantees, read back off the console text.
+
+    These tests recompute every number from the modules rather than pinning
+    literals, so they fail when the view drifts from the logic - the ordering
+    no longer matching the shown columns, a grade band leaking across scores,
+    a row vanishing - instead of when a fixture value changes.
+    """
+
+    def _run(self, *argv):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = main(list(argv))
+        return code, out.getvalue()
+
+    def _data(self, tmp):
+        import json
+
+        import opencode_rank.sources as sources
+        _write_grid(Path(tmp))
+        docs = {
+            # scored and free: infinite value, must lead best value
+            "l/zfree": (0.0, [("Terminal-Bench", "2.1", 60.0),
+                              ("SWE-Bench", "Verified", 30.0)]),
+            # one axis: unranked tail, still listed
+            "l/single": (5.0, [("Terminal-Bench", "2.1", 30.0)]),
+            # no benchmark at all: dropped, not listed anywhere
+            "l/nobench": (5.0, []),
+        }
+        for mid, (price, benches) in docs.items():
+            (_models(Path(tmp)) / f"{mid.replace('/', '__')}.json").write_text(
+                json.dumps({"model": {
+                    "id": mid, "name": mid.split("/")[1].upper(), "lab": "l",
+                    "priceUsdPer1M": {"input": price, "output": None,
+                                      "cachedInput": None},
+                    "benchmarks": [{"name": b[0], "version": b[1],
+                                    "score": b[2], "metric": "acc",
+                                    "source": ""} for b in benches]}}))
+        slugs = ({f"m{i:02d}" for i in range(1, 11)}
+                 | {"zfree", "single", "nobench"})
+        orig = sources.load_source
+        sources.load_source = lambda name: set(slugs)
+        self.addCleanup(setattr, sources, "load_source", orig)
+
+    def _section_rows(self, out, title):
+        # rows under a ── title ── line, stopping at the next title: the
+        # naive split on the dashes cuts at the title's own closing pair
+        # and yields nothing, which three of these tests then passed
+        # vacuously. This one fails loudly instead when the title is absent.
+        lines = out.splitlines()
+        start = next(i for i, l in enumerate(lines) if f"── {title}" in l)
+        rows = []
+        for line in lines[start + 1:]:
+            if line.startswith("──"):
+                break
+            parts = line.split()
+            if len(parts) >= 5 and parts[0] in ("++", "+", "o", "--", "·"):
+                rows.append({"grade": parts[0], "score": parts[1],
+                             "cents": parts[2],
+                             "name": " ".join(parts[4:])})
+        return rows
+
+    def _best_value_rows(self, out):
+        rows = self._section_rows(out, "best value")
+        assert rows, "no rows parsed from best value - parser or view broken"
+        return rows
+
+    def _expected(self, tmp):
+        from opencode_rank.data import load_models
+        from opencode_rank.pricing import weighted_cost
+        from opencode_rank.scoring import combined, derived_scores, scales
+        models = {m.model_id: m
+                  for m in load_models(_models(Path(tmp)))}
+        table = scales(list(models.values()))
+        expected = {}
+        for mid, model in models.items():
+            derived = derived_scores(model, table)
+            score = combined(derived)
+            cost = weighted_cost(model.price_input, model.price_output,
+                                 model.price_cached_input)
+            expected[mid] = (score, cost)
+        return expected
+
+    def test_best_value_is_ordered_by_score_per_dollar(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._data(tmp)
+            code, out = self._run("--data", tmp, "list", "--source", "all",
+                                  "--tables", "all")
+        self.assertEqual(code, 0)
+        # the headline states the ordering the rows are checked against:
+        # a lying headline would pass every measurement below
+        head = next(l for l in out.splitlines() if "lines ·" in l)
+        self.assertIn("score per $", head)
+        rows = self._best_value_rows(out)
+        values = []
+        for row in rows:
+            if row["score"] == "-":
+                values.append(-1.0)   # unranked sorts after everything valued
+            elif row["cents"] == "0":
+                values.append(float("inf"))
+            else:
+                values.append(float(row["score"]) / float(row["cents"]))
+        self.assertEqual(values, sorted(values, reverse=True))
+
+    def test_score_cost_and_grade_match_the_modules(self):
+        from opencode_rank.ranking import GRADE_BOTTOM, GRADE_NEXT, GRADE_TOP
+        with tempfile.TemporaryDirectory() as tmp:
+            self._data(tmp)
+            code, out = self._run("--data", tmp, "list", "--source", "all",
+                                  "--tables", "all")
+            expected = self._expected(tmp)
+        self.assertEqual(code, 0)
+        names = {"M%02d" % i: f"l/m{i:02d}" for i in range(1, 11)}
+        names.update({"ZFREE": "l/zfree", "SINGLE": "l/single"})
+        for row in self._best_value_rows(out):
+            if row["name"] not in names:
+                continue
+            score, cost = expected[names[row["name"]]]
+            with self.subTest(model=row["name"]):
+                self.assertEqual(row["score"],
+                                 "-" if score is None else f"{round(score)}")
+                self.assertEqual(row["cents"], f"{round(cost * 100)}")
+        # grade bands follow scores, top to bottom, across the whole view:
+        # sorting every graded row by its score must yield the bands in
+        # order. (Tables print best, worst, cost - concatenating them is
+        # not rank order, so sort first.)
+        scored = [(r["grade"], float(r["score"]))
+                  for table in ("best value", "worst score", "highest cost")
+                  for r in self._table_rows(out, table)
+                  if r["score"] != "-"]
+        order = {"++": 0, "+": 1, "o": 2, "--": 3}
+        by_score = sorted(scored, key=lambda gs: -gs[1])
+        self.assertEqual([g for g, _ in by_score],
+                         sorted([g for g, _ in by_score],
+                                key=order.__getitem__))
+        by_grade = {}
+        for grade, score in scored:
+            by_grade.setdefault(grade, []).append(score)
+        bands = [g for g in ("++", "+", "o", "--") if g in by_grade]
+        for upper, lower in zip(bands, bands[1:]):
+            self.assertGreater(min(by_grade[upper]), max(by_grade[lower]))
+
+    def _table_rows(self, out, title):
+        return self._section_rows(out, title)
+
+    def test_worst_score_holds_the_lowest_scores(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._data(tmp)
+            code, out = self._run("--data", tmp, "list", "--source", "all",
+                                  "--tables", "all")
+        self.assertEqual(code, 0)
+        best = [float(r["score"]) for r in self._best_value_rows(out)
+                if r["score"] != "-"]
+        worst = [float(r["score"]) for r in self._table_rows(out, "worst score")
+                 if r["score"] != "-"]
+        self.assertTrue(worst)
+        self.assertLessEqual(max(worst), min(best))
+
+    def test_highest_cost_holds_the_priciest_lines(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._data(tmp)
+            code, out = self._run("--data", tmp, "list", "--source", "all",
+                                  "--tables", "all")
+        self.assertEqual(code, 0)
+        best = [float(r["cents"]) for r in self._best_value_rows(out)]
+        pricey = [float(r["cents"])
+                  for r in self._table_rows(out, "highest cost")]
+        self.assertTrue(pricey)
+        self.assertGreaterEqual(min(pricey), max(best))
+
+    def test_measured_rows_appear_and_unmeasured_ones_do_not(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._data(tmp)
+            code, out = self._run("--data", tmp, "list", "--source", "all",
+                                  "--tables", "all")
+        self.assertEqual(code, 0)
+        self.assertIn("ZFREE", out)    # free and scored: must lead, not vanish
+        self.assertIn("SINGLE", out)   # one axis: unranked tail, still listed
+        self.assertNotIn("NOBENCH", out)  # nothing reaches it: dropped
+
+
 class AvailabilityTest(unittest.TestCase):
     """A model the plans no longer offer is not shown, scored or ranked.
 

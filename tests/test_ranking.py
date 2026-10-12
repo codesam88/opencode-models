@@ -13,6 +13,7 @@ from opencode_rank.ranking import (
     dedupe_providers,
     merge_rows,
     order_rows,
+    ratio,
     partition_rows,
 )
 
@@ -70,7 +71,11 @@ class RowBuildingTest(unittest.TestCase):
         self.assertEqual(rows[0].band, "included")   # Go grants $15/month
         self.assertIn("Off-Peak", rows[0].name)
 
-    def test_free_line_costs_a_tenth_of_the_cheapest_real_price(self):
+    def test_a_free_line_carries_its_models_nominal_rate(self):
+        # not a tenth of the cheapest real price: free models are not equally
+        # expensive to serve, so each carries its own nominal rate instead of
+        # sharing one. Unknown models get the anchor rate.
+        from opencode_rank.pricing import FREE_TIER_DEFAULT_RATE
         models = [_m("lab/paid", 1.0, tb=50.0),
                   _m("lab/gift", 5.0, tb=40.0)]
         entries = [
@@ -78,11 +83,30 @@ class RowBuildingTest(unittest.TestCase):
             _entry("gift", 0.0, 0.0, cached=0.0, free=True),  # free tier
         ]
         rows = {r.model.model_id: r for r in build_rows(models, entries)}
-        self.assertEqual(rows["lab/gift"].price, 0.1)   # 1.0 / 10
+        self.assertEqual(rows["lab/gift"].price, FREE_TIER_DEFAULT_RATE)
         self.assertEqual(rows["lab/gift"].band, "free")
         self.assertTrue(rows["lab/gift"].name.endswith("[free]"))
         self.assertEqual(rows["lab/paid"].price, 1.0)
         self.assertEqual(rows["lab/paid"].band, "payg")
+
+    def test_two_free_tiers_get_different_score_per_dollar(self):
+        # Step-5-Free burns ~70x what Muse-Spark-Contributor-Free does per
+        # request, so at equal scores its line must divide worse
+        # mirrored pairs, so both score a median of 50 and differ only
+        # in what they cost (identical numbers would leave no spread and
+        # neither with a score at all)
+        models = [_m("stepfun/step-5-preview", 0.959, tb=50.0, swe=30.0),
+                  _m("meta/muse-spark-1.3-contributor", 0.1, tb=30.0,
+                     swe=50.0)]
+        entries = [_entry("step-5-preview-free", 0.0, 0.0, free=True),
+                   _entry("muse-spark-1.3-contributor-free", 0.0, 0.0,
+                          free=True)]
+        rows = {r.model.model_id: r for r in build_rows(models, entries)}
+        pricey = rows["stepfun/step-5-preview"]
+        cheap = rows["meta/muse-spark-1.3-contributor"]
+        self.assertGreater(pricey.price, cheap.price)
+        self.assertGreater(ratio(cheap.score, cheap.price),
+                           ratio(pricey.score, pricey.price))
 
     def test_free_tag_is_not_added_when_the_name_already_says_free(self):
         models = [_m("lab/ling", 1.0, tb=40.0, name="Ling 3.1 Flash Free")]
@@ -238,10 +262,10 @@ class MergeTest(unittest.TestCase):
         self.assertEqual(
             build_rows([_m("l/a", 1.0, tb=50.0)], provider="go")[0].provider, "go")
 
-    def test_free_lines_share_one_price_scale_across_providers(self):
-        # zen sells a model for free, go sells another at $0.20: the free
-        # line has to be 1/10 of the cheapest price in the *whole* view,
-        # not of whatever its own provider group happened to contain
+    def test_a_free_line_keeps_its_nominal_rate_across_providers(self):
+        # the nominal rate is per-model rather than per-group, so merging
+        # zen and go changes nothing about what a free line costs
+        from opencode_rank.pricing import FREE_TIER_DEFAULT_RATE
         zen = build_rows([_m("l/zfree", 5.0, tb=40.0)],
                          [_entry("zfree", 0.0, 0.0, free=True)], provider="zen")
         go = build_rows([_m("l/gopaid", 0.2, tb=40.0)], provider="go")
@@ -250,7 +274,7 @@ class MergeTest(unittest.TestCase):
         free = [r for r in merged if r.free]
         paid = [r for r in merged if not r.free]
         self.assertEqual(len(free), 1)
-        self.assertAlmostEqual(free[0].price, 0.02)   # 0.2 / 10
+        self.assertAlmostEqual(free[0].price, FREE_TIER_DEFAULT_RATE)
         self.assertEqual(len(paid), 1)
         self.assertAlmostEqual(paid[0].price, 0.2)
 

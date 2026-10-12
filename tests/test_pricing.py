@@ -158,3 +158,36 @@ class SnapshotTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FreeTierNominalTest(unittest.TestCase):
+    """Free models cost the console nothing per token but are not free to
+    serve, and they are not equally expensive: Step-5-Free burns ~70x what
+    Muse-Spark-Contributor-Free does per request (LIMITS.md). The nominal
+    rates below turn that into a price the list view can divide by, so free
+    tiers get different score/$ instead of sharing one."""
+
+    def test_the_most_expensive_free_model_costs_most(self):
+        from opencode_rank.pricing import nominal_free_rate
+        self.assertGreater(nominal_free_rate("stepfun/step-5-preview"),
+                           nominal_free_rate("meta/muse-spark-1.3-contributor"))
+
+    def test_a_free_suffix_reaches_the_same_model(self):
+        from opencode_rank.pricing import nominal_free_rate
+        self.assertEqual(nominal_free_rate("step-5-preview-free"),
+                         nominal_free_rate("stepfun/step-5-preview"))
+
+    def test_every_nominal_rate_stays_below_the_cheapest_paid_rate(self):
+        # free must stay cheaper than paid on average, or the list view
+        # stops preferring it: cheapest paid is zen jev-1.13 at $0.034/1M
+        from opencode_rank.pricing import (FREE_TIER_NOMINAL_RATES,
+                                           nominal_free_rate)
+        for slug in list(FREE_TIER_NOMINAL_RATES) + ["something-new-free"]:
+            with self.subTest(slug=slug):
+                self.assertLess(nominal_free_rate(slug), 0.034)
+
+    def test_an_unknown_free_model_gets_the_anchor_rate(self):
+        from opencode_rank.pricing import (FREE_TIER_DEFAULT_RATE,
+                                           nominal_free_rate)
+        self.assertEqual(nominal_free_rate("lab/mystery-free"),
+                         FREE_TIER_DEFAULT_RATE)

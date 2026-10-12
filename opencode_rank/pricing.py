@@ -74,6 +74,46 @@ def weighted_cost(input_: float | None, output: float | None,
 _VARIANT_SUFFIX = re.compile(r"\s*(\((?:≤|>|Off-Peak|Peak|50% off)[^)]*\))\s*$")
 
 
+#: Nominal $/1M rates for the free tiers, so the list view can divide by
+#: something instead of pricing every free model alike.
+#:
+#: Order-of-magnitude, not metered: the free-tier cap is unpublished, so the
+#: daily budget X is anchored on the observed Space-Bunny limit (662 requests
+#: in a day, 2026-10-12) and normalised to X = $0.10/day. Each model's rate
+#: is its share of that budget — its measured $/request over Space-Bunny's,
+#: converted back to $/1M at its own traffic profile. Full derivation, the
+#: Oct-9 contradiction, and every assumption in LIMITS.md ("Estimating the
+#: free tier's size"). All of them sit below the cheapest paid rate
+#: ($0.034/1M), so free still ranks first on value — just not all equal.
+FREE_TIER_NOMINAL_RATES: dict[str, float] = {
+    "step-5-preview-free": 0.019,
+    "mimo-v2.5-free": 0.0056,
+    "longcat-2.5-preview-free": 0.0033,
+    "big-pickle": 0.0030,
+    "mimo-v2.6-flash-free": 0.0028,
+    "space-bunny-free": 0.0018,
+    "muse-spark-1.3-contributor-free": 0.0013,
+}
+
+#: The anchor measurement itself, for a free model nobody has mapped yet.
+FREE_TIER_DEFAULT_RATE = 0.0018
+
+
+def nominal_free_rate(model_id: str) -> float:
+    """The nominal $/1M of a free model id, whatever names it.
+
+    Matches the slug with or without its ``-free`` suffix, since the catalog
+    record (``stepfun/step-5-preview``) and the tier line
+    (``step-5-preview-free``) spell it both ways for one model.
+    """
+    slug = model_id.split("/")[-1]
+    for key in (slug, f"{slug}-free",
+                slug[:-len("-free")] if slug.endswith("-free") else slug):
+        if key in FREE_TIER_NOMINAL_RATES:
+            return FREE_TIER_NOMINAL_RATES[key]
+    return FREE_TIER_DEFAULT_RATE
+
+
 def variant_of(name: str) -> str:
     """The ``(Off-Peak)`` / ``(> 200K tokens)`` suffix of a documented line."""
     match = _VARIANT_SUFFIX.search(name)

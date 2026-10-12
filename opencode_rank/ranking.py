@@ -10,7 +10,7 @@ from dataclasses import dataclass, replace
 
 from .data import Model
 from .scoring import combined, derived_scores, scales
-from .pricing import variant_of, weighted_cost
+from .pricing import nominal_free_rate, variant_of, weighted_cost
 
 _PRICE_FIELDS = ("price_input", "price_output")
 
@@ -150,9 +150,12 @@ def build_rows(models: list[Model], entries=(), free_ids=frozenset(),
 
     A documented line replaces the catalog price (the catalog has no notion
     of tier: it carries the Zen rate for a model Go sells cheaper), and one
-    model can produce several rows — one per priced variant. Free rows are
-    re-priced at a tenth of the cheapest real price in the set so that "free"
-    sorts and divides like any other cost instead of going infinite.
+    model can produce several rows — one per priced variant. Free rows carry
+    their model's nominal free-tier rate (pricing.FREE_TIER_NOMINAL_RATES):
+    free models are not equally expensive to serve — Step-5-Free burns ~70x
+    what Muse-Spark-Contributor-Free does per request — so sharing one price
+    would rank them as equals. Every nominal sits below the cheapest paid
+    rate, so free still beats paid on value, just not all alike.
 
     *axis* picks what a line costs: ``weighted`` (20/60/20 in/cached/out),
     or a single ``input`` / ``output`` rate.
@@ -194,14 +197,10 @@ def build_rows(models: list[Model], entries=(), free_ids=frozenset(),
             staged.append((m, entry, label, cost_of(m, entry),
                            entry.free or m.model_id in free_ids, entry.limit))
 
-    real = [cost for _model, _entry, _name, cost, free, _limit in staged
-            if not free and cost and cost > 0]
-    nominal = min(real) / 10 if real else 0.0
-
     rows = []
     for model, entry, name, cost, free, limit in staged:
         if free:
-            price, band = nominal, BAND_FREE
+            price, band = nominal_free_rate(model.model_id), BAND_FREE
             if "free" not in name.lower():
                 name = f"{name} [free]"
         else:
@@ -223,15 +222,12 @@ def build_rows(models: list[Model], entries=(), free_ids=frozenset(),
 def merge_rows(*groups: list[Row]) -> list[Row]:
     """Concatenate provider groups onto one free-price scale.
 
-    Each group prices its own free lines against its own cheapest line;
-    once zen and go share a view the whole view has to agree on what "a
-    tenth of the cheapest" means, so free rows are re-priced against every
-    group's real prices. Provider tags and order are kept.
+    Free rows already carry their model's nominal rate from build_rows,
+    which is per-model rather than per-group, so there is nothing to
+    re-price: the whole view agrees by construction. Provider tags and order
+    are kept.
     """
-    rows = [row for group in groups for row in group]
-    real = [row.price for row in rows if not row.free and row.price > 0]
-    nominal = min(real) / 10 if real else 0.0
-    return [replace(row, price=nominal) if row.free else row for row in rows]
+    return [row for group in groups for row in group]
 
 
 #: How generous a band is, for picking the best deal out of a merged line.

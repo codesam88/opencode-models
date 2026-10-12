@@ -119,6 +119,53 @@ The free-tier cap itself (`dailyRequests` in the server's `ZEN_LIMITS`) is
 still unpublished, so the honest reading is "free, and rate-limited by an
 unknown amount", not unlimited.
 
+### Estimating the free tier's size
+
+The cap is unpublished, but on 2026-10-12 this workspace ran into it live:
+Space Bunny Free started failing after **662 requests in a day** (UTC), while
+paid models kept working. That is one anchor point for the size of the free
+bucket — and the 30-day usage export lets us turn it into relative costs per
+free model, because cost per request varies enormously:
+
+| free model | in / out / cache per req | rates $/1M | ≈ cost/req |
+|---|---|---|---|
+| step-5-preview-free | 15.7k / 624 / 279k | 0.96 / 2.74 / 0.048 | **$0.030** |
+| longcat-2.5-preview-free | 5.6k / 498 / 185k | 0.30 / 1.20 / 0.006 | $0.0034 |
+| mimo-v2.5-free | 11k / 589 / 68k | 0.16 / 0.32 / 0.004 | $0.0022 |
+| mimo-v2.6-flash-free | 4.3k / 950 / 85k | 0.16 / 0.32 / 0.004 | $0.0013 |
+| muse-spark-1.3-contributor-free | 2.3k / 375 / 55k | 0.10 / 0.20 / 0.002 | **$0.0004** |
+| space-bunny-free | 4.1k / 515 / 141k | (no list price; small-model proxy) | $0.0014 |
+
+Token profiles are measured (this workspace, 30 trailing days, `/api/v2/usage/export`);
+rates are the catalog's list prices — retail, not serving cost, so read the
+rightmost column as ordinal, not exact. The spread is ~70× between Step-5-Free
+and Muse-Spark-Contributor-Free. A pure request-count cap would let one Step-5
+session cost what ~70 Muse Spark sessions do; a cost-based cap explains why
+cheap models run longer, and the server shape carries a `promoTokens` field
+next to `dailyRequests`, so a token bucket exists in the machinery.
+
+Two caveats, both load-bearing:
+
+- **2026-10-09 contradicts a shared daily bucket**: 1,161 free requests went
+  through in a day (557 of them Step-5-Free). Either that day throttled too
+  and nobody noticed, or the window is rolling rather than calendar-day, or
+  the caps are per-model. The export is day-granularity, so intraday bursts
+  are invisible — 662 Space Bunny requests in a few hours trips a rolling cap
+  that 1,161 spread over a day never touches.
+- **Space Bunny and Big Pickle have no catalog price**, so their $/req uses
+  small-model proxy rates. Their traffic profiles are measured; their rates
+  are assumed.
+
+From the anchor, the tool derives nominal $/1M rates
+(`pricing.FREE_TIER_NOMINAL_RATES`) by normalising the daily budget to
+**X = $0.10/day**: one Space-Bunny request ≈ $0.00015, and every other free
+model scales by relative cost. Step-5-Free lands at $0.019/1M (1.9¢),
+Muse-Spark-Contributor-Free at $0.0013/1M (0.13¢). All of them sit below the
+cheapest paid rate ($0.034/1M), so free still ranks first on value in the list
+view — but free tiers now get different score/$ instead of sharing one price.
+The display still shows `0`, since the nominal is a rationing estimate, not a
+bill.
+
 Why limits differ per model: *"For most models, we make this work through
 bulk discounts and reserved GPU capacity… For some models, we haven't had
 the opportunity to negotiate a discount or host them at a lower cost."*

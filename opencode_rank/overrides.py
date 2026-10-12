@@ -95,6 +95,22 @@ class Conflict:
     applied: bool = True
 
     @property
+    def used(self) -> float:
+        """The value the console actually keeps.
+
+        Naming it here rather than leaving the reader to infer it from the
+        two columns: the second number is not necessarily the one in the
+        view, and "override wins" was the wrong way to say so for a board
+        row, where nothing is being overridden.
+        """
+        return self.override if self.applied else self.upstream
+
+    @property
+    def used_source(self) -> str | None:
+        """The source of the value in the view."""
+        return self.override_source if self.applied else self.upstream_source
+
+    @property
     def override_wins(self) -> bool:
         """The override applies only when its source is at least as good.
 

@@ -1006,6 +1006,122 @@ class CliTest(unittest.TestCase):
                                         if "SEC-Bench Pro" in l))
 
 
+class OverridesCommandTest(unittest.TestCase):
+    """`conflicts` shows which value was used, not which one was rejected."""
+
+    VENDOR = "https://example.invalid/blog/introducing"
+    BOARD = "https://www.tbench.ai/leaderboard/terminal-bench/4.0"
+
+    def _run(self, *argv):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = main(list(argv))
+        return code, out.getvalue()
+
+    def _data(self, tmp):
+        import json
+        d = Path(tmp)
+        (_models(d) / "a__m1.json").write_text(json.dumps({"model": {
+            "id": "a/m1", "name": "M1", "lab": "a",
+            "priceUsdPer1M": {"input": 1.0, "output": None,
+                              "cachedInput": None},
+            "benchmarks": [{"name": "Terminal-Bench", "version": "4.0",
+                            "score": 55.8, "metric": "acc",
+                            "source": self.VENDOR}]}}))
+        overrides = d / "overrides"
+        overrides.mkdir(parents=True, exist_ok=True)
+        (overrides / "a__m1.json").write_text(json.dumps({"model": {
+            "id": "a/m1", "note": "board run",
+            "benchmarks": [{"name": "Terminal-Bench", "version": "4.0",
+                            "score": 57.88, "metric": "acc",
+                            "source": self.BOARD}]}}))
+        return d
+
+    def _data_losing(self, tmp):
+        import json
+        d = Path(tmp)
+        (_models(d) / "a__m2.json").write_text(json.dumps({"model": {
+            "id": "a/m2", "name": "M2", "lab": "a",
+            "priceUsdPer1M": {"input": 1.0, "output": None,
+                              "cachedInput": None},
+            "benchmarks": [{"name": "Terminal-Bench", "version": "4.0",
+                            "score": 58.18, "metric": "acc",
+                            "source": self.BOARD}]}}))
+        overrides = d / "overrides"
+        overrides.mkdir(parents=True, exist_ok=True)
+        (overrides / "a__m2.json").write_text(json.dumps({"model": {
+            "id": "a/m2",
+            "benchmarks": [{"name": "Terminal-Bench", "version": "4.0",
+                            "score": 50.0, "metric": "acc",
+                            "source": self.VENDOR}]}}))
+        return d
+
+    def _row(self, out, model):
+        return next(l for l in out.splitlines() if model in l)
+
+    def test_it_is_a_table_with_headings(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = self._data(tmp)
+            code, out = self._run("--data", str(d), "overrides")
+        self.assertEqual(code, 0)
+        header = next(l for l in out.splitlines() if "USED" in l)
+        for heading in ("MODEL", "BENCHMARK", "CATALOG", "REPORTED", "USED"):
+            self.assertIn(heading, header)
+
+    def test_the_used_column_holds_the_value_the_console_keeps(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = self._data(tmp)          # a board value beats a vendor one
+            _code, out = self._run("--data", str(d), "overrides")
+        row = self._row(out, "a/m1")
+        self.assertIn("57.88", row)        # the board number
+        header = next(l for l in out.splitlines() if "USED" in l)
+        at = header.index("USED")
+        self.assertEqual(row[at:at + 5].strip(), "57.88")
+
+    def test_the_used_column_shows_the_kept_value_when_the_other_loses(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = self._data_losing(tmp)   # a vendor claim cannot displace a board
+            _code, out = self._run("--data", str(d), "overrides")
+        row = self._row(out, "a/m2")
+        header = next(l for l in out.splitlines() if "USED" in l)
+        at = header.index("USED")
+        self.assertEqual(row[at:at + 5].strip(), "58.18")   # upstream, kept
+
+    def test_the_wording_does_not_say_a_value_was_overridden(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = self._data(tmp)
+            _code, out = self._run("--data", str(d), "overrides")
+        self.assertNotIn("override wins", out)
+        self.assertNotIn("override noted", out)
+        self.assertNotIn("→", out)
+
+    def test_each_source_carries_its_tier(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = self._data(tmp)
+            _code, out = self._run("--data", str(d), "overrides")
+        self.assertIn("self", out)
+        self.assertIn("board", out)
+
+    def test_an_override_matching_no_model_is_reported(self):
+        # the signature of a typo, or of a model pulled from the registry
+        import json
+        with tempfile.TemporaryDirectory() as tmp:
+            d = self._data(tmp)
+            (d / "overrides" / "a__ghost.json").write_text(json.dumps({
+                "model": {"id": "a/ghost", "benchmarks": [
+                    {"name": "Terminal-Bench", "version": "4.0",
+                     "score": 1.0, "metric": "acc", "source": self.BOARD}]}}))
+            _code, out = self._run("--data", str(d), "overrides")
+        self.assertIn("a/ghost", out)
+        self.assertIn("no upstream", out)
+
+    def test_it_still_counts_what_it_saw(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = self._data(tmp)
+            _code, out = self._run("--data", str(d), "overrides")
+        self.assertRegex(out, r"1 curated disagreement|0 curated disagreements")
+
+
 class AvailabilityTest(unittest.TestCase):
     """A model the plans no longer offer is not shown, scored or ranked.
 

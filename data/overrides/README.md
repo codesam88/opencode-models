@@ -28,7 +28,7 @@ Rules:
    value upstream also carries.
 3. `fetch` writes **only** the upstream records; nothing ever writes here.
    When upstream drifts away from a pinned value, the override still wins
-   the view and the disagreement is reported (`opencode_rank conflicts`).
+   the view and the disagreement is reported (`opencode_rank overrides`).
    To accept upstream, delete the entry.
 4. Sources are tiered by comparability (`overrides.py:source_tier`), and a
    pinned value only applies when its source is at least as good as
@@ -42,7 +42,7 @@ Rules:
 
    A tier-1 override replaces a tier-3 upstream number (Grok 4.7's
    Terminal-Bench 4.0: AA's 33 over x.ai's 37.6); a tier-3 claim against
-   independent upstream is recorded and shown by `conflicts` but not
+   independent upstream is recorded and shown by `overrides` but not
    applied. Aggregator numbers are fair game **when labelled as such** —
    see the Step 5 Terminal-Bench 2.1 entry, which is flagged because it is
    absent from the official tbench.ai 2.1 leaderboard.

@@ -42,7 +42,7 @@ installing anything.
 
 ```sh
 opencode-rank fetch                     # refresh the data from opencode.ai
-opencode-rank conflicts                 # curated overrides vs upstream
+opencode-rank overrides                 # every number more than one source reports
 opencode-rank benchmarks                # list benchmarks + coverage
 opencode-rank render                    # pareto.html, best-covered benchmark
 opencode-rank render --benchmark "SWE-Bench Verified" --out swe.html
@@ -285,7 +285,7 @@ committed**. They are third-party records, they go stale, and they are large;
 | `aiarena/` | arena.ai (LMArena) Elo cache, `{slug: elo}` | `scores --refresh` | no — `.gitignore`d |
 | `tier_prices/` | snapshots of the Console tier pricing tables — **and the record of which models the plans offer** (see below) | `fetch` | no — `.gitignore`d |
 | `boards/` | official benchmark boards, fetched from whoever runs them (see below) | `fetch` | no — `.gitignore`d |
-| `overrides/` | an escape hatch for hand-pinned benchmark values — currently empty, since `fetch` brings the boards themselves (see `data/overrides/README.md`) | nobody — `fetch` reports disagreements via `conflicts` | **yes** (the directory, no data) |
+| `overrides/` | an escape hatch for hand-pinned benchmark values — currently empty, since `fetch` brings the boards themselves (see `data/overrides/README.md`) | nobody — `fetch` reports replacements via `overrides` | **yes** (the directory, no data) |
 
 ### Which models the plans actually offer
 
@@ -330,7 +330,7 @@ A board row replaces a model's score only when its source is *strictly*
 better tiered than what the model already carries — an official board beats
 a vendor's own number (MiniMax-M2's self-reported 69.4 on SWE-bench Verified
 yields to the board's 61.0), but it never displaces an independent run, and
-every replacement or disagreement is printed by `conflicts`. Sources that
+every replacement is printed by `overrides`. Sources that
 only render numbers in a browser with no embedded data (Artificial Analysis,
 Vals AI, Scale's SWE-Atlas, DeepSWE) are not fetched; their numbers arrive
 via the registry or a curated override. A JS-rendered page is not
@@ -351,7 +351,7 @@ when its source is at least as good as upstream's — sources are tiered:
 independent evaluators that run every model on one harness (Artificial
 Analysis) beat official benchmark boards (tbench.ai), which beat vendor
 model cards and launch posts. Everything a disagreement touches is printed
-by `conflicts`; to accept upstream, delete the entry. Rows whose model
+by `overrides`; to accept the catalog value, delete the entry. Rows whose model
 carries an overlay are marked `*` in `list`.
 
 Parsing is tolerant: models without pricing or without the selected

@@ -123,7 +123,7 @@ def _load(data_dir: Path):
 
     Returns the models, the curated layer (which models carry overrides), and
     the board-vs-registry disagreements — so the console can mark curated rows
-    and `conflicts` can report the boards' numbers replacing self-reports.
+    and `overrides` can report the boards' numbers replacing self-reports.
     """
     curated = load_curated(data_dir / "opencode", data_dir / "overrides")
     models = merge_from_file(curated.models, data_dir / "aiarena")
@@ -163,20 +163,55 @@ def _cmd_render(args: argparse.Namespace) -> int:
     return 0
 
 
+#: How much of a board row's provenance the NOTE column carries.
+_NOTE_WIDTH = 52
+
+#: Source tiers, short enough to sit beside a number without dominating the
+#: column. The long names are in the footer rather than in every row.
+_TIER_SHORT = {1: "indep", 2: "board", 3: "self"}
+
+
+def _tier_word(source) -> str:
+    return _TIER_SHORT[source_tier(source)]
+
+
+def _note_text(c) -> str:
+    """A conflict's provenance, trimmed to one line.
+
+    The board rows carry the run that produced the number - agent, effort,
+    rank, CI and trial count - and that is the part worth reading, so it
+    goes in the table rather than on a second line under it. A longer note
+    is cut: the full record is in ``data/boards/``.
+    """
+    text = " ".join((c.reason or "").split())
+    return text if len(text) <= _NOTE_WIDTH else text[:_NOTE_WIDTH - 1] + "…"
+
+
 def _print_conflicts(conflicts, orphans=()) -> int:
-    """Override-vs-upstream disagreements, and overrides nothing matched."""
+    """Disagreements between two sources, as a table with the value used.
+
+    Three numbers per row would be one too many, so the two reported values
+    carry their source tier and USED says which of them is in the view.
+    The arrow used to run upstream → override, which read as if the console
+    had taken the second number even where it kept the first.
+    """
+    rows = []
     for c in conflicts:
-        verdict = ("override wins"
-                   if c.override_wins and c.applied
-                   else "override noted, upstream kept")
-        print(f"{c.model_id}  {c.benchmark}: "
-              f"{c.upstream} [{TIER_LABELS[source_tier(c.upstream_source)]}] "
-              f"→ {c.override} [{TIER_LABELS[source_tier(c.override_source)]}]"
-              f"  · {verdict}")
-        if c.reason:
-            print(f"    {c.reason}")
-    for model_id in sorted(orphans):
-        print(f"{model_id}  override file has no upstream record")
+        rows.append((
+            c.model_id, c.benchmark,
+            f"{c.upstream:g} {_tier_word(c.upstream_source)}",
+            f"{c.override:g} {_tier_word(c.override_source)}",
+            f"{c.used:g}", _note_text(c)))
+    orphans = [(model_id, "", "", "", "", "override file has no upstream record")
+               for model_id in sorted(orphans)]
+    rows += orphans
+    if not rows:
+        return 0
+    headings = ("MODEL", "BENCHMARK", "CATALOG", "REPORTED", "USED", "NOTE")
+    widths = [max(len(h), *(len(r[i]) for r in rows)) for i, h in enumerate(headings)]
+    print("  " + "  ".join(h.ljust(w) for h, w in zip(headings, widths)).rstrip())
+    for row in rows:
+        print("  " + "  ".join(c.ljust(w) for c, w in zip(row, widths)).rstrip())
     return len(conflicts) + len(orphans)
 
 
@@ -201,6 +236,8 @@ def _cmd_conflicts(args: argparse.Namespace) -> int:
               f"{resid:+.0f} off the 2.1→4.0 band, check the run")
     print(f"{len(curated.curated)} curated models · {n} curated "
           f"disagreements · {len(board_conflicts)} from official boards")
+    print("tiers: self = vendor self-report · board = official board · "
+          "indep = independent evaluator")
     return 0
 
 
@@ -222,7 +259,7 @@ def _cmd_fetch(args: argparse.Namespace) -> int:
     n = _print_conflicts(curated.conflicts, curated.orphans)
     if n:
         print(f"{n} curated override(s) disagree with upstream — "
-              f"run `conflicts` to review")
+              f"run `overrides` to review")
     boards = fetch_boards(get=http_get)
     saved = save_boards(data_dir / "boards", boards)
     rows = sum(len(v) for v in boards.values())
@@ -624,8 +661,9 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("fetch", help="refresh data from opencode.ai")
-    sub.add_parser("conflicts",
-                   help="curated overrides disagreeing with upstream")
+    sub.add_parser("overrides",
+                   help="every benchmark number more than one source "
+                        "reports, and which value the console keeps")
 
     sub.add_parser("benchmarks", help="list benchmarks with model coverage")
 
@@ -688,7 +726,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     return {
         "fetch": _cmd_fetch,
-        "conflicts": _cmd_conflicts,
+        "overrides": _cmd_conflicts,
         "benchmarks": _cmd_benchmarks,
         "render": _cmd_render,
         "list": _cmd_list,

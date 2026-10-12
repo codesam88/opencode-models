@@ -26,6 +26,7 @@ from .boards import (fetch_boards, load_boards, merge_boards,
 from .overrides import TIER_LABELS, load_curated, off_band_models, source_tier
 from .pricing import load_prices, refresh_prices
 from .ranking import RECOMMEND_FLOOR, next_up, plans_of
+from .scoring import combined, derived_scores, scales
 from .ranking import (
     BAND_FREE,
     BAND_INCLUDED,
@@ -227,23 +228,64 @@ def _cmd_fetch(args: argparse.Namespace) -> int:
     return 0
 
 
-def _cmd_scores(args: argparse.Namespace) -> int:
-    """Manage the cached arena.ai Elo table.
+def _score_parts(model, table: dict) -> tuple[str, str, list[str]]:
+    """One model's score, how many benchmarks backed it, and each part.
 
-    Default is offline: read the cache and report its size. ``--refresh``
-    is the only online path — it looks up the arena dataset and rewrites
-    the cache, so regular runs never hammer any service.
+    The raw number is what the evaluator published; the derived number is
+    where that sits on the benchmark's 0-100 scale across this catalog.
+    Both are shown, because a score without its position in the field says
+    nothing on its own.
+    """
+    derived = derived_scores(model, table)
+    score = combined(derived)
+    parts = []
+    for name in sorted(model.scores, key=lambda n: (-derived.get(n, -1), n)):
+        raw = model.scores[name]
+        parts.append(f"{name} {raw:g}→{derived[name]:.0f}" if name in derived
+                     else f"{name} {raw:g}→—")
+    return (f"{score:.0f}" if score is not None else "—",
+            f"{len(derived)}/{len(model.scores)}", parts)
+
+
+def _cmd_scores(args: argparse.Namespace) -> int:
+    """Every model's benchmark scores, raw and derived, side by side.
+
+    Each benchmark is read on its own 0-100 scale — its best model in this
+    catalog is 100, its lowest 0 — because the raw numbers do not compare
+    across benchmarks. A model's score is the median of the scales it has.
+    ``--refresh`` still refreshes the cached arena Elo table.
     """
     data_dir = Path(args.data)
-    cache = ArenaCache(data_dir / "aiarena")
     if args.refresh:
+        cache = ArenaCache(data_dir / "aiarena")
         scores = arena_mod.lookup_arena_elo(get=http_get)
         cache.save(scores)
         print(f"fetched {len(scores)} arena Elo scores -> "
               f"{data_dir / 'aiarena' / arena_mod.CACHE_NAME}")
-    else:
-        scores = cache.load()
-        print(f"cached arena Elo scores: {len(scores)} (--refresh to look up)")
+        return 0
+
+    models, _curated, _boards = _load(data_dir)
+    table = scales(models)
+    ranked = sorted((m for m in models if m.scores),
+                    key=lambda m: -(combined(derived_scores(m, table)) or 0))
+    unscored = [m for m in models if not m.scores]
+
+    print("each benchmark on its own 0-100 scale (best model 100, lowest 0); "
+          "a model's score is the median of the scales it has")
+    print(f"{len(models)} models · {len(table)} benchmarks · "
+          f"{len(ranked)} with scores · {len(unscored)} without")
+    print()
+    width = max([len(m.name) for m in models] or [4])
+    print(f"  {'MODEL':<{width}} {'SCORE':>6} {'AXES':>6}  "
+          f"BENCHMARKS (raw→derived)")
+    for model in ranked:
+        score, axes, parts = _score_parts(model, table)
+        print(f"  {model.name:<{width}} {score:>6} {axes:>6}  "
+              f"{'  '.join(parts)}")
+    if unscored:
+        print()
+        print(f"  {len(unscored)} with no benchmarks: "
+              + ", ".join(sorted(m.name for m in unscored)[:10]))
     return 0
 
 
@@ -336,6 +378,9 @@ def _rows_for(data_dir: Path, selected: list[str], price: str):
     the ranking it was drawn from.
     """
     models, curated, _ = _load(data_dir)
+    # one scale for the whole catalog: per-tier scales would make the same
+    # score mean two different things in the merged view
+    table = scales(models)
     groups, listed, counts, tier_slugs = [], [], {}, {}
     covered: set[str] = set()
     for provider in selected:
@@ -349,7 +394,8 @@ def _rows_for(data_dir: Path, selected: list[str], price: str):
             covered |= {m.model_id for m in pool}
         listed += pool
         groups.append(build_rows(pool, _entries_for(provider, data_dir),
-                                 free_ids, axis=price, provider=provider))
+                                 free_ids, axis=price, provider=provider,
+                                 table=table))
     rows = dedupe_providers(merge_rows(*groups))
     return rows, listed, curated, counts, tier_slugs, models
 

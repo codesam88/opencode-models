@@ -52,6 +52,7 @@ opencode-rank list --source zen         # one provider only
 opencode-rank list --source all --benchmark "SWE-Bench Verified"
 opencode-rank next                      # the next 4 models to use, in order
 opencode-rank next --count 6 --source go
+opencode-rank scores                    # every model's raw and derived scores
 ```
 
 `render` defaults to the benchmark covering the most models. The output is one
@@ -114,6 +115,31 @@ whole numbers, and the cost column counts cents (`¢/1M` = round(price·100)),
 so a $0.0612 line reads as `6`, not `0.0612`. Columns are measured from the
 lines actually being shown (header included), so nothing shifts when a price
 or a provider list outgrows the rest.
+
+### How a model's score is computed
+
+Raw benchmark numbers are not comparable: Terminal-Bench 2.1 runs 25–90,
+Terminal-Bench 4.0 runs 16–65, SWE-bench Verified 35–96. So each benchmark
+gets its own **0–100 scale** — the best model in the catalog is 100, the
+lowest is 0, and distances are proportionate and linear — and a model's
+score is the **median** of the scales it has.
+
+The median, not the mean: coverage here is wildly uneven, and one bad result
+must not bury a model that is strong on everything else. `opencode-rank
+scores` shows every model's raw and derived numbers side by side, so the
+arithmetic is checkable:
+
+```
+  MODEL                                   SCORE   AXES  BENCHMARKS (raw→derived)
+  Claude Opus 5.5                           100    9/9  Terminal-Bench 4.0 64.85→100 …
+  MiMo-V2.6-Pro                              98  17/17  Terminal-Bench 2.1 89.9→100 …
+```
+
+Two consequences worth knowing. A benchmark only one or two models carry has
+no spread, so it cannot discriminate and is left out of the score — 164 of
+212 benchmarks are in that position. And the score answers "how does this
+model typically do on what it was measured on", so a model evaluated on a
+handful of benchmarks it excels at scores near 100.
 
 The score columns show **every ordering axis side by side** — `TB2`, `TB4`,
 `SWE` — each carrying the model's raw best run on that axis, blank where it

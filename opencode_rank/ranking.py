@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 
 from .data import Model
+from .scoring import combined, derived_scores, scales
 from .pricing import variant_of, weighted_cost
 
 _PRICE_FIELDS = ("price_input", "price_output")
@@ -143,7 +144,8 @@ def ratio(score: float, price: float) -> float:
 
 
 def build_rows(models: list[Model], entries=(), free_ids=frozenset(),
-               axis: str = "weighted", provider: str = "-") -> list[Row]:
+               axis: str = "weighted", provider: str = "-",
+               table: dict | None = None) -> list[Row]:
     """Price every line of the console list.
 
     A documented line replaces the catalog price (the catalog has no notion
@@ -205,15 +207,15 @@ def build_rows(models: list[Model], entries=(), free_ids=frozenset(),
         else:
             price = cost
             band = BAND_INCLUDED if limit is not None else BAND_PAYG
-        primary = _best(model.scores, PRIMARY_FAMILY, skip=TB4_FAMILY,
-                        versioned=True)
-        secondary = _best(model.scores, SECONDARY_FAMILY)
-        tb4 = _best(model.scores, TB4_FAMILY)
-        chosen = primary or secondary or tb4
+        # the row's score is the model's own: every benchmark it carries on
+        # that benchmark's 0-100 scale, median across them. *table* is the
+        # scale of the whole catalog, passed in so every view grades against
+        # the same yardstick.
+        derived = derived_scores(model, table or scales(models))
+        score = combined(derived)
+        strongest = max(derived, key=lambda k: derived[k]) if derived else None
         rows.append(Row(model=model, name=name, price=price, free=free,
-                        band=band,
-                        score=chosen[1] if chosen else None,
-                        benchmark=chosen[0] if chosen else None,
+                        band=band, score=score, benchmark=strongest,
                         provider=provider, entry=entry))
     return rows
 
@@ -350,15 +352,19 @@ def grade_symbols(count: int) -> list[str]:
 
 
 def grade_rows(rows: list[Row]) -> list[Row]:
-    """Tag every row with its rank marker, keeping the given order.
+    """Tag every row with a marker for how strong it is, keeping the order.
+
+    The bands come from the *score*, not from position in the table. Price
+    sorts the table — that is the Pareto view — but a model that scores well
+    should not be graded "middle" for costing money, and a cheap model
+    should not be graded "top" for being cheap.
 
     Rows with no score are unranked rather than last: they show ``·``, so a
-    free model nobody benchmarks is not mistaken for the bottom of the
-    table.
+    free model nobody benchmarks is not mistaken for the bottom.
     """
-    graded = grade_symbols(len(rows))
-    return [replace(r, grade=symbol if r.score is not None else "·")
-            for r, symbol in zip(rows, graded)]
+    scored = sorted((r for r in rows if r.score is not None), key=lambda r: -r.score)
+    marks = {id(row): symbol for row, symbol in zip(scored, grade_symbols(len(scored)))}
+    return [replace(r, grade=marks.get(id(r), "·")) for r in rows]
 
 
 #: How much weaker than the strongest model known a pick may be, as a

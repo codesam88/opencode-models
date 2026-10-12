@@ -5,6 +5,7 @@ import unittest
 from opencode_rank.data import Model
 from opencode_rank.pricing import PriceEntry
 from opencode_rank.ranking import (
+    Row,
     axis_scores,
     build_rows,
     grade_rows,
@@ -122,11 +123,14 @@ class RowBuildingTest(unittest.TestCase):
         self.assertIn("Peak", rows[0].name)
         self.assertIn("Peak", rows[1].name)
 
-    def test_rows_carry_their_best_terminal_bench_score(self):
-        models = [_m("a/m1", 1.0, tb=55.8, swe=40.0)]
-        row = build_rows(models, [])[0]
-        self.assertEqual(row.score, 55.8)          # primary family wins
-        self.assertEqual(row.benchmark, TB)
+    def test_a_model_is_scored_across_every_benchmark_it_carries(self):
+        # no family wins: 2.1 and SWE are read on their own scales and the
+        # score is the median of the two
+        table = {TB: (20.0, 60.0), SWE: (20.0, 60.0)}
+        rows = build_rows([_m("a/m1", 1.0, tb=55.8, swe=40.0),
+                           _m("a/m2", 1.0, tb=40.0, swe=30.0)], table=table)
+        row = next(r for r in rows if r.model.model_id == "a/m1")
+        self.assertAlmostEqual(row.score, 69.75, places=2)
 
     def test_terminal_bench_hard_is_not_a_2_x_run(self):
         # TB Hard / TB-Science are separate benchmarks, not versions of
@@ -138,35 +142,57 @@ class RowBuildingTest(unittest.TestCase):
 
     def test_a_space_spelled_terminal_bench_version_still_counts(self):
         # catalogs write both "Terminal-Bench 2.1" and "Terminal Bench 2.1"
-        row = build_rows([_m("a/m1", 1.0,
-                             scores={"Terminal Bench 2.1": 71.0})])[0]
-        self.assertEqual(row.score, 71.0)
-        self.assertEqual(row.benchmark, "Terminal Bench 2.1")
+        table = {"Terminal Bench 2.1": (40.0, 80.0)}
+        rows = build_rows([_m("a/m1", 1.0, scores={"Terminal Bench 2.1": 71.0}),
+                           _m("a/m2", 1.0, scores={"Terminal Bench 2.1": 50.0})],
+                          table=table)
+        self.assertEqual(rows[0].benchmark, "Terminal Bench 2.1")
+        self.assertEqual(rows[0].score, 77.5)      # 71 of 40-80
 
-    def test_a_model_with_only_hard_falls_back_to_its_4_run_or_nothing(self):
-        rows = order_rows(build_rows([_m("a/m1", 1.0,
-                                          scores={"Terminal-Bench Hard": 20.5,
-                                                  "Terminal-Bench 4.0": 55.8})]))
-        self.assertEqual(rows[0].score, 55.8)     # ranked on its 4.0 run
-        self.assertEqual(rows[0].benchmark, "Terminal-Bench 4.0")
+    def test_hard_does_not_contaminate_the_4_run(self):
+        # "Terminal-Bench Hard" is a separate benchmark that merely shares
+        # the prefix; the model's score comes from its real runs
+        table = {"Terminal-Bench Hard": (10.0, 30.0),
+                 "Terminal-Bench 4.0": (40.0, 60.0)}
+        rows = build_rows(
+            [_m("a/m1", 1.0, scores={"Terminal-Bench Hard": 20.5,
+                                     "Terminal-Bench 4.0": 55.8}),
+             _m("a/m2", 1.0, scores={"Terminal-Bench Hard": 15.0,
+                                     "Terminal-Bench 4.0": 45.0})],
+            table=table)
+        rows = order_rows(rows)
+        # 20.5 on Hard is 52.5 of that benchmark's range and 55.8 on 4.0 is
+        # 79 — the score is the median of the model's own derived scores,
+        # not the raw 20.5 the old primary-score rule would have shown
+        row = next(r for r in rows if r.model.model_id == "a/m1")
+        self.assertAlmostEqual(row.score, 65.75, places=2)
+        self.assertGreater(row.score, 55.8)
 
-    def test_a_swe_only_row_falls_back_to_the_secondary_family(self):
-        models = [_m("a/m1", 1.0, swe=40.0)]
-        row = build_rows(models, [])[0]
-        self.assertEqual(row.score, 40.0)
-        self.assertEqual(row.benchmark, SWE)
+    def test_a_swe_only_model_is_scored_on_swe(self):
+        table = {SWE: (20.0, 60.0)}
+        rows = build_rows([_m("a/m1", 1.0, swe=40.0),
+                           _m("a/m2", 1.0, swe=30.0)], table=table)
+        self.assertEqual(rows[0].benchmark, SWE)
+        self.assertEqual(rows[0].score, 50.0)
 
-    def test_the_4_score_never_wins_the_2_slot(self):
-        # 4.0 is a harder task set (top score ~58 vs ~87): a model carrying
-        # both ranks on its 2.1 number, not the inflated-looking 4.0 gap
-        row = build_rows([_m("l/both", 1.0, tb=50.0, tb40=88.0)])[0]
-        self.assertEqual(row.benchmark, TB)
-        self.assertEqual(row.score, 50.0)
+    def test_both_scores_land_on_one_comparable_scale(self):
+        # 4.0 is a harder task set (top score ~58 vs ~87): its raw numbers
+        # must not be compared with 2.1's, so each is read on its own scale
+        table = {TB: (20.0, 80.0), TB4: (10.0, 60.0)}
+        rows = build_rows([_m("l/low", 1.0, tb=50.0, tb40=40.0),
+                           _m("l/high", 1.0, tb=70.0, tb40=55.0)],
+                          table=table)
+        # low: 50 on 2.1 (of 20-80) and 60 on 4.0 (of 10-60) → median 55
+        # high: 83.3 and 90 → median 86.7, and it leads on both
+        self.assertAlmostEqual(rows[0].score, 55.0)
+        self.assertGreater(rows[1].score, rows[0].score)
 
-    def test_a_4_only_model_keeps_its_score_for_display(self):
-        row = build_rows([_m("l/four", 1.0, tb40=41.0)])[0]
-        self.assertEqual(row.benchmark, TB4)
-        self.assertEqual(row.score, 41.0)
+    def test_a_4_only_model_is_scored_on_the_4_scale_alone(self):
+        table = {TB4: (20.0, 60.0)}
+        rows = build_rows([_m("l/weak", 1.0, tb40=30.0),
+                           _m("l/strong", 1.0, tb40=50.0)], table=table)
+        self.assertEqual(rows[0].benchmark, TB4)
+        self.assertEqual([r.score for r in rows], [25.0, 75.0])
 
 
 class MergeTest(unittest.TestCase):
@@ -310,7 +336,8 @@ class GradeTest(unittest.TestCase):
         # it is simply unranked — shown as · so nobody reads it as a verdict
         models = [_m("l/tb", 1.0, tb=70.0), _m("l/freebie", 5.0)]
         entries = [_entry("freebie", 0.0, 0.0, free=True)]
-        graded = grade_rows(order_rows(build_rows(models, entries)))
+        graded = grade_rows(order_rows(build_rows(models, entries,
+                                                 table={TB: (20.0, 80.0)})))
         self.assertEqual([r.grade for r in graded], ["++", "·"])
         self.assertIsNone(graded[1].score)
 
@@ -446,3 +473,62 @@ class PartitionTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class GradeByScoreTest(unittest.TestCase):
+    """The marker answers "how strong is this model", not "how cheap".
+
+    Price sorts the table — that is the Pareto view doing its job — but a
+    model that scores well should not be graded "middle" for costing money,
+    and a cheap model should not be graded "top" for being cheap.
+    """
+
+    def _rows(self, scores_and_prices):
+        from dataclasses import replace
+
+        from opencode_rank.data import Model
+        rows = []
+        for i, (score, price) in enumerate(scores_and_prices):
+            model = Model(model_id=f"l/m{i:02d}", name=f"M{i:02d}", lab="l",
+                          price_input=price, price_output=price,
+                          price_cached_input=price,
+                          scores={"Terminal-Bench 2.1": score}
+                          if score is not None else {})
+            rows.append(replace(Row(model=model, name=f"M{i:02d}", price=price,
+                                    free=price == 0, band="included",
+                                    score=score,
+                                    benchmark="Terminal-Bench 2.1"
+                                    if score is not None else None,
+                                    provider="zen"), grade="?"))
+        return rows
+
+    def test_a_strong_but_pricey_model_is_graded_top(self):
+        rows = self._rows([(90.0, 100.0), (50.0, 0.0), (40.0, 0.0),
+                           (30.0, 0.0), (20.0, 0.0)])
+        graded = {r.name: r.grade for r in grade_rows(rows)}
+        self.assertEqual(graded["M00"], "++")
+
+    def test_a_cheap_but_weak_model_is_not_graded_top(self):
+        rows = self._rows([(90.0, 100.0), (50.0, 0.0), (40.0, 0.0),
+                           (30.0, 0.0), (20.0, 0.0)])
+        graded = {r.name: r.grade for r in grade_rows(rows)}
+        self.assertNotEqual(graded["M01"], "++")
+        # and the bands follow the scores, top to bottom
+        self.assertEqual([graded[f"M{i:02d}"] for i in range(5)],
+                         ["++", "+", "o", "o", "-"])
+
+    def test_the_grades_do_not_depend_on_price_at_all(self):
+        cheap = grade_rows(self._rows([(90.0, 100.0), (50.0, 0.0)]))
+        dear = grade_rows(self._rows([(90.0, 0.0), (50.0, 100.0)]))
+        self.assertEqual([r.grade for r in cheap], [r.grade for r in dear])
+
+    def test_a_row_with_no_score_stays_unranked(self):
+        rows = self._rows([(90.0, 1.0), (None, 0.0), (50.0, 1.0)])
+        graded = {r.name: r.grade for r in grade_rows(rows)}
+        self.assertEqual(graded["M01"], "·")
+
+    def test_grading_leaves_the_order_of_rows_alone(self):
+        rows = self._rows([(90.0, 100.0), (50.0, 0.0), (40.0, 0.0)])
+        graded = grade_rows(rows)
+        self.assertEqual([r.name for r in graded],
+                         [r.name for r in rows])

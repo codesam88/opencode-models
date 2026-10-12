@@ -154,7 +154,7 @@ model is unbenchmarked, exactly as LongCat-2.5-Preview was.
 
 | source | how | notes |
 |---|---|---|
-| **Hugging Face datasets-server** | `https://datasets-server.huggingface.co/rows?dataset=<org>/<name>&config=…&split=…&offset=0&length=100` | public JSON, no auth. Already used: `opencode-rank scores --refresh` reads arena Elo from `openaccess-ai-collective/chatbot-arena-elo-scores` (fields `elo_score`, `chatbot_name`) |
+| **Hugging Face datasets-server** | `https://datasets-server.huggingface.co/rows?dataset=<org>/<name>&config=…&split=…&offset=0&length=100` | public JSON, no auth. Already used: `opencode-rank fetch` reads arena Elo from `openaccess-ai-collective/chatbot-arena-elo-scores` (fields `elo_score`, `chatbot_name`) |
 | **Terminal-Bench 4.0 board** | `https://www.tbench.ai/leaderboard/terminal-bench/4.0` | parsed by `fetch`; per row: accuracy ± CI95, agent, reasoning effort, date, rank |
 | **SWE-bench** | `https://www.swebench.com/` | parsed by `fetch`; subsets Verified, Multilingual, Multimodal, Lite; `checked` entries only |
 | **aider polyglot** | `https://aider.chat/docs/leaderboards/` | a plain `<tr>` table — but its newest entry is GPT-5-era (Aug 2025), so only use it for older models, never for ranking current ones |

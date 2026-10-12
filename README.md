@@ -282,7 +282,7 @@ committed**. They are third-party records, they go stale, and they are large;
 | directory | contents | written by | in the repo? |
 |---|---|---|---|
 | `opencode/` | upstream records, one JSON per model, verbatim from `https://opencode.ai/data/<lab>/<model>.json` | `fetch` only | no — `.gitignore`d |
-| `aiarena/` | arena.ai (LMArena) Elo cache, `{slug: elo}` | `scores --refresh` | no — `.gitignore`d |
+| `aiarena/` | arena.ai (LMArena) Elo cache, `{slug: elo}` | `fetch` | no — `.gitignore`d |
 | `tier_prices/` | snapshots of the Console tier pricing tables — **and the record of which models the plans offer** (see below) | `fetch` | no — `.gitignore`d |
 | `boards/` | official benchmark boards, fetched from whoever runs them (see below) | `fetch` | no — `.gitignore`d |
 | `overrides/` | an escape hatch for hand-pinned benchmark values — currently empty, since `fetch` brings the boards themselves (see `data/overrides/README.md`) | nobody — `fetch` reports replacements via `overrides` | **yes** (the directory, no data) |

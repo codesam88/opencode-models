@@ -41,6 +41,14 @@ def _models(d: Path) -> Path:
     return models
 
 
+def _offline_get(url: str) -> str:
+    """A transport that never leaves the machine, for `fetch` tests."""
+    if url.endswith("/sitemap.xml"):
+        return ('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+                '<url><loc>https://opencode.ai/data/x/y</loc></url></urlset>')
+    return "{}"
+
+
 def _write_grid(data_dir: Path):
     """Ten models: price i, Terminal-Bench score i² — value climbs with i.
 
@@ -197,22 +205,69 @@ class CliTest(unittest.TestCase):
         self.assertIn("0", out)  # no cached arena scores yet
         self.assertNotIn("failed", out.lower())
 
-    def test_scores_refresh_uses_injected_lookup_and_saves_cache(self):
+    def test_fetch_refreshes_the_arena_cache(self):
         import opencode_rank.arena as arena
 
         with tempfile.TemporaryDirectory() as tmp:
-            _write_sample(Path(tmp))
+            d = Path(tmp)
+            _write_sample(d)
+            import opencode_rank.cli as cli
             orig = arena.lookup_arena_elo
             arena.lookup_arena_elo = lambda get: {"m1": 1500.0, "m2": 1400.0}
+            transport = cli.http_get
+            cli.http_get = _offline_get
             try:
-                code, out = self._run("--data", tmp, "scores", "--refresh")
+                code, out = self._run("--data", str(d), "fetch")
             finally:
                 arena.lookup_arena_elo = orig
+                cli.http_get = transport
             from opencode_rank.arena import ArenaCache
-            cached = ArenaCache(Path(tmp) / "aiarena").load()
+            cached = ArenaCache(d / "aiarena").load()
         self.assertEqual(code, 0)
         self.assertEqual(cached, {"m1": 1500.0, "m2": 1400.0})
-        self.assertIn("2", out)
+        self.assertIn("arena", out.lower())
+
+    def test_a_failed_arena_lookup_does_not_fail_the_fetch(self):
+        import opencode_rank.arena as arena
+
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            _write_sample(d)
+            orig = arena.lookup_arena_elo
+
+            def boom(get):
+                raise OSError("arena down")
+            arena.lookup_arena_elo = boom
+            import opencode_rank.cli as cli
+            transport = cli.http_get
+            cli.http_get = _offline_get
+            try:
+                code, out = self._run("--data", str(d), "fetch")
+            finally:
+                arena.lookup_arena_elo = orig
+                cli.http_get = transport
+        self.assertEqual(code, 0)
+        self.assertIn("arena", out.lower())
+        self.assertIn("warning", out.lower())
+
+    def test_scores_reads_the_cache_and_never_the_network(self):
+        import opencode_rank.arena as arena
+
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            _write_sample(d)
+            orig = arena.lookup_arena_elo
+
+            def boom(get):
+                raise AssertionError("scores must not reach the network")
+            arena.lookup_arena_elo = boom
+            try:
+                code, _out = self._run("--data", str(d), "scores")
+            finally:
+                arena.lookup_arena_elo = orig
+        self.assertEqual(code, 0)
+
+
 
     def test_list_merged_benchmark_list_includes_arena_axis(self):
         import json

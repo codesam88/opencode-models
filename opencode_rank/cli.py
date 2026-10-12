@@ -255,6 +255,15 @@ def _cmd_fetch(args: argparse.Namespace) -> int:
         else:
             print("warning: tier pricing docs parsed to nothing, "
                   "keeping existing snapshots")
+    try:
+        elo = arena_mod.lookup_arena_elo(get=http_get)
+    except (OSError, ValueError) as exc:  # one dead source must not stop the rest
+        print(f"warning: arena Elo not refreshed ({exc})")
+    else:
+        cache = ArenaCache(data_dir / "aiarena")
+        cache.save(elo)
+        print(f"saved {len(elo)} arena Elo scores to "
+              f"{data_dir / 'aiarena' / arena_mod.CACHE_NAME}")
     curated = load_curated(data_dir / "opencode", data_dir / "overrides")
     n = _print_conflicts(curated.conflicts, curated.orphans)
     if n:
@@ -334,17 +343,10 @@ def _cmd_scores(args: argparse.Namespace) -> int:
     0-100 scale, because the raw numbers do not compare across benchmarks.
     How a model's score is derived from those cells is documented rather
     than printed: see the README's "How a model's score is computed" and
-    ``scoring.py``. ``--refresh`` still refreshes the cached arena Elo table.
+    ``scoring.py``. This command only reads: `fetch` owns every network call,
+    including the arena Elo cache.
     """
     data_dir = Path(args.data)
-    if args.refresh:
-        cache = ArenaCache(data_dir / "aiarena")
-        scores = arena_mod.lookup_arena_elo(get=http_get)
-        cache.save(scores)
-        print(f"fetched {len(scores)} arena Elo scores -> "
-              f"{data_dir / 'aiarena' / arena_mod.CACHE_NAME}")
-        return 0
-
     models, _curated, _boards = _load(data_dir)
     table = scales(models)
     on_offer = available_ids(data_dir)
@@ -720,8 +722,6 @@ def main(argv: list[str] | None = None) -> int:
                           action="store_true",
                           help="include models the plans no longer offer; the "
                                "default shows only what a plan currently lists")
-    p_scores.add_argument("--refresh", action="store_true",
-                          help="look up arena.ai and rewrite the cache")
 
     args = parser.parse_args(argv)
     return {

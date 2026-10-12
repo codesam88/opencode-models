@@ -948,6 +948,50 @@ if __name__ == "__main__":
     unittest.main()
 
 
+class BenchmarksCommandTest(unittest.TestCase):
+    """`benchmarks` is where a new benchmark's case is argued from."""
+
+    def _run(self, *argv):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = main(list(argv))
+        return code, out.getvalue()
+
+    def _grid(self, tmp):
+        import json
+        for mid, score in [("a/m1", 90.0), ("a/m2", 50.0), ("a/m3", 10.0)]:
+            (_models(Path(tmp)) / f"{mid.replace('/', '__')}.json").write_text(
+                json.dumps({"model": {
+                    "id": mid, "name": mid.split("/")[1].upper(), "lab": "a",
+                    "priceUsdPer1M": {"input": 1.0, "output": None,
+                                      "cachedInput": None},
+                    "benchmarks": [
+                        {"name": "Terminal-Bench", "version": "2.1",
+                         "score": score, "metric": "acc", "source": ""},
+                        {"name": "SWE-Bench", "version": "Pro",
+                         "score": score / 2, "metric": "acc", "source": ""},
+                        {"name": "SEC-Bench", "version": "Pro",
+                         "score": 1.0, "metric": "acc", "source": ""}]}}))
+
+    def test_it_marks_the_benchmarks_we_score_on(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._grid(tmp)
+            code, out = self._run("--data", tmp, "benchmarks")
+        self.assertEqual(code, 0)
+        scored = [l for l in out.splitlines() if "scored" in l]
+        self.assertEqual(len(scored), 2)
+        self.assertTrue(any("Terminal-Bench 2.1" in l for l in scored))
+        self.assertTrue(any("SWE-Bench Pro" in l for l in scored))
+
+    def test_a_benchmark_we_ignore_is_not_marked(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._grid(tmp)
+            code, out = self._run("--data", tmp, "benchmarks")
+        self.assertEqual(code, 0)
+        self.assertNotIn("scored", next(l for l in out.splitlines()
+                                        if "SEC-Bench Pro" in l))
+
+
 class ScoresCommandTest(unittest.TestCase):
     """`scores` shows what a model was measured on and what it derives to."""
 
@@ -1011,13 +1055,189 @@ class ScoresCommandTest(unittest.TestCase):
         self.assertNotIn("SEC-Bench", out)
         self.assertNotIn("17.7", out)   # not counted, so not listed
 
-    def test_it_says_where_the_scales_come_from(self):
+    def _columns(self, out):
+        """The header labels of the scores table, in order.
+
+        Columns are separated by two spaces and their labels contain single
+        ones, so the gap is what delimits them.
+        """
+        head = next(l for l in out.splitlines() if "SCORE" in l and "TB 2.1" in l)
+        return re.split(r"\s{2,}", head.strip())[3:]
+
+    def _row(self, out, name):
+        return next(l for l in out.splitlines()
+                    if l.split() and l.split()[0] == name)
+
+    def test_each_scored_benchmark_is_a_column_of_its_own(self):
         with tempfile.TemporaryDirectory() as tmp:
             self._grid(tmp)
             code, out = self._run("--data", tmp, "scores")
         self.assertEqual(code, 0)
-        self.assertIn("scores", out.lower())
-        self.assertIn("median", out.lower())
+        self.assertEqual(self._columns(out), ["TB 2.1", "SWE Verified"])
+
+    def test_a_column_shows_the_raw_and_the_derived_number(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._grid(tmp)
+            _code, out = self._run("--data", tmp, "scores")
+        # M1 is the best model on both: 90 raw and 45 raw, both 100 derived
+        self.assertIn("90→100", self._row(out, "M1"))
+        self.assertIn("45→100", self._row(out, "M1"))
+
+    def test_the_columns_follow_the_axis_order(self):
+        # SWE-bench Verified is carried by more models here than Terminal-Bench
+        # is, as in the live catalog, so ordering columns by breadth would
+        # lead with SWE. The axis the console ranks on leads instead.
+        import json
+        with tempfile.TemporaryDirectory() as tmp:
+            self._grid(tmp)
+            extra = [("a/m5", "SWE-Bench", "Verified", 60.0),
+                     ("a/m6", "SWE-Bench", "Verified", 70.0),
+                     ("a/m7", "SWE-Bench", "Pro", 5.0),
+                     ("a/m8", "SWE-Bench", "Pro", 40.0),
+                     # an older, easier revision: not a column, not scored
+                     ("a/m9", "Terminal-Bench", "2.0", 80.0),
+                     ("a/ma", "Terminal-Bench", "2.0", 20.0)]
+            for mid, bench, ver, score in extra:
+                (_models(Path(tmp)) / f"{mid.replace('/', '__')}.json").write_text(
+                    json.dumps({
+                        "model": {
+                            "id": mid, "name": mid.split("/")[1].upper(),
+                            "lab": "a",
+                            "priceUsdPer1M": {"input": 1.0, "output": None,
+                                              "cachedInput": None},
+                            "benchmarks": [{"name": bench, "version": ver,
+                                            "score": score, "metric": "acc",
+                                            "source": ""}]}}))
+            code, out = self._run("--data", tmp, "scores")
+        self.assertEqual(code, 0)
+        self.assertEqual(self._columns(out),
+                         ["TB 2.1", "SWE Verified", "SWE Pro"])
+
+    def test_a_benchmark_nobody_carries_gets_no_column(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._grid(tmp)
+            code, out = self._run("--data", tmp, "scores")
+        self.assertNotIn("SWE Lite", out)
+
+    def test_an_unscored_benchmark_gets_no_column_and_no_number(self):
+        import json
+        with tempfile.TemporaryDirectory() as tmp:
+            self._grid(tmp)
+            for mid, score in [("a/m5", 80.0), ("a/m6", 20.0)]:
+                (_models(Path(tmp)) / f"{mid.replace('/', '__')}.json").write_text(
+                    json.dumps({
+                        "model": {
+                            "id": mid, "name": mid.split("/")[1].upper(),
+                            "lab": "a",
+                            "priceUsdPer1M": {"input": 1.0, "output": None,
+                                              "cachedInput": None},
+                            "benchmarks": [
+                                {"name": "Terminal-Bench", "version": "2.0",
+                                 "score": score, "metric": "acc",
+                                 "source": ""}]}}))
+            code, out = self._run("--data", tmp, "scores")
+        self.assertEqual(code, 0)
+        self.assertNotIn("TB 2.0", out)
+        # M5 measured on nothing we score on: no score, no axes
+        self.assertIn("M5", self._row(out, "M5"))
+        self.assertEqual(re.split(r"\s{2,}", self._row(out, "M5").strip()),
+                         ["M5", "—", "0"])
+
+    def test_both_spellings_of_a_benchmark_share_one_column(self):
+        import json
+        with tempfile.TemporaryDirectory() as tmp:
+            self._grid(tmp)
+            for mid, score in [("a/m7", 70.0), ("a/m9", 30.0)]:
+                (_models(Path(tmp)) / f"{mid.replace('/', '__')}.json").write_text(
+                    json.dumps({
+                        "model": {"id": mid, "name": f"M{mid[-1]}", "lab": "a",
+                                  "priceUsdPer1M": {"input": 1.0, "output": None,
+                                                    "cachedInput": None},
+                                  "benchmarks": [
+                                      {"name": "Terminal Bench", "version": "2.1",
+                                       "score": score, "metric": "acc",
+                                       "source": ""}]}}))
+            code, out = self._run("--data", tmp, "scores")
+        self.assertEqual(code, 0)
+        # one column, and it is the same scale as the hyphenated spelling:
+        # the five numbers run 10-90, so 70 lands at 75
+        self.assertEqual(self._columns(out).count("TB 2.1"), 1)
+        self.assertIn("70→75", self._row(out, "M7"))
+
+    def test_the_short_column_names_say_which_benchmark_they_are(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._grid(tmp)
+            _code, out = self._run("--data", tmp, "scores")
+        self.assertIn("TB 2.1 = Terminal-Bench 2.1", out)
+        self.assertIn("SWE Verified = SWE-Bench Verified", out)
+
+    def test_a_column_is_blank_where_the_model_was_not_measured(self):
+        import json
+        with tempfile.TemporaryDirectory() as tmp:
+            self._grid(tmp)
+            (_models(Path(tmp)) / "a__m8.json").write_text(json.dumps({
+                "model": {"id": "a/m8", "name": "M8", "lab": "a",
+                          "priceUsdPer1M": {"input": 1.0, "output": None,
+                                            "cachedInput": None},
+                          "benchmarks": [
+                              {"name": "SWE-Bench", "version": "Verified",
+                               "score": 40.0, "metric": "acc", "source": ""}]}}))
+            code, out = self._run("--data", tmp, "scores")
+        self.assertEqual(code, 0)
+        head = next(l for l in out.splitlines()
+                    if "SCORE" in l and "TB 2.1" in l)
+        row = self._row(out, "M8")
+        self.assertIn("40→", row)
+        # the SWE cell sits past the Terminal-Bench column, and that column
+        # is blank for a model that was never measured on it
+        self.assertGreater(row.index("40→"), head.index("TB 2.1"))
+        self.assertEqual(row[head.index("TB 2.1"):row.index("40→")].strip(), "")
+
+    def test_no_line_pads_itself_out_with_trailing_spaces(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._grid(tmp)
+            code, out = self._run("--data", tmp, "scores")
+        self.assertEqual(code, 0)
+        for line in out.splitlines():
+            self.assertEqual(line, line.rstrip())
+
+    def test_the_console_does_not_explain_the_scoring(self):
+        # the arithmetic belongs in the README and on the functions that do
+        # it; the console states what it measured and points at the rest
+        with tempfile.TemporaryDirectory() as tmp:
+            self._grid(tmp)
+            code, out = self._run("--data", tmp, "scores")
+        self.assertEqual(code, 0)
+        lowered = out.lower()
+        for prose in ("median", "0-100", "best model", "lowest 0", "scale"):
+            with self.subTest(word=prose):
+                self.assertNotIn(prose, lowered)
+
+    def test_it_points_at_the_documentation_for_the_method(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._grid(tmp)
+            code, out = self._run("--data", tmp, "scores")
+        self.assertEqual(code, 0)
+        self.assertIn("README", out)
+
+    def test_the_headline_is_counts_and_the_help_is_at_the_bottom(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._grid(tmp)
+            code, out = self._run("--data", tmp, "scores")
+        self.assertEqual(code, 0)
+        lines = out.splitlines()
+        head = lines[0]
+        self.assertIn("models", head)
+        self.assertIn("benchmarks", head)
+        # the column legend is what a reader needs to decode the table, and
+        # it belongs under it rather than above
+        legend = next(i for i, l in enumerate(lines)
+                      if "TB 2.1 = Terminal-Bench 2.1" in l)
+        table = next(i for i, l in enumerate(lines)
+                     if "SCORE" in l and "TB 2.1" in l)
+        self.assertGreater(legend, table)
+        self.assertLess(table, next(i for i, l in enumerate(lines)
+                                    if l.strip().startswith("M1")))
 
     def test_a_model_with_no_benchmarks_is_listed_as_unscored(self):
         import json

@@ -28,51 +28,88 @@ from .data import Model
 #: normalises to the midpoint rather than to 100.
 NEUTRAL = 50.0
 
-#: The benchmarks this tool ranks on. Everything else the catalog mentions
-#: is context, not signal.
+#: The benchmarks this tool scores on, as an explicit list.
 #:
-#: The catalog carries 212 benchmark names, of which 164 are held by one or
-#: two models — a niche evaluation nobody else ran. Counted, they hand a
-#: model a hard 0 (the worst of four is 0) and drag its median down: a model
-#: resolving 82 on SWE-bench Verified was landing on 0 because of a 17.7 on
-#: SEC-Bench Pro. The axes are Terminal-Bench 2.x and 4.0, the SWE-bench
-#: subsets, and arena Elo — the ones the console orders on.
+#: Everything else the catalog mentions is context, not signal. The catalog
+#: carries 212 benchmark names, of which 137 are held by one or two models -
+#: a niche evaluation nobody else ran. Counted, they hand a model a hard 0
+#: (the worst of four is 0) and drag its median down: a model resolving 82 on
+#: SWE-bench Verified was landing on 0 because of a 17.7 on SEC-Bench Pro.
 #:
-#: Terminal-Bench needs care: "Hard" and "-Science" share the prefix and are
-#: separate benchmarks, not runs of it, so only a version number counts.
-#: Terminal-Bench needs care: "Hard" and "-Science" share the prefix and
-#: are separate benchmarks, not runs of it, so only a version number counts.
-#: The SWE-bench subsets are named in words ("Verified", "Multilingual",
-#: "Lite", "Pro"), so any suffix there is a subset and counts.
-_TB_PREFIXES = ("Terminal-Bench", "Terminal Bench")
-_SWE_PREFIXES = ("SWE-Bench", "SWE Bench")
+#: A prefix rule was the obvious way to write this and it was wrong in both
+#: directions. Matching "Terminal-Bench" also swept in "Terminal-Bench Hard",
+#: "-Science" and 3.0, which are separate task sets rather than runs of the
+#: benchmark; matching "SWE-Bench" admitted Lite, Multimodal and
+#: Multilingual. Each of those opens another axis in the scoring equation
+#: while adding no model that could not otherwise be scored: Lite and
+#: Multimodal reach no tier model at all, Multilingual is only ever carried
+#: alongside Verified or Pro, and 3.0 has two. Naming the benchmarks instead
+#: keeps adding one a deliberate act, with a reason attached.
+#:
+#: An older revision is left out as well. Terminal-Bench 2.0 is 2.1 with an
+#: easier, older task set, and a public task set gets trained against: a
+#: vendor can publish a 2.0 number without the model being able to do the
+#: work. Keeping it costs no coverage either - the five tier models whose
+#: only Terminal-Bench run is a 2.0 all carry SWE-bench - so there is
+#: nothing to weigh against it. Elo is left out too: it is preference votes
+#: on chat answers rather than task completion, and no model in the catalog
+#: carries it.
+#:
+#: The order is also the order the benchmarks are shown in: the axis the
+#: console ranks on first, then the axes that fill in.
+_TRACKED = ("Terminal-Bench 2.1", "Terminal-Bench 4.0",
+            "SWE-Bench Verified", "SWE-Bench Pro")
+
+
+def _folded(name: str) -> str:
+    """The benchmark name with dashes read as spaces, whatever the registry.
+
+    Two registries spell these both ways ("Terminal-Bench 2.1",
+    "Terminal Bench 2.1") for one benchmark, and they have to land on one
+    scale and in one column rather than in two near-empty ones.
+    """
+    return name.replace("-", " ")
+
+
+_TRACKED_FOLDED = frozenset(_folded(name) for name in _TRACKED)
 
 
 def tracked(name: str) -> bool:
-    """Whether *name* is one of the benchmarks this tool scores on."""
-    if name == "LMArena Elo":
-        return True
-    if name.startswith(_SWE_PREFIXES):
-        return True
-    for prefix in _TB_PREFIXES:
-        if name.startswith(prefix):
-            rest = name[len(prefix):].strip()
-            return bool(rest) and rest[0].isdigit()
-    return False
+    """Whether *name* is one of the benchmarks we score on."""
+    return _folded(name) in _TRACKED_FOLDED
+
+
+def canonical(name: str) -> str:
+    """*name* with the dash and space spellings folded into one benchmark.
+
+    Labs spell these both ways - "Terminal-Bench 2.1" and "Terminal Bench 2.1"
+    are one benchmark from two registries - and they belong side by side in
+    one column rather than in two near-empty ones. Untracked names are
+    returned untouched, which is what keeps "Terminal-Bench-Science 0.1" out
+    of Terminal-Bench's column.
+    """
+    return _folded(name) if tracked(name) else name
 
 
 def scales(models: list[Model]) -> dict[str, tuple[float, float]]:
-    """The 0–100 range of each tracked benchmark, ``(lowest, best)``.
+    """The 0-100 range of each tracked benchmark, ``(lowest, best)``.
 
     Over the models that actually carry it: the best model in this catalog
-    is 100 and the lowest is 0, so the ends move when the catalog does.
+    is 100 and the lowest is 0, so the ends move when the catalog does. A
+    benchmark is keyed by its own name, but its bounds are pooled across the
+    spellings registries use for it - one benchmark means one scale, so a
+    model measured by one registry is not the worst of a pair with a model
+    measured by another.
     """
-    seen: dict[str, list[float]] = {}
+    pooled: dict[str, list[float]] = {}
+    names: set[str] = set()
     for model in models:
         for name, value in model.scores.items():
             if tracked(name) and isinstance(value, (int, float)):
-                seen.setdefault(name, []).append(float(value))
-    return {name: (min(values), max(values)) for name, values in seen.items()}
+                names.add(name)
+                pooled.setdefault(canonical(name), []).append(float(value))
+    bounds = {key: (min(values), max(values)) for key, values in pooled.items()}
+    return {name: bounds[canonical(name)] for name in sorted(names)}
 
 
 def normalise(score: float, bounds: tuple[float, float]) -> float:
@@ -91,11 +128,13 @@ def normalise(score: float, bounds: tuple[float, float]) -> float:
 
 def derived_scores(model: Model,
                    table: dict[str, tuple[float, float]]) -> dict[str, float]:
-    """Every benchmark this model carries, on its benchmark's 0–100 scale.
+    """Each benchmark we score on that this model carries, on its 0–100 scale.
 
-    A benchmark with no spread across the catalog is left out: it cannot
-    say anything about the model, and counting it at the midpoint would
-    pull a real median toward the middle for no reason.
+    Benchmarks outside the shortlist never appear: they are not in *table*,
+    which ``scales`` builds from ``_TRACKED`` alone. A benchmark with no
+    spread across the catalog is left out too - it cannot say anything about
+    the model, and counting it at the midpoint would pull a real median
+    toward the middle for no reason.
     """
     return {name: normalise(value, bounds)
             for name, value in model.scores.items()

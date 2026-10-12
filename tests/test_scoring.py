@@ -9,6 +9,7 @@ from opencode_rank.scoring import (
     derived_scores,
     normalise,
     scales,
+    canonical,
     tracked,
     score_of,
 )
@@ -32,8 +33,9 @@ class ScalesTest(unittest.TestCase):
         self.assertEqual(table["SWE-Bench Verified"], (10.0, 30.0))
 
     def test_a_benchmark_nobody_compares_against_still_spans_itself(self):
-        models = [_model("a/one", **{"Terminal-Bench 2.0": 7.0}), _model("a/two", **{"SWE-Bench Lite": 1.0})]
-        self.assertEqual(scales(models)["Terminal-Bench 2.0"], (7.0, 7.0))
+        models = [_model("a/one", **{"Terminal-Bench 4.0": 7.0}),
+                  _model("a/two", **{"Terminal-Bench 2.1": 1.0})]
+        self.assertEqual(scales(models)["Terminal-Bench 4.0"], (7.0, 7.0))
 
 
 class NormaliseTest(unittest.TestCase):
@@ -85,6 +87,14 @@ class CombinedTest(unittest.TestCase):
         self.assertEqual(combined({"only": 42.0}), 42.0)
 
 
+#: Every benchmark name the tests mention, for walking the shortlist.
+NAMES = ("Terminal-Bench 2.0", "Terminal-Bench 2.1", "Terminal-Bench 4.0",
+         "Terminal Bench 2.1", "SWE-Bench Verified", "SWE-Bench Pro",
+         "SWE Bench Pro", "SWE-Bench Lite", "SWE-Bench Multimodal",
+         "SWE-Bench Multilingual", "Terminal-Bench 3.0", "Terminal-Bench Hard",
+         "LMArena Elo", "SEC-Bench Pro")
+
+
 class TrackedTest(unittest.TestCase):
     """Only the benchmarks the console ranks on are scored.
 
@@ -95,10 +105,9 @@ class TrackedTest(unittest.TestCase):
     """
 
     def test_the_axes_are_tracked(self):
-        for name in ("Terminal-Bench 2.1", "Terminal-Bench 2.0",
-                     "Terminal-Bench 4.0", "Terminal Bench 2.1",
-                     "SWE-Bench Verified", "SWE-Bench Multilingual",
-                     "SWE-Bench Pro", "SWE Bench Pro", "LMArena Elo"):
+        for name in ("Terminal-Bench 2.1", "Terminal-Bench 4.0",
+                     "Terminal Bench 2.1",
+                     "SWE-Bench Verified", "SWE-Bench Pro", "SWE Bench Pro"):
             with self.subTest(benchmark=name):
                 self.assertTrue(tracked(name))
 
@@ -109,6 +118,32 @@ class TrackedTest(unittest.TestCase):
                      "SEC-Bench Pro", "Chartography", "GPQA Diamond"):
             with self.subTest(benchmark=name):
                 self.assertFalse(tracked(name))
+
+    def test_an_older_revision_is_not_scored_on(self):
+        # 2.0 is 2.1 with an easier, older and public task set, and a public
+        # task set gets trained against. It costs no coverage to leave out:
+        # every tier model whose only Terminal-Bench run is a 2.0 carries
+        # SWE-bench as well.
+        for name in ("Terminal-Bench 2.0", "Terminal Bench 2.0"):
+            with self.subTest(benchmark=name):
+                self.assertFalse(tracked(name))
+
+    def test_a_benchmark_that_merely_adds_an_axis_is_left_out(self):
+        # Each of these is a distinct task set that would widen the scoring
+        # equation without adding a model we could not otherwise score:
+        # Lite and Multimodal reach no tier model at all, Multilingual is
+        # carried only alongside Verified or Pro, and 3.0 has two models.
+        for name in ("SWE-Bench Lite", "SWE-Bench Multimodal",
+                     "SWE-Bench Multilingual", "Terminal-Bench 3.0",
+                     "LMArena Elo"):
+            with self.subTest(benchmark=name):
+                self.assertFalse(tracked(name))
+
+    def test_the_shortlist_is_the_three_axes_the_console_orders_on(self):
+        self.assertEqual(
+            sorted({canonical(n) for n in NAMES if tracked(n)}),
+            ["SWE Bench Pro", "SWE Bench Verified", "Terminal Bench 2.1",
+             "Terminal Bench 4.0"])
 
     def test_an_untracked_benchmark_cannot_drag_the_median(self):
         models = [_model("a/one", **{"Terminal-Bench 2.1": 90.0,
@@ -124,6 +159,34 @@ class TrackedTest(unittest.TestCase):
         models = [_model("a/one", **{"SEC-Bench Pro": 17.7}),
                   _model("a/two", **{"SEC-Bench Pro": 90.0})]
         self.assertIsNone(score_of(models[0], scales(models)))
+
+
+class CanonicalTest(unittest.TestCase):
+    """Two labs spell the same benchmark differently; it is one column."""
+
+    def test_the_dash_and_space_spellings_are_one_benchmark(self):
+        self.assertEqual(canonical("Terminal-Bench 2.1"),
+                         canonical("Terminal Bench 2.1"))
+        self.assertEqual(canonical("SWE-Bench Pro"), canonical("SWE Bench Pro"))
+
+    def test_a_benchmark_that_merely_shares_the_prefix_stays_apart(self):
+        # folding the dashes must not turn -Science into a Terminal-Bench run
+        self.assertNotEqual(canonical("Terminal-Bench 2.1"),
+                            canonical("Terminal-Bench-Science 0.1"))
+
+    def test_the_two_spellings_are_scaled_against_each_other(self):
+        # One benchmark means one scale: a model measured by one registry
+        # and a model measured by another are not each the worst of a pair
+        models = [_model("a/one", **{"Terminal-Bench 2.1": 90.0}),
+                  _model("a/two", **{"Terminal Bench 2.1": 10.0})]
+        table = scales(models)
+        self.assertEqual(derived_scores(models[0], table),
+                         {"Terminal-Bench 2.1": 100.0})
+        self.assertEqual(derived_scores(models[1], table),
+                         {"Terminal Bench 2.1": 0.0})
+
+    def test_an_untracked_name_is_left_exactly_as_it_is(self):
+        self.assertEqual(canonical("SEC-Bench Pro"), "SEC-Bench Pro")
 
 
 class ScoreOfTest(unittest.TestCase):
@@ -157,13 +220,16 @@ class ScoreOfTest(unittest.TestCase):
         self.assertEqual(derived_scores(models[1], table), {"Terminal-Bench 2.1": 100.0})
 
     def test_a_benchmark_with_no_spread_is_left_out(self):
-        # only this model carries "Terminal-Bench 2.0", so it cannot say anything
-        # about it — counting it at the midpoint would drag the median
-        models = [_model("a/one", **{"Terminal-Bench 2.1": 50.0, "Terminal-Bench 2.0": 1.0}),
+        # only this model carries "Terminal-Bench 4.0", so it cannot say
+        # anything about it — counting it at the midpoint would drag the
+        # median of a model that has no say in the benchmark
+        models = [_model("a/one", **{"Terminal-Bench 2.1": 50.0,
+                                     "Terminal-Bench 4.0": 1.0}),
                   _model("a/two", **{"Terminal-Bench 2.1": 90.0})]
         table = scales(models)
-        self.assertEqual(table["Terminal-Bench 2.0"], (1.0, 1.0))
-        self.assertEqual(derived_scores(models[0], table), {"Terminal-Bench 2.1": 0.0})
+        self.assertEqual(table["Terminal-Bench 4.0"], (1.0, 1.0))
+        self.assertEqual(derived_scores(models[0], table),
+                         {"Terminal-Bench 2.1": 0.0})
 
 
 if __name__ == "__main__":

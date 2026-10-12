@@ -26,7 +26,8 @@ from .boards import (fetch_boards, load_boards, merge_boards,
 from .overrides import TIER_LABELS, load_curated, off_band_models, source_tier
 from .pricing import load_prices, refresh_prices
 from .ranking import RECOMMEND_FLOOR, next_up, plans_of
-from .scoring import combined, derived_scores, scales
+from .scoring import (_TRACKED, _folded, canonical, combined,
+                     derived_scores, scales, tracked)
 from .ranking import (
     BAND_FREE,
     BAND_INCLUDED,
@@ -134,8 +135,10 @@ def _cmd_benchmarks(args: argparse.Namespace) -> int:
     if not data_dir.is_dir():
         return _fail(f"no data directory at {data_dir} — run `fetch` first")
     models, _, _ = _load(data_dir)
+    # marked, because this listing is where a new benchmark's case is argued
+    # from: coverage is what earns a place in the scoring equation
     for name, count in available(models):
-        print(f"{count:4d}  {name}")
+        print(f"{count:4d}  {'scored' if tracked(name) else '      '}  {name}")
     return 0
 
 
@@ -228,31 +231,72 @@ def _cmd_fetch(args: argparse.Namespace) -> int:
     return 0
 
 
-def _score_parts(model, table: dict) -> tuple[str, str, list[str]]:
-    """One model's score, how many benchmarks backed it, and each part.
+def _column_label(name: str) -> str:
+    """The short name a benchmark column carries: "Terminal Bench 2.1" → "TB 2.1".
+
+    Column headers have to fit beside each other, and there are enough
+    benchmarks to score on that the full names run past any terminal width.
+    """
+    if name == "LMArena Elo":
+        return "ARENA"
+    for family, short in (("Terminal Bench", "TB"), ("SWE Bench", "SWE")):
+        if name.startswith(family):
+            return short + name[len(family):]
+    return name
+
+
+def _score_columns(models, table: dict) -> list[tuple[str, str, str]]:
+    """The benchmarks worth a column, as ``(key, header, full name)``.
+
+    One column per benchmark we score on, in the order ``scoring._TRACKED``
+    lists them — the axis the console ranks on first — and only where the
+    catalog actually has numbers. Two registries spelling one benchmark
+    differently share a column.
+    """
+    spellings: dict[str, set[str]] = {}
+    for model in models:
+        for name in derived_scores(model, table):
+            spellings.setdefault(canonical(name), set()).add(name)
+    columns = []
+    for key in _TRACKED:
+        folded = _folded(key)
+        if folded not in spellings:
+            continue
+        # prefer the hyphenated spelling for the full name: it is how the
+        # benchmark is written everywhere else, including in the README
+        name = sorted(spellings[folded],
+                      key=lambda n: (n.count("-") == 0, n))[0]
+        columns.append((folded, _column_label(folded), name))
+    return columns
+
+
+def _score_cells(model, table: dict, columns: list[tuple[str, str, str]]) -> list[str]:
+    """One cell per column: each raw number with where it lands, best first.
 
     The raw number is what the evaluator published; the derived number is
     where that sits on the benchmark's 0-100 scale across this catalog.
     Both are shown, because a score without its position in the field says
-    nothing on its own.
+    nothing on its own. A column the model was not measured on is blank
+    rather than zero — zero would read as "worst in the catalog".
     """
     derived = derived_scores(model, table)
-    score = combined(derived)
-    # only the benchmarks we score on: the catalog carries 212 names and
-    # listing the ignored ones buries the ones that matter
-    parts = [f"{name} {model.scores[name]:g}→{derived[name]:.0f}"
-             for name in sorted(derived, key=lambda n: (-derived[n], n))]
-    return (f"{score:.0f}" if score is not None else "—",
-            str(len(parts)) if parts else "0", parts)
+    cells = []
+    for key, _label, _name in columns:
+        parts = sorted(((name, derived[name]) for name in derived
+                        if canonical(name) == key),
+                       key=lambda part: (-part[1], part[0]))
+        cells.append(" ".join(f"{model.scores[n]:g}→{d:.0f}" for n, d in parts))
+    return cells
 
 
 def _cmd_scores(args: argparse.Namespace) -> int:
-    """Every model's benchmark scores, raw and derived, side by side.
+    """Every model's score, one column per benchmark we score on.
 
-    Each benchmark is read on its own 0-100 scale — its best model in this
-    catalog is 100, its lowest 0 — because the raw numbers do not compare
-    across benchmarks. A model's score is the median of the scales it has.
-    ``--refresh`` still refreshes the cached arena Elo table.
+    Each cell holds the raw number and where it lands on that benchmark's
+    0-100 scale, because the raw numbers do not compare across benchmarks.
+    How a model's score is derived from those cells is documented rather
+    than printed: see the README's "How a model's score is computed" and
+    ``scoring.py``. ``--refresh`` still refreshes the cached arena Elo table.
     """
     data_dir = Path(args.data)
     if args.refresh:
@@ -268,23 +312,36 @@ def _cmd_scores(args: argparse.Namespace) -> int:
     ranked = sorted((m for m in models if m.scores),
                     key=lambda m: -(combined(derived_scores(m, table)) or 0))
     unscored = [m for m in models if not m.scores]
+    columns = _score_columns(models, table)
 
-    print("each benchmark on its own 0-100 scale (best model 100, lowest 0); "
-          "a model's score is the median of the scales it has")
-    print(f"{len(models)} models · {len(table)} benchmarks · "
+    print(f"{len(models)} models · {len(columns)} benchmarks scored on · "
           f"{len(ranked)} with scores · {len(unscored)} without")
     print()
     width = max([len(m.name) for m in models] or [4])
-    print(f"  {'MODEL':<{width}} {'SCORE':>6} {'AXES':>6}  "
-          f"BENCHMARKS (raw→derived)")
-    for model in ranked:
-        score, axes, parts = _score_parts(model, table)
-        print(f"  {model.name:<{width}} {score:>6} {axes:>6}  "
-              f"{'  '.join(parts)}")
-    if unscored:
+    cells = [_score_cells(m, table, columns) for m in ranked]
+    widths = [max([len(label)] + [len(row[i]) for row in cells if row[i]] or [0])
+              for i, (_key, label, _name) in enumerate(columns)]
+    print((f"  {'MODEL':<{width}} {'SCORE':>6} {'AXES':>5}  "
+           + "  ".join(f"{label:<{w}}" for (_k, label, _n), w
+                       in zip(columns, widths))).rstrip())
+    for model, row in zip(ranked, cells):
+        derived = derived_scores(model, table)
+        score = combined(derived)
+        print((f"  {model.name:<{width}} "
+               f"{(f'{score:.0f}' if score is not None else '—'):>6} "
+               f"{len(derived):>5}  "
+               + "  ".join(f"{cell:<{w}}" for cell, w in zip(row, widths))
+               ).rstrip())
+    legend = [f"{label} = {name}" for _key, label, name in columns
+              if label != name]
+    if legend:
         print()
+        print("  " + " · ".join(legend))
+    if unscored:
         print(f"  {len(unscored)} with no benchmarks: "
               + ", ".join(sorted(m.name for m in unscored)[:10]))
+    print("  how a score is derived: README, "
+          "\"How a model's score is computed\"")
     return 0
 
 

@@ -52,7 +52,7 @@ opencode-rank list --source zen         # one provider only
 opencode-rank list --source all --benchmark "SWE-Bench Verified"
 opencode-rank next                      # the next 4 models to use, in order
 opencode-rank next --count 6 --source go
-opencode-rank scores                    # every model's raw and derived scores
+opencode-rank scores                    # every model's score, one column per benchmark
 ```
 
 `render` defaults to the benchmark covering the most models. The output is one
@@ -116,30 +116,91 @@ so a $0.0612 line reads as `6`, not `0.0612`. Columns are measured from the
 lines actually being shown (header included), so nothing shifts when a price
 or a provider list outgrows the rest.
 
+### Which benchmarks are scored
+
+Four benchmarks carry the scores, and they are named one by one in
+`scoring._TRACKED` rather than matched by prefix:
+
+| benchmark | tier models | all models |
+|---|---|---|
+| Terminal-Bench 2.1 | 37 | 50 |
+| Terminal-Bench 4.0 | 27 | 28 |
+| SWE-Bench Verified | 18 | 77 |
+| SWE-Bench Pro | 34 | 57 |
+
+They are the most relevant and the most broadly available at the same time:
+Terminal-Bench is the closest thing to "can this model finish a task on a
+real machine", and SWE-bench is the closest thing to "does it fix real bugs",
+so together they cover the work this tool ranks on; and between them they are
+measured on enough models to compare anyone to anyone. The two SWE-bench
+subsets are both kept deliberately — Pro is what the tier broadly carries
+(34 models against Verified's 18), and Verified is the canonical metric and by
+far the broadest number in the catalog (77).
+
+Everything else the catalog mentions is context rather than signal, and the
+list is short enough to be worth spelling out. The catalog carries 212
+benchmark names, of which 137 are held by one or two models — an evaluation
+nobody else ran. Those cannot discriminate, so they are excluded twice over:
+no spread means no scale, and a benchmark four models carry still hands its
+worst a hard 0 that drags the median down. A model resolving 82 on SWE-bench
+Verified was landing on 0 overall because of a 17.7 on SEC-Bench Pro.
+
+The rest are excluded on the same ground — each would widen the scoring
+equation without adding a model that could not otherwise be scored:
+
+- **Terminal-Bench 3.0** (2 models) and **-Science** are separate task sets
+  rather than runs of 2.1, and share only a prefix.
+- **Terminal-Bench 2.0** is the same benchmark as 2.1 with an easier, older
+  task set — and a public task set gets trained against. A vendor can
+  publish a 2.0 number without the model being able to do the work, which is
+  the overfitting the rest of this list exists to exclude. Leaving it out
+  costs no coverage: the five tier models whose only Terminal-Bench run is a
+  2.0 all carry SWE-bench, so none of them loses a score.
+- **SWE-Bench Lite** and **Multimodal** reach no tier model at all (9 models
+  each, none of them one the console prices).
+- **SWE-Bench Multilingual** is carried by 29 models but never alone: every
+  model that has it also has Verified or Pro, so it narrows nothing.
+- **Terminal-Bench Hard** is a distinct benchmark despite the name.
+- **LMArena Elo** measures preference votes on chat answers, not task
+  completion, and no model in the catalog carries it.
+
+Adding one is a deliberate change to what a score means, so it wants a
+reason: benchmark coverage in the live data is the test, and
+`opencode-rank benchmarks` prints it.
+
 ### How a model's score is computed
 
-Raw benchmark numbers are not comparable: Terminal-Bench 2.1 runs 25–90,
-Terminal-Bench 4.0 runs 16–65, SWE-bench Verified 35–96. So each benchmark
+Raw benchmark numbers are not comparable: in the live catalog Terminal-Bench
+2.1 runs 24.58–89.9, Terminal-Bench 4.0 runs 1.5–64.85 and SWE-bench Verified
+0.4–96. So each benchmark
 gets its own **0–100 scale** — the best model in the catalog is 100, the
 lowest is 0, and distances are proportionate and linear — and a model's
 score is the **median** of the scales it has.
 
 The median, not the mean: coverage here is wildly uneven, and one bad result
 must not bury a model that is strong on everything else. `opencode-rank
-scores` shows every model's raw and derived numbers side by side, so the
-arithmetic is checkable:
+scores` gives each of those benchmarks its own column and shows the raw
+number beside where it lands, so the arithmetic is checkable:
 
 ```
-  MODEL                                   SCORE   AXES  BENCHMARKS (raw→derived)
-  Claude Opus 5.5                           100    9/9  Terminal-Bench 4.0 64.85→100 …
-  MiMo-V2.6-Pro                              98  17/17  Terminal-Bench 2.1 89.9→100 …
+476 models · 4 benchmarks scored on · 175 with scores · 301 without
+
+  MODEL                     SCORE  AXES  TB 2.1    TB 4.0     SWE Verified  SWE Pro
+  Claude Opus 5.5                 100     1            64.85→100
+  Claude Opus 5                    99     3            53.94→83   96→100        79.2→99
+  Claude Fable 5                   98     4  88→97     44.55→68   95→99         80.3→100
 ```
 
 Two consequences worth knowing. A benchmark only one or two models carry has
-no spread, so it cannot discriminate and is left out of the score — 164 of
+no spread, so it cannot discriminate and is left out of the score — 137 of
 212 benchmarks are in that position. And the score answers "how does this
 model typically do on what it was measured on", so a model evaluated on a
 handful of benchmarks it excels at scores near 100.
+
+The console prints what it measured and points here for the arithmetic;
+`scoring.py` carries the reasoning next to the functions that do it. The
+column headers are short (`TB 2.1`, `SWE Verified`) and the legend under the
+table spells out which benchmark each one is.
 
 The score columns show **every ordering axis side by side** — `TB2`, `TB4`,
 `SWE` — each carrying the model's raw best run on that axis, blank where it

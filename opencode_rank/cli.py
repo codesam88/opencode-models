@@ -388,13 +388,19 @@ def _cmd_scores(args: argparse.Namespace) -> int:
     unscored = [m for m in shown if not m.scores]
     columns = _score_columns(models, table)
 
-    # three counts, because "models with scores" used to mean "models with
-    # any benchmark" - which overstated the scored field by a third
+    # four counts, because "models with scores" used to mean "models with
+    # any benchmark" - which overstated the scored field by a third - and
+    # "on one benchmark" used to fold in models with no scored benchmark
+    # at all
+    counts = {}
+    for m in ranked:
+        counts.setdefault(len(derived_scores(m, table)), []).append(m)
     scored = [m for m in ranked if combined(derived_scores(m, table)) is not None]
-    thin = [m for m in ranked if m not in scored]
+    one = counts.get(1, [])
+    zerod = [m for m in ranked if not derived_scores(m, table)]
     print(f"{len(models)} models · {len(columns)} benchmarks scored on · "
-          f"{len(scored)} with scores · {len(thin)} on one benchmark · "
-          f"{len(unscored)} without any")
+          f"{len(scored)} with scores · {len(one)} on one benchmark · "
+          f"{len(zerod)} with none scored · {len(unscored)} without any")
     print()
     width = max([len(m.name) for m in models] or [4])
     cells = [_score_cells(m, table, columns) for m in ranked]

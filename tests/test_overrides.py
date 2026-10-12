@@ -224,6 +224,56 @@ class StepFiveOverrideTest(unittest.TestCase):
                 self.assertIn("High", entry.get("note", ""))
 
 
+#: StepFun's Step-5-Preview page, competitor columns (all "(Max)" effort).
+#: Only cells upstream does not already hold at equal-or-better tier: exact
+#: duplicates (Kimi DeepSWE 67.5, Astra DeepSWE 74.1, GLM-5.3 DeepSWE 66.9),
+#: same-tier disagreements (Kimi TB 2.1, Opus 5 DeepSWE) and board-held cells
+#: (all three TB 4.0s) stay out - each would be recorded-but-kept noise.
+COMPETITOR_KEYS = {
+    "moonshotai__kimi-k3.json": {("Terminal-Bench", "4.0")},
+    "openai__gpt-6-astra.json": {("Terminal-Bench", "2.1")},
+    "anthropic__claude-fable-5-1.json": {("DeepSWE", "1.1"),
+                                         ("Terminal-Bench", "2.1")},
+    "anthropic__claude-opus-5.json": {("Terminal-Bench", "2.1"),
+                                         ("Terminal-Bench", "4.0")},
+    "meta__muse-spark-1-3.json": {("Terminal-Bench", "4.0")},
+    "openai__gpt-5-6-terra.json": {("Terminal-Bench", "4.0")},
+    "openai__gpt-5-6-luna.json": {("Terminal-Bench", "4.0")},
+    "deepseek__deepseek-v4-1-flash.json": {("Terminal-Bench", "4.0")},
+    "alibaba__qwen3-8-flash-next.json": {("Terminal-Bench", "4.0")},
+    "deepseek__deepseek-v4-pro-0813.json": {("Terminal-Bench", "4.0")},
+    "deepseek__deepseek-v4-flash-vision-exp.json": {("Terminal-Bench", "4.0")},
+}
+
+
+class CompetitorOverrideTest(unittest.TestCase):
+    """One file per competitor, holding only what is missing upstream."""
+
+    def _keys(self, filename):
+        root = Path(__file__).resolve().parent.parent / "data" / "overrides"
+        payload = json.loads((root / filename).read_text())["model"]
+        return {(e["name"], e["version"]) for e in payload["benchmarks"]}
+
+    def test_each_file_holds_exactly_the_missing_cells(self):
+        for filename, keys in COMPETITOR_KEYS.items():
+            with self.subTest(override=filename):
+                self.assertEqual(self._keys(filename), keys)
+
+    def test_competitor_cells_carry_the_max_effort(self):
+        root = Path(__file__).resolve().parent.parent / "data" / "overrides"
+        for filename in COMPETITOR_KEYS:
+            payload = json.loads((root / filename).read_text())["model"]
+            for entry in payload["benchmarks"]:
+                with self.subTest(override=filename,
+                                  benchmark=(entry["name"],
+                                             entry["version"])):
+                    source = entry.get("source", "")
+                    self.assertTrue("stepfun.com/step-5-preview" in source
+                                    or "artificialanalysis.ai" in source)
+                    self.assertRegex(entry.get("note", ""),
+                                     r"Max|max|effort")
+
+
 class OverrideRulesTest(unittest.TestCase):
     """The rules, enforced by the loader rather than by scanning the repo.
 

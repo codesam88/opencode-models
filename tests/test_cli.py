@@ -1656,8 +1656,10 @@ class ScoresCommandTest(unittest.TestCase):
         self.assertEqual(row[head.index("TB 2.1"):row.index("40→")].strip(), "")
 
     def test_the_headline_counts_scores_not_benchmarks(self):
-        # M3 has one benchmark and therefore no score; counting it as
-        # "with scores" overstated the scored field by a third
+        # M9 has one benchmark and therefore no score; counting it as
+        # "with scores" overstated the scored field by a third. M0 carries
+        # only an unscored benchmark, which is a third group, not part of
+        # the one-benchmark count it used to be folded into.
         import json
         with tempfile.TemporaryDirectory() as tmp:
             self._grid(tmp)
@@ -1669,11 +1671,20 @@ class ScoresCommandTest(unittest.TestCase):
                               {"name": "Terminal-Bench", "version": "2.1",
                                "score": 42.0, "metric": "acc",
                                "source": ""}]}}))
+            (_models(Path(tmp)) / "a__m0.json").write_text(json.dumps({
+                "model": {"id": "a/m0", "name": "M0", "lab": "a",
+                          "priceUsdPer1M": {"input": 1.0, "output": None,
+                                            "cachedInput": None},
+                          "benchmarks": [
+                              {"name": "SEC-Bench", "version": "Pro",
+                               "score": 17.7, "metric": "acc",
+                               "source": ""}]}}))
             code, out = self._run("--data", tmp, "scores")
         self.assertEqual(code, 0)
         head = out.splitlines()[0]
         self.assertIn("3 with scores", head)          # M1-M3 only
         self.assertIn("1 on one benchmark", head)     # M9: measured, unranked
+        self.assertIn("1 with none scored", head)     # M0: benchmarks, no axes
         self.assertNotIn("4 with scores", head)
 
     def test_no_line_pads_itself_out_with_trailing_spaces(self):

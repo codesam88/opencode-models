@@ -429,23 +429,21 @@ def _cmd_list(args: argparse.Namespace) -> int:
     return 0
 
 
-#: Why a pick is in the sequence, in the reader's terms.
-NEXT_REASONS = {
-    "free": "free — costs nothing, so only the score matters",
-    "included": "in your subscription — $0 until this model's own monthly "
-                "allowance runs out",
-    "payg": "billed from the Zen balance",
-    "catalog": "in the catalog only — not carried by the zen or go tier",
-}
+#: How each band is named in the sequence. The rules behind these words —
+#: what an allowance costs, when a balance is drawn down, what "free" does
+#: not mean — are written down once in LIMITS.md rather than restated on
+#: every run.
+NEXT_BANDS = {"free": "free", "included": "included", "payg": "payg",
+              "catalog": "catalog"}
 
 
-def _next_reason(row) -> str:
+def _next_band(row) -> str:
     # a row sold by both tiers is labelled "go,zen", so membership decides,
     # not equality with a single plan name
     if not {"zen", "go"} & plans_of(row):
-        return NEXT_REASONS["catalog"]
-    return NEXT_REASONS["included" if row.band == "included"
-                        else ("free" if row.free else "payg")]
+        return NEXT_BANDS["catalog"]
+    return NEXT_BANDS["included" if row.band == "included"
+                      else ("free" if row.free else "payg")]
 
 
 def _cmd_next(args: argparse.Namespace) -> int:
@@ -468,25 +466,19 @@ def _cmd_next(args: argparse.Namespace) -> int:
                      f"{data_dir} — nothing to recommend yet")
 
     width = max(len(r.name) for r in picks)
-    print(f"next {len(picks)} to use, in order · free first by score, then "
-          f"best score per ¢ · Zen and Go alternated where both can supply one")
-    print(f"eligible: within {RECOMMEND_FLOOR:.0%} of the strongest score in "
-          f"the catalog — the ++ marker is not used, it ranks value "
-          f"(score per dollar), not strength")
+    print(f"next {len(picks)} · free first, then best value · "
+          f"Zen and Go alternated")
     print()
     print(f"  {'#':<2} {'PLAN':<5} {'SCORE':>6} {'¢/1M':>5} {'SCORE/$':>7}  "
-          f"{'MODEL':<{width}}  WHY")
+          f"{'MODEL':<{width}}  BAND")
     for i, row in enumerate(picks, 1):
         cells = _cells(row)
         price, value = cells[-3], cells[-2]   # _cells ends (price, value, prov)
         print(f"  {i:<2} {row.provider:<5} {row.score:>6g} {price:>5} "
-              f"{value:>7}  {row.name:<{width}}  {_next_reason(row)}")
+              f"{value:>7}  {row.name:<{width}}  {_next_band(row)}")
     print()
-    print("free models are rate-limited by a cap OpenCode does not publish, "
-          "so free is not unlimited;")
-    print("included models cost $0 until their own allowance runs out, then "
-          "draw the Zen balance if that is enabled;")
-    print("this ignores how much of each allowance is left — see LIMITS.md.")
+    print(f"within {RECOMMEND_FLOOR:.0%} of the strongest score · "
+          f"allowances: LIMITS.md")
     return 0
 
 

@@ -346,10 +346,34 @@ class CliTest(unittest.TestCase):
             code, out = self._run("--data", tmp, "next", "--count", "3",
                                   "--source", "all")
         self.assertEqual(code, 0)
-        # fewer ++ rows than asked for is a short list, not an error
-        self.assertRegex(out, r"next [1-3] to use")
+        self.assertRegex(out, r"^next \d+ · ")
         self.assertIn("MODEL", out)
-        self.assertIn("WHY", out)
+        self.assertIn("BAND", out)
+
+    def test_next_keeps_the_billing_prose_out_of_the_output(self):
+        # LIMITS.md is the place for what an allowance costs; the view must
+        # not restate it on every run
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_grid(Path(tmp))
+            code, out = self._run("--data", tmp, "next", "--source", "all")
+        self.assertEqual(code, 0)
+        for boilerplate in ("allowance runs out", "rate-limited",
+                            "costs nothing", "Zen balance"):
+            self.assertNotIn(boilerplate, out)
+
+    def test_next_names_the_band_rather_than_a_sentence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_grid(Path(tmp))
+            code, out = self._run("--data", tmp, "next", "--source", "all")
+        self.assertEqual(code, 0)
+        self.assertRegex(out, r"\b(payg|included|free)\b")
+
+    def test_next_points_at_the_limits_doc(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_grid(Path(tmp))
+            code, out = self._run("--data", tmp, "next", "--source", "all")
+        self.assertEqual(code, 0)
+        self.assertIn("LIMITS.md", out)
 
     def test_next_numbers_the_picks_in_order(self):
         import re
@@ -360,15 +384,6 @@ class CliTest(unittest.TestCase):
         self.assertEqual(code, 0)
         picks = re.findall(r"^\s+(\d) ", out, re.M)
         self.assertEqual(picks, [str(i) for i in range(1, len(picks) + 1)])
-
-    def test_next_says_why_and_what_it_ignores(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            _write_grid(Path(tmp))
-            code, out = self._run("--data", tmp, "next", "--source", "all")
-        self.assertEqual(code, 0)
-        self.assertIn("LIMITS.md", out)      # the allowance caveat is stated
-        self.assertIn("strongest score", out)  # eligibility is stated
-        self.assertIn("free", out.lower())
 
     def test_next_picks_from_the_ordered_ranking_not_catalog_order(self):
         # the grid's best value is the last model written, so a `next` that
@@ -389,7 +404,6 @@ class CliTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("M10", out)
         self.assertNotIn("M01", out)      # weakest, however cheap
-        self.assertIn("not used", out)    # and the header says so
 
     def test_next_labels_a_catalog_only_row_as_such(self):
         # the grid models are in neither tier, so calling them Zen-billed
@@ -398,7 +412,7 @@ class CliTest(unittest.TestCase):
             _write_grid(Path(tmp))
             code, out = self._run("--data", tmp, "next", "--source", "all")
         self.assertEqual(code, 0)
-        self.assertIn("not carried by the zen or go tier", out)
+        self.assertIn("catalog", out)
 
     def test_next_rejects_an_unknown_source(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -79,8 +79,9 @@ ranking it came from. Three rules shape the sequence:
   model is never recommended twice, and price variants of one model do not
   take two slots either.
 
-It says in its footer that it ignores how much of each allowance is left —
-see [LIMITS.md](LIMITS.md).
+The view keeps the rules out of the output: it prints one headline, the
+sequence, and a pointer to [LIMITS.md](LIMITS.md) for what allowances cost.
+It does not consult how much of each allowance is left.
 
 `list` covers the Console **providers** (`zen` = curated, `go` = open) and
 prints three tables: **best value** first, then **worst score** (bottom 30%)

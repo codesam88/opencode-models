@@ -99,19 +99,153 @@ FREE_TIER_NOMINAL_RATES: dict[str, float] = {
 FREE_TIER_DEFAULT_RATE = 0.0018
 
 
-def nominal_free_rate(model_id: str) -> float:
+def nominal_free_rate(model_id: str, rates=None) -> float:
     """The nominal $/1M of a free model id, whatever names it.
 
     Matches the slug with or without its ``-free`` suffix, since the catalog
     record (``stepfun/step-5-preview``) and the tier line
-    (``step-5-preview-free``) spell it both ways for one model.
+    (``step-5-preview-free``) spell it both ways for one model. *rates* is
+    the fetched snapshot when there is one; otherwise the committed table
+    below, which is only ever the offline fallback.
     """
+    table = rates if rates is not None else FREE_TIER_NOMINAL_RATES
     slug = model_id.split("/")[-1]
     for key in (slug, f"{slug}-free",
                 slug[:-len("-free")] if slug.endswith("-free") else slug):
-        if key in FREE_TIER_NOMINAL_RATES:
-            return FREE_TIER_NOMINAL_RATES[key]
-    return FREE_TIER_DEFAULT_RATE
+        if key in table:
+            return table[key]
+    return table.get("__default__", FREE_TIER_DEFAULT_RATE)
+
+
+#: Where the usage export lives: per-day, per-model traffic for the whole
+#: workspace, both products. Person data never leaves the response — the
+#: refresh below aggregates the numeric columns and drops the rest.
+USAGE_EXPORT_URL = "https://opencode.ai/console/api/v2/usage/export?range=30d"
+
+#: The free-tier budget is anchored on an observed limit event, not chosen:
+#: this workspace's Space-Bunny requests started failing after 662 in a day
+#: (2026-10-12). Normalised to a nominal X per day so the number stays a
+#: rationing estimate rather than a bill anyone could mistake for metered.
+FREE_TIER_ANCHOR_MODEL = "space-bunny-free"
+FREE_TIER_ANCHOR_REQUESTS_PER_DAY = 662
+FREE_TIER_BUDGET_USD_PER_DAY = 0.10
+
+#: A profile drawn from fewer requests is noise, not a measurement: it is
+#: left out of the snapshot and falls back to the anchor rate at load.
+MIN_PROFILE_REQUESTS = 20
+
+#: Serving rates for a free model with no catalog price (the stealth ones).
+#: Small-model rates, stated plainly in LIMITS.md rather than hidden.
+PROXY_RATES = (0.16, 0.32, 0.004)
+
+FREE_TIER_SNAPSHOT_NAME = "free_tier_nominals.json"
+
+
+def _catalog_rates(catalog_dir: Path) -> dict[str, tuple[float, float, float]]:
+    """``{slug or id: (input, output, cached) $/1M}`` from catalog records."""
+    rates: dict[str, tuple[float, float, float]] = {}
+    for path in sorted(Path(catalog_dir).glob("*.json")):
+        try:
+            model = json.loads(path.read_text())["model"]
+            price = model.get("priceUsdPer1M") or {}
+            rates[model["id"]] = (price.get("input"), price.get("output"),
+                                  price.get("cachedInput"))
+            rates[model["id"].split("/")[-1]] = rates[model["id"]]
+        except (json.JSONDecodeError, KeyError, TypeError):
+            continue
+    return rates
+
+
+def refresh_free_nominals(usage_dir: Path, catalog_dir: Path, get,
+                          free_slugs: set[str]) -> dict[str, float] | None:
+    """Derive free-tier nominal rates from the fetched usage export.
+
+    Aggregates trailing-30d requests and token volumes per free model, prices
+    each request at catalog rates (proxy where the catalog has none), and
+    normalises against the anchor: the budget over the anchor's observed
+    daily requests, converted back to $/1M at each model's own traffic
+    profile. Writes ``usage/free_tier_nominals.json`` and returns the rates.
+
+    User columns are never stored — only per-model numeric totals reach the
+    file. Returns None (writing nothing) when the anchor itself is absent,
+    since there is then nothing to normalise against.
+    """
+    import csv
+    import io as _io
+    from datetime import datetime, timezone
+    traffic: dict[str, list[float]] = {}
+    for row in csv.DictReader(_io.StringIO(get(USAGE_EXPORT_URL))):
+        slug = (row.get("model") or "").strip()
+        if slug not in free_slugs:
+            continue
+        try:
+            values = [float(row.get(k) or 0)
+                      for k in ("requests", "input_tokens", "output_tokens",
+                                "cache_read_tokens")]
+        except ValueError:
+            continue
+        acc = traffic.setdefault(slug, [0.0, 0.0, 0.0, 0.0])
+        for i, value in enumerate(values):
+            acc[i] += value
+    catalog = _catalog_rates(catalog_dir)
+
+    def cost_per_request(slug: str, totals: list[float]) -> float | None:
+        n, inp, out, cached = totals
+        if n < MIN_PROFILE_REQUESTS:
+            return None
+        base = slug[:-len("-free")] if slug.endswith("-free") else slug
+        rates = catalog.get(base) or catalog.get(slug) or PROXY_RATES
+        rin, rout, rcache = (r if r is not None else 0.0 for r in rates)
+        if rcache == 0.0 and rates[2] is None:
+            rcache = rin  # no cache discount: reads bill at the input rate
+        return ((inp / n) * rin + (out / n) * rout
+                + (cached / n) * rcache) / 1e6
+
+    if FREE_TIER_ANCHOR_MODEL not in traffic:
+        return None
+    anchor = cost_per_request(FREE_TIER_ANCHOR_MODEL,
+                              traffic[FREE_TIER_ANCHOR_MODEL])
+    if not anchor:
+        return None
+    unit = FREE_TIER_BUDGET_USD_PER_DAY / FREE_TIER_ANCHOR_REQUESTS_PER_DAY
+    rates: dict[str, float] = {}
+    for slug, totals in sorted(traffic.items()):
+        each = cost_per_request(slug, totals)
+        if not each:
+            continue
+        n, inp, out, cached = totals
+        rep_tokens = 0.2 * inp / n + 0.6 * cached / n + 0.2 * out / n
+        rates[slug] = unit * (each / anchor) / (rep_tokens / 1e6)
+    usage_dir = Path(usage_dir)
+    usage_dir.mkdir(parents=True, exist_ok=True)
+    (usage_dir / FREE_TIER_SNAPSHOT_NAME).write_text(json.dumps({
+        "meta": {
+            "window": "trailing 30d usage export",
+            "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "anchor_model": FREE_TIER_ANCHOR_MODEL,
+            "anchor_requests_per_day": FREE_TIER_ANCHOR_REQUESTS_PER_DAY,
+            "budget_usd_per_day": FREE_TIER_BUDGET_USD_PER_DAY,
+            "min_profile_requests": MIN_PROFILE_REQUESTS,
+        },
+        "rates": rates,
+    }, indent=2))
+    return rates
+
+
+def load_free_nominals(data_dir: Path) -> dict[str, float] | None:
+    """Nominal rates from the fetch snapshot, or None when there is none.
+
+    None means "never fetched", which the callers treat as "use the
+    committed fallback", not as "free costs nothing".
+    """
+    path = Path(data_dir) / "usage" / FREE_TIER_SNAPSHOT_NAME
+    if not path.exists():
+        return None
+    try:
+        rates = json.loads(path.read_text()).get("rates")
+    except (json.JSONDecodeError, AttributeError):
+        return None
+    return rates if isinstance(rates, dict) and rates else None
 
 
 def variant_of(name: str) -> str:

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import urllib.request
 import sys
 from dataclasses import replace
 from pathlib import Path
@@ -24,7 +25,9 @@ from .fetch import http_get, refresh
 from .boards import (fetch_boards, load_boards, merge_boards,
                     save_boards)
 from .overrides import TIER_LABELS, load_curated, off_band_models, source_tier
-from .pricing import load_prices, refresh_prices
+from .pricing import (FREE_TIER_NOMINAL_RATES, FREE_TIER_SNAPSHOT_NAME,
+                     load_free_nominals, load_prices, refresh_free_nominals,
+                     refresh_prices)
 from .ranking import RECOMMEND_FLOOR, next_up, plans_of
 from .scoring import (MIN_AXES, _TRACKED, _folded, canonical,
                      combined, derived_scores, scales, tracked)
@@ -264,6 +267,33 @@ def _cmd_fetch(args: argparse.Namespace) -> int:
         cache.save(elo)
         print(f"saved {len(elo)} arena Elo scores to "
               f"{data_dir / 'aiarena' / arena_mod.CACHE_NAME}")
+    key = os.environ.get("OPENCODE_API_KEY")
+    if not key:
+        print("free-tier nominals not refreshed (no OPENCODE_API_KEY) — "
+              "keeping the existing snapshot")
+    else:
+        def _usage_get(url: str) -> str:
+            req = urllib.request.Request(
+                url, headers={"Authorization": f"Bearer {key}",
+                              "User-Agent": "opencode-rank/0.1"})
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                return resp.read().decode("utf-8", errors="replace")
+
+        try:
+            free_slugs = {e["model_id"] for prices in
+                          load_prices(data_dir / "tier_prices").values()
+                          for e in prices if e.free and e.model_id}
+            nominals = refresh_free_nominals(data_dir / "usage",
+                                             data_dir / "opencode",
+                                             _usage_get, free_slugs)
+        except (OSError, ValueError) as exc:
+            print(f"warning: free-tier nominals not refreshed ({exc})")
+        else:
+            print(f"saved {len(nominals)} free-tier nominals to "
+                  f"{data_dir / 'usage' / FREE_TIER_SNAPSHOT_NAME}"
+                  if nominals is not None else
+                  "warning: free-tier nominals not refreshed "
+                  "(anchor model absent from the export)")
     curated = load_curated(data_dir / "opencode", data_dir / "overrides")
     n = _print_conflicts(curated.conflicts, curated.orphans)
     if n:
@@ -490,6 +520,11 @@ def _rows_for(data_dir: Path, selected: list[str], price: str,
     """
     models, curated, _ = _load(data_dir)
     on_offer = available_ids(data_dir)
+    # the fetched free-tier nominals win per model; the committed table is
+    # only the offline fallback for whatever the snapshot does not cover
+    snapshot = load_free_nominals(data_dir)
+    free_rates = ({**FREE_TIER_NOMINAL_RATES, **snapshot} if snapshot
+                  else None)
     # one scale for the whole catalog: per-tier scales would make the same
     # score mean two different things in the merged view
     table = scales(models)
@@ -513,7 +548,7 @@ def _rows_for(data_dir: Path, selected: list[str], price: str,
         listed += pool
         groups.append(build_rows(pool, _entries_for(provider, data_dir),
                                  free_ids, axis=price, provider=provider,
-                                 table=table))
+                                 table=table, free_rates=free_rates))
     rows = dedupe_providers(merge_rows(*groups))
     return rows, listed, curated, counts, tier_slugs, models
 

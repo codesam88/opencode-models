@@ -304,6 +304,7 @@ committed**. They are third-party records, they go stale, and they are large;
 | `aiarena/` | arena.ai (LMArena) Elo cache, `{slug: elo}` | `fetch` | no — `.gitignore`d |
 | `tier_prices/` | snapshots of the Console tier pricing tables — **and the record of which models the plans offer** (see below) | `fetch` | no — `.gitignore`d |
 | `boards/` | official benchmark boards, fetched from whoever runs them (see below) | `fetch` | no — `.gitignore`d |
+| `usage/` | free-tier nominal rates derived from the workspace usage export (per-model traffic only, no user columns) | `fetch` (needs `OPENCODE_API_KEY`) | no — `.gitignore`d |
 | `overrides/` | an escape hatch for hand-pinned benchmark values — currently empty, since `fetch` brings the boards themselves (see `data/overrides/README.md`) | nobody — `fetch` reports replacements via `overrides` | **yes** (the directory, no data) |
 
 ### Which models the plans actually offer

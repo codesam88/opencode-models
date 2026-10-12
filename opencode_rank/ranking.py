@@ -145,7 +145,8 @@ def ratio(score: float, price: float) -> float:
 
 def build_rows(models: list[Model], entries=(), free_ids=frozenset(),
                axis: str = "weighted", provider: str = "-",
-               table: dict | None = None) -> list[Row]:
+               table: dict | None = None,
+               free_rates: dict[str, float] | None = None) -> list[Row]:
     """Price every line of the console list.
 
     A documented line replaces the catalog price (the catalog has no notion
@@ -200,7 +201,8 @@ def build_rows(models: list[Model], entries=(), free_ids=frozenset(),
     rows = []
     for model, entry, name, cost, free, limit in staged:
         if free:
-            price, band = nominal_free_rate(model.model_id), BAND_FREE
+            price, band = nominal_free_rate(model.model_id,
+                                                free_rates), BAND_FREE
             if "free" not in name.lower():
                 name = f"{name} [free]"
         else:

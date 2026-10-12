@@ -250,6 +250,64 @@ class CliTest(unittest.TestCase):
         self.assertIn("arena", out.lower())
         self.assertIn("warning", out.lower())
 
+    def test_fetch_refreshes_free_nominals_when_a_key_is_present(self):
+        import os
+
+        import opencode_rank.cli as cli
+
+        calls = {}
+
+        def fake_refresh(usage_dir, catalog_dir, get, free_slugs):
+            calls["slugs"] = set(free_slugs)
+            return {"space-bunny-free": 0.0018}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            _write_sample(d)
+            orig_get, orig_fn = cli.http_get, cli.refresh_free_nominals
+            orig_key = os.environ.get("OPENCODE_API_KEY")
+            os.environ["OPENCODE_API_KEY"] = "oc_sk_test"
+            cli.http_get = _offline_get
+            cli.refresh_free_nominals = fake_refresh
+            try:
+                code, out = self._run("--data", str(d), "fetch")
+            finally:
+                cli.http_get = orig_get
+                cli.refresh_free_nominals = orig_fn
+                if orig_key is None:
+                    del os.environ["OPENCODE_API_KEY"]
+                else:
+                    os.environ["OPENCODE_API_KEY"] = orig_key
+        self.assertEqual(code, 0)
+        self.assertTrue(calls, "fetch never asked for nominals")
+        self.assertIn("free-tier nominals", out)
+
+    def test_fetch_skips_free_nominals_without_a_key(self):
+        import os
+
+        import opencode_rank.cli as cli
+
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            _write_sample(d)
+            orig_get, orig_fn = cli.http_get, cli.refresh_free_nominals
+            orig_key = os.environ.pop("OPENCODE_API_KEY", None)
+
+            def boom(*a, **k):
+                raise AssertionError("no key, no refresh")
+
+            cli.http_get = _offline_get
+            cli.refresh_free_nominals = boom
+            try:
+                code, out = self._run("--data", str(d), "fetch")
+            finally:
+                cli.http_get = orig_get
+                cli.refresh_free_nominals = orig_fn
+                if orig_key is not None:
+                    os.environ["OPENCODE_API_KEY"] = orig_key
+        self.assertEqual(code, 0)
+        self.assertIn("no OPENCODE_API_KEY", out)
+
     def test_scores_reads_the_cache_and_never_the_network(self):
         import opencode_rank.arena as arena
 
@@ -1279,6 +1337,57 @@ class AvailabilityTest(unittest.TestCase):
             code, out = self._run("--data", tmp, "scores", "--all-models")
         self.assertEqual(code, 0)
         self.assertIn("GONE", out)
+
+    def test_a_fetched_snapshot_sets_the_free_price(self):
+        # the committed table is the offline fallback: a snapshot from fetch
+        # wins, or recomputing on fetch would change nothing in the view.
+        # Free rows print the word "free" rather than a ratio, so the price
+        # only shows in the ordering: at the snapshot's $50/1M, M1's
+        # score-per-dollar (50/50 = 1) loses to M2's paid line (50/1 = 50),
+        # while the $0.0018 fallback would keep M1 first.
+        import json
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            for mid, tb, swe in [("a/m1", 80.0, 40.0), ("a/m2", 40.0, 80.0)]:
+                (_models(d) / f"{mid.replace('/', '__')}.json").write_text(
+                    json.dumps({"model": {
+                        "id": mid, "name": mid.split("/")[1].upper(),
+                        "lab": "a",
+                        "priceUsdPer1M": {"input": 1.0, "output": None,
+                                          "cachedInput": None},
+                        "benchmarks": [
+                            {"name": "Terminal-Bench", "version": "2.1",
+                             "score": tb, "metric": "acc", "source": ""},
+                            {"name": "SWE-Bench", "version": "Verified",
+                             "score": swe, "metric": "acc", "source": ""}]}}))
+            prices = d / "tier_prices"
+            prices.mkdir(parents=True, exist_ok=True)
+            (prices / "zen_prices.json").write_text(json.dumps([
+                {"tier": "zen", "model_id": "m1", "name": "M1", "input": 0.0,
+                 "output": 0.0, "cached_read": 0.0, "limit": None,
+                 "free": True},
+                {"tier": "zen", "model_id": "m2", "name": "M2", "input": 1.0,
+                 "output": 1.0, "cached_read": 1.0, "limit": None,
+                 "free": False}]))
+            usage = d / "usage"
+            usage.mkdir(parents=True, exist_ok=True)
+            (usage / "free_tier_nominals.json").write_text(json.dumps(
+                {"meta": {}, "rates": {"m1": 50.0}}))
+            import opencode_rank.sources as sources
+            orig = sources.load_source
+            sources.load_source = lambda tier: {"m1", "m2"}
+            try:
+                code, out = self._run("--data", str(d), "list",
+                                      "--source", "zen", "--tables", "all")
+            finally:
+                sources.load_source = orig
+        self.assertEqual(code, 0)
+        lines = out.splitlines()
+        m1 = next(i for i, l in enumerate(lines)
+                  if l.rstrip().endswith("M1 [free]"))
+        m2 = next(i for i, l in enumerate(lines)
+                  if l.rstrip().endswith("M2"))
+        self.assertLess(m2, m1)
 
     def test_a_dropped_model_is_reported_not_just_hidden(self):
         with tempfile.TemporaryDirectory() as tmp:

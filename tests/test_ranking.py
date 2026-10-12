@@ -262,6 +262,17 @@ class MergeTest(unittest.TestCase):
         self.assertEqual(
             build_rows([_m("l/a", 1.0, tb=50.0)], provider="go")[0].provider, "go")
 
+    def test_a_fetched_snapshot_overrides_the_committed_table(self):
+        # the committed rates are the offline fallback; a snapshot from
+        # fetch wins per model, or recomputing on fetch would change nothing
+        models = [_m("lab/gift", 5.0, tb=50.0, swe=30.0)]
+        entries = [_entry("gift", 0.0, 0.0, free=True)]
+        plain = build_rows(models, entries)[0]
+        fetched = build_rows(models, entries,
+                             free_rates={"gift": 0.5})[0]
+        self.assertNotEqual(plain.price, fetched.price)
+        self.assertEqual(fetched.price, 0.5)
+
     def test_a_free_line_keeps_its_nominal_rate_across_providers(self):
         # the nominal rate is per-model rather than per-group, so merging
         # zen and go changes nothing about what a free line costs

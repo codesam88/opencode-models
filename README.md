@@ -46,7 +46,8 @@ opencode-rank conflicts                 # curated overrides vs upstream
 opencode-rank benchmarks                # list benchmarks + coverage
 opencode-rank render                    # pareto.html, best-covered benchmark
 opencode-rank render --benchmark "SWE-Bench Verified" --out swe.html
-opencode-rank list                      # both providers merged, three tables
+opencode-rank list                      # both providers merged, best value
+opencode-rank list --tables all         # also worst-score and highest-cost
 opencode-rank list --source zen         # one provider only
 opencode-rank list --source all --benchmark "SWE-Bench Verified"
 opencode-rank next                      # the next 4 models to use, in order
@@ -84,8 +85,10 @@ sequence, and a pointer to [LIMITS.md](LIMITS.md) for what allowances cost.
 It does not consult how much of each allowance is left.
 
 `list` covers the Console **providers** (`zen` = curated, `go` = open) and
-prints three tables: **best value** first, then **worst score** (bottom 30%)
-and **highest cost** (top 30%). The culls are disjoint and cost claims first,
+prints the **best value** table. `--tables all` also prints the **worst
+score** (bottom 30%) and **highest cost** (top 30%) tables. Either way the
+cull happens: those two groups of rows are taken *out* of best value, so the
+default view is the models worth looking at and nothing else. The culls are disjoint and cost claims first,
 so a model that is both priciest and lowest-scoring is reported once, under
 cost. Cost decides *who* lands in the highest-cost table and score decides
 *who* lands in the worst-score table, but both culls are shown worst-scoring

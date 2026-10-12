@@ -227,6 +227,7 @@ class CliTest(unittest.TestCase):
             try:
                 code, out = self._run(
                     "--data", tmp, "list", "--source", "zen", "--benchmark", "TB",
+                    "--tables", "all",
                 )
             finally:
                 sources.load_source = orig
@@ -267,6 +268,7 @@ class CliTest(unittest.TestCase):
             try:
                 code, out = self._run(
                     "--data", tmp, "list", "--source", "zen", "--benchmark", "TB",
+                    "--tables", "all",
                 )
             finally:
                 sources.load_source = orig
@@ -431,7 +433,7 @@ class CliTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             _write_sample(Path(tmp))
             code, out = self._run(
-                "--data", tmp, "list", "--source", "all", "--benchmark", "TB",
+                "--data", tmp, "list", "--tables", "all", "--source", "all", "--benchmark", "TB",
             )
         self.assertEqual(code, 0)
         self.assertIn("M1", out)
@@ -448,7 +450,7 @@ class CliTest(unittest.TestCase):
             orig = sources.load_source
             sources.load_source = lambda name: slugs
             try:
-                code, out = self._run("--data", tmp, "list", "--source", "zen")
+                code, out = self._run("--data", tmp, "list", "--tables", "all", "--source", "zen")
             finally:
                 sources.load_source = orig
         self.assertEqual(code, 0)
@@ -527,10 +529,10 @@ class CliTest(unittest.TestCase):
             orig = sources.load_source
             sources.load_source = lambda name: {"m1", "m2"}
             try:
-                code, out = self._run("--data", tmp, "list", "--benchmark", "TB")
+                code, out = self._run("--data", tmp, "list", "--tables", "all", "--benchmark", "TB")
                 self.assertEqual(code, 0)
                 self.assertNotIn("M3", out)          # default = tiers only
-                code, out = self._run("--data", tmp, "list", "--source", "all",
+                code, out = self._run("--data", tmp, "list", "--source", "all", "--tables", "all",
                                       "--benchmark", "TB")
             finally:
                 sources.load_source = orig
@@ -600,7 +602,7 @@ class CliTest(unittest.TestCase):
             orig = sources.load_source
             sources.load_source = lambda name: {"gift", "paid"}
             try:
-                code, out = self._run("--data", tmp, "list")
+                code, out = self._run("--data", tmp, "list", "--tables", "all")
             finally:
                 sources.load_source = orig
         self.assertEqual(code, 0)
@@ -659,7 +661,7 @@ class CliTest(unittest.TestCase):
             sources.load_source = lambda name: (
                 {"wide"} if name == "go" else set(prices))
             try:
-                code, out = self._run("--data", tmp, "list")
+                code, out = self._run("--data", tmp, "list", "--tables", "all")
             finally:
                 sources.load_source = orig
         self.assertEqual(code, 0)
@@ -694,7 +696,7 @@ class CliTest(unittest.TestCase):
             orig = sources.load_source
             sources.load_source = lambda name: {"two", "four"}
             try:
-                code, out = self._run("--data", tmp, "list")
+                code, out = self._run("--data", tmp, "list", "--tables", "all")
             finally:
                 sources.load_source = orig
             self.assertEqual(code, 0)
@@ -711,13 +713,66 @@ class CliTest(unittest.TestCase):
             # --benchmark mode still shows one score plus the axis tag
             sources.load_source = lambda name: {"four"}
             try:
-                code, single = self._run("--data", tmp, "list",
+                code, single = self._run("--data", tmp, "list", "--tables", "all",
                                          "--benchmark", "Terminal-Bench 4.0")
             finally:
                 sources.load_source = orig
         self.assertEqual(code, 0)
         self.assertIn("TB4", next(l for l in single.splitlines()
                                   if l.rstrip().endswith("FOUR")))
+
+    def test_list_shows_only_best_value_by_default(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_grid(Path(tmp))
+            code, out = self._run("--data", tmp, "list", "--source", "all")
+        self.assertEqual(code, 0)
+        self.assertIn("best value", out)
+        self.assertNotIn("worst score", out)
+        self.assertNotIn("highest cost", out)
+
+    def test_best_value_alone_still_culls_the_weak_and_dear(self):
+        # hiding the side tables must not re-admit their rows: the cull is
+        # what keeps the worst-scoring and priciest models out of the view
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_grid(Path(tmp))
+            code, out = self._run("--data", tmp, "list", "--source", "all")
+        self.assertEqual(code, 0)
+        self.assertNotIn("worst score", out)
+        self.assertNotIn("highest cost", out)
+        self.assertNotIn("M01", out)      # weakest
+        self.assertNotIn("M10", out)      # priciest
+        self.assertIn("M05", out)
+
+    def test_the_default_view_culls_exactly_as_the_three_table_view(self):
+        # same rows in best value either way — only the reporting differs
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_grid(Path(tmp))
+            _c1, one = self._run("--data", tmp, "list", "--source", "all")
+            _c2, three = self._run("--data", tmp, "list", "--source", "all",
+                                   "--tables", "all")
+
+        def best_value(text):
+            body = text.split("── best value")[1].split("──")[0]
+            return sorted(set(re.findall(r"\bM\d\d\b", body)))
+        self.assertEqual(best_value(one), best_value(three))
+
+    def test_tables_all_restores_the_three_tables(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_grid(Path(tmp))
+            code, out = self._run("--data", tmp, "list", "--source", "all",
+                                  "--tables", "all")
+        self.assertEqual(code, 0)
+        for title in ("best value", "worst score", "highest cost"):
+            self.assertIn(title, out)
+
+    def test_tables_rejects_an_unknown_choice(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_grid(Path(tmp))
+            with contextlib.redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit) as exit_:
+                    self._run("--data", tmp, "list", "--source", "all",
+                              "--tables", "side")
+        self.assertEqual(exit_.exception.code, 2)
 
     def test_list_prints_three_tables_in_order(self):
         import opencode_rank.sources as sources
@@ -728,7 +783,7 @@ class CliTest(unittest.TestCase):
             orig = sources.load_source
             sources.load_source = lambda name: slugs
             try:
-                code, out = self._run("--data", tmp, "list", "--source", "zen")
+                code, out = self._run("--data", tmp, "list", "--tables", "all", "--source", "zen")
             finally:
                 sources.load_source = orig
         self.assertEqual(code, 0)
@@ -745,7 +800,7 @@ class CliTest(unittest.TestCase):
             orig = sources.load_source
             sources.load_source = lambda name: slugs
             try:
-                code, out = self._run("--data", tmp, "list", "--source", "zen")
+                code, out = self._run("--data", tmp, "list", "--tables", "all", "--source", "zen")
             finally:
                 sources.load_source = orig
         self.assertEqual(code, 0)
@@ -785,7 +840,7 @@ class CliTest(unittest.TestCase):
             sources.load_source = lambda name: {"p1", "p2", "p3", "p4", "p5",
                                                 "inc", "gift"}
             try:
-                code, out = self._run("--data", tmp, "list", "--source", "go")
+                code, out = self._run("--data", tmp, "list", "--tables", "all", "--source", "go")
             finally:
                 sources.load_source = orig
         self.assertEqual(code, 0)
@@ -847,7 +902,7 @@ class CliTest(unittest.TestCase):
             orig = sources.load_source
             sources.load_source = lambda name: {"ds"}
             try:
-                code, out = self._run("--data", tmp, "list", "--source", "go")
+                code, out = self._run("--data", tmp, "list", "--tables", "all", "--source", "go")
             finally:
                 sources.load_source = orig
         self.assertEqual(code, 0)

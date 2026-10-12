@@ -406,6 +406,8 @@ def _cmd_list(args: argparse.Namespace) -> int:
     print("GRADE: ++ top 10% · + next 10% · o middle · - bottom 20% · "
           "· unranked (position in the whole ordering, not per table)")
 
+    # the split always happens — the cull is what keeps the worst-scoring
+    # and priciest models out of the view — only the reporting is optional
     main, worst, pricey = partition_rows(rows)
     # one set of column widths for the whole view, so the three tables line
     # up with each other too
@@ -419,13 +421,16 @@ def _cmd_list(args: argparse.Namespace) -> int:
             for row in group:
                 _print_row(row, widths, curated.curated, axis)
 
-    _section(f"worst score (bottom 30%) · {len(worst)} lines", widths, axis)
-    for row in worst:
-        _print_row(row, widths, curated.curated, axis)
+    if args.tables == "all":
+        _section(f"worst score (bottom 30%) · {len(worst)} lines", widths,
+                 axis)
+        for row in worst:
+            _print_row(row, widths, curated.curated, axis)
 
-    _section(f"highest cost (top 30%) · {len(pricey)} lines", widths, axis)
-    for row in pricey:
-        _print_row(row, widths, curated.curated, axis)
+        _section(f"highest cost (top 30%) · {len(pricey)} lines", widths,
+                 axis)
+        for row in pricey:
+            _print_row(row, widths, curated.curated, axis)
     return 0
 
 
@@ -516,6 +521,11 @@ def main(argv: list[str] | None = None) -> int:
                         default="weighted",
                         help="cost of a line (default: weighted 20%% in, "
                              "60%% cached, 20%% out)")
+    p_list.add_argument("--tables", choices=("best", "all"), default="best",
+                        help="best: print only the best-value table. all: "
+                             "also print the worst-score and highest-cost "
+                             "tables. Either way the cull happens — those "
+                             "rows are out of best value (default: %(default)s)")
     p_list.add_argument("--benchmark",
                         help="rank on one benchmark instead of combining "
                              "Terminal-Bench 2.x (first) with SWE-Bench and "

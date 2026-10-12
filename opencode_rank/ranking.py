@@ -387,8 +387,9 @@ def next_up(rows: list[Row], count: int = 4, grade: str | None = None,
     two cases only — when a plan has no eligible row left, and when taking
     the strongest candidate first would otherwise demote it.
 
-    Only rows in the top decile (*grade*, ``++``) with a real score are
-    eligible. A short list is a short list, not an error.
+    Eligibility is strength, not the rank marker: a pick must be within
+    *floor* of the strongest score in *rows*, and may be narrowed further by
+    a *grade*. A short list is a short list, not an error.
     """
     scored = [r for r in rows if r.score is not None]
     if not scored:
@@ -465,28 +466,30 @@ def partition_rows(rows: list[Row], fraction: float = CULL_FRACTION
                    ) -> tuple[list[Row], list[Row], list[Row]]:
     """Split into (best value, worst score, highest cost).
 
+    The split always happens: the worst-scoring and priciest models are
+    taken out of best value whether or not a caller goes on to print them.
+    A view that shows one table is still a view that hid those rows, which is
+    the point of the cull.
+
     Each cull takes the nearest whole row to *fraction* of the list (one row
     minimum once there is more than one, never on a single row). The groups
     are disjoint and the cost group has first claim: a model that is both
     priciest and lowest-scoring is reported once, under cost.
     """
     count = len(rows)
-    if count <= 1:
-        cull = 0
-    else:
-        cull = max(1, round(fraction * count))
+    take = 0 if count <= 1 else max(1, round(fraction * count))
 
     expensive = sorted(range(count), key=lambda i: (
         -rows[i].price,
         rows[i].score if rows[i].score is not None else float("inf"),
-    ))[:cull]
+    ))[:take]
     claimed = set(expensive)
 
     rest = [i for i in range(count) if i not in claimed]
     weakest = sorted(rest, key=lambda i: (
         rows[i].score if rows[i].score is not None else float("inf"),
         -rows[i].price,
-    ))[:cull]
+    ))[:take]
     weakest_set = set(weakest)
 
     main = [rows[i] for i in rest if i not in weakest_set]

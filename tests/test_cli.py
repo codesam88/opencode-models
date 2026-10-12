@@ -1357,7 +1357,6 @@ class ListViewContractTest(unittest.TestCase):
         self.assertEqual(values, sorted(values, reverse=True))
 
     def test_score_cost_and_grade_match_the_modules(self):
-        from opencode_rank.ranking import GRADE_BOTTOM, GRADE_NEXT, GRADE_TOP
         with tempfile.TemporaryDirectory() as tmp:
             self._data(tmp)
             code, out = self._run("--data", tmp, "list", "--source", "all",
@@ -1559,7 +1558,7 @@ class AvailabilityTest(unittest.TestCase):
                        shipped=["kept", "third", "fourth", "gone"])
             _c, every = self._run("--data", tmp, "scores", "--all-models")
         first = next(l for l in every.splitlines() if "GONE" in l)
-        self.assertEqual(first.split()[0], "GONE")
+        self.assertIn("GONE", first.split())
 
     def test_scores_hides_a_model_the_plan_dropped(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1725,8 +1724,10 @@ class ScoresCommandTest(unittest.TestCase):
         return re.split(r"\s{2,}", head.strip())[3:]
 
     def _row(self, out, name):
+        # the grade marker leads the line, so the name is a token in it,
+        # not the first one
         return next(l for l in out.splitlines()
-                    if l.split() and l.split()[0] == name)
+                    if name in l.split())
 
     def test_each_scored_benchmark_is_a_column_of_its_own(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1801,7 +1802,7 @@ class ScoresCommandTest(unittest.TestCase):
         # M5 measured on nothing we score on: no score, no axes
         self.assertIn("M5", self._row(out, "M5"))
         self.assertEqual(re.split(r"\s{2,}", self._row(out, "M5").strip()),
-                         ["M5", "—", "0"])
+                         ["· M5", "—", "0"])
 
     def test_both_spellings_of_a_benchmark_share_one_column(self):
         import json
@@ -1885,6 +1886,38 @@ class ScoresCommandTest(unittest.TestCase):
         self.assertIn("1 with none scored", head)     # M0: benchmarks, no axes
         self.assertNotIn("4 with scores", head)
 
+    def test_rows_carry_the_grade_in_front_of_the_score(self):
+        # the same markers as `list`: ++ top decile down to -- bottom fifth,
+        # · where there is no score to rank
+        with tempfile.TemporaryDirectory() as tmp:
+            self._grid(tmp)
+            code, out = self._run("--data", tmp, "scores")
+        self.assertEqual(code, 0)
+        grades = {}
+        for line in out.splitlines():
+            parts = line.split()
+            if len(parts) > 3 and parts[0] in ("++", "+", "o", "--", "·"):
+                grades[parts[1]] = parts[0]
+        self.assertEqual(grades.get("M1"), "++")   # best of the grid
+        self.assertEqual(grades.get("M3"), "--")   # worst of the grid
+
+    def test_a_model_with_one_benchmark_is_marked_unranked(self):
+        import json
+        with tempfile.TemporaryDirectory() as tmp:
+            self._grid(tmp)
+            (_models(Path(tmp)) / "a__m9.json").write_text(json.dumps({
+                "model": {"id": "a/m9", "name": "M9", "lab": "a",
+                          "priceUsdPer1M": {"input": 1.0, "output": None,
+                                            "cachedInput": None},
+                          "benchmarks": [
+                              {"name": "Terminal-Bench", "version": "2.1",
+                               "score": 42.0, "metric": "acc",
+                               "source": ""}]}}))
+            code, out = self._run("--data", tmp, "scores")
+        self.assertEqual(code, 0)
+        row = next(l for l in out.splitlines() if "M9" in l)
+        self.assertTrue(row.strip().startswith("·"))
+
     def test_no_line_pads_itself_out_with_trailing_spaces(self):
         with tempfile.TemporaryDirectory() as tmp:
             self._grid(tmp)
@@ -1929,7 +1962,7 @@ class ScoresCommandTest(unittest.TestCase):
                      if "SCORE" in l and "TB 2.1" in l)
         self.assertGreater(legend, table)
         self.assertLess(table, next(i for i, l in enumerate(lines)
-                                    if l.strip().startswith("M1")))
+                                    if "M1" in l.split()))
 
     def test_a_model_with_no_benchmarks_is_listed_as_unscored(self):
         import json

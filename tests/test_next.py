@@ -52,14 +52,13 @@ class NextUpTest(unittest.TestCase):
         # the worst value despite the highest raw score
         self.assertEqual([p.name for p in picks], ["cheap", "sweet", "dear"])
 
-    def test_a_strong_model_outside_the_top_decile_is_still_recommended(self):
-        # the real ordering: MiMo-V2.6-Pro scores 89.9 — the best model in
-        # the catalog — and is graded "o", while a free model scoring 24.58
-        # is graded "++". The marker divides by price, so it measures value,
-        # not strength, and must not decide who gets recommended.
-        rows = [_row("zen/strong", 89.9, 26.0, BAND_INCLUDED, grade="o"),
-                _row("zen/cheap-weak", 24.58, 0.0, BAND_FREE, grade="++"),
-                _row("zen/mid", 72.0, 0.0, BAND_FREE, grade="+")]
+    def test_eligibility_ignores_the_grade(self):
+        # the floor is strength (within 75% of the best score); the marker
+        # reads the same score, so it must not decide who gets recommended
+        # a second time over.
+        rows = [_row("zen/strong", 89.9, 26.0, BAND_INCLUDED, grade="++"),
+                _row("zen/cheap-weak", 24.58, 0.0, BAND_FREE, grade="--"),
+                _row("zen/mid", 72.0, 0.0, BAND_FREE, grade="o")]
         picks = next_up(rows, count=3)
         names = [p.name for p in picks]
         # free-first is the ordering the reader asked for, so the free
@@ -69,15 +68,15 @@ class NextUpTest(unittest.TestCase):
     def test_the_floor_is_measured_against_the_strongest_model_known(self):
         # the reference is the whole catalog's best, not the best eligible
         # row, so the bar cannot be dragged down by a weak top row
-        rows = [_row("a/best", 90.0, 1.0, BAND_INCLUDED, grade="o"),
-                _row("a/near", 70.0, 1.0, BAND_INCLUDED, grade="-"),
-                _row("a/far", 40.0, 0.0, BAND_FREE, grade="++")]
+        rows = [_row("a/best", 90.0, 1.0, BAND_INCLUDED, grade="++"),
+                _row("a/near", 70.0, 1.0, BAND_INCLUDED, grade="o"),
+                _row("a/far", 40.0, 0.0, BAND_FREE, grade="--")]
         picks = next_up(rows, count=3)
         self.assertEqual([p.name for p in picks], ["best", "near"])
 
     def test_a_grade_can_still_be_required_by_a_caller(self):
         # both strong enough for the floor; only one carries the marker
-        rows = [_row("a/paid", 90.0, 1.0, BAND_INCLUDED, grade="o"),
+        rows = [_row("a/paid", 84.0, 1.0, BAND_INCLUDED, grade="+"),
                 _row("a/free", 88.0, 0.0, BAND_FREE, grade="++")]
         self.assertEqual([p.name for p in next_up(rows, count=2, grade="++")],
                          ["free"])
@@ -122,10 +121,10 @@ class NextUpTest(unittest.TestCase):
         picks = next_up(rows, count=3)
         self.assertEqual([p.provider for p in picks], ["zen", "go", "zen"])
 
-    def test_a_much_weaker_row_is_left_out_even_when_top_decile(self):
-        # ++ means "strong value", not "strong model": the ordering ranks by
-        # score per dollar, so a cheap weak model inherits a top-decile mark.
-        # Recommending 39 beside 88 would read as incoherent.
+    def test_a_much_weaker_row_is_left_out_by_the_floor(self):
+        # eligibility is strength: 39 is outside 75% of 88 whatever mark a
+        # stale grade claims. Recommending 39 beside 88 would read as
+        # incoherent.
         rows = [_row("a/strong", 88.0, 0.0, BAND_FREE),
                 _row("a/mid", 74.0, 1.0, BAND_INCLUDED),
                 _row("a/weak", 39.0, 0.1, BAND_INCLUDED)]

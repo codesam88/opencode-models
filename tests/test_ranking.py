@@ -8,8 +8,8 @@ from opencode_rank.ranking import (
     Row,
     axis_scores,
     build_rows,
+    grade_for,
     grade_rows,
-    grade_symbols,
     dedupe_providers,
     merge_rows,
     order_rows,
@@ -368,40 +368,31 @@ class AxisScoresTest(unittest.TestCase):
 
 
 class GradeTest(unittest.TestCase):
-    """The rank marker: ++ top decile, + next tenth, o middle, -- bottom fifth."""
+    """The rank marker reads the score, not the position: 85+ is ++, 75+ is
+    +, 60+ is o, 50+ is -, below that --, and no score is ·."""
 
-    def test_a_twenty_row_list_splits_ten_ten_sixty_twenty(self):
-        symbols = grade_symbols(20)
-        self.assertEqual(symbols.count("++"), 2)    # top 10%
-        self.assertEqual(symbols.count("+"), 2)     # next 10%
-        self.assertEqual(symbols.count("--"), 4)    # bottom 20%
-        self.assertEqual(symbols.count("o"), 12)
-        self.assertEqual(symbols[0], "++")
-        self.assertEqual(symbols[1], "++")
-        self.assertEqual(symbols[2], "+")
-        self.assertEqual(symbols[-1], "--")
+    def test_thresholds(self):
+        cases = [(100.0, "++"), (85.0, "++"), (84.9, "+"), (75.0, "+"),
+                 (74.9, "o"), (60.0, "o"), (59.9, "-"), (50.0, "-"),
+                 (49.9, "--"), (0.0, "--")]
+        for score, marker in cases:
+            with self.subTest(score=score):
+                self.assertEqual(grade_for(score), marker)
 
-    def test_short_lists_still_mark_every_band(self):
-        # five rows cannot fill four bands exactly, but none may vanish
-        symbols = grade_symbols(5)
-        self.assertEqual(symbols.count("++"), 1)
-        self.assertEqual(symbols.count("--"), 1)
-        self.assertEqual(len(symbols), 5)
-        self.assertEqual(symbols[0], "++")
-        self.assertEqual(symbols[-1], "--")
+    def test_no_score_is_unranked(self):
+        self.assertEqual(grade_for(None), "·")
 
-    def test_a_lone_row_is_its_own_best(self):
-        self.assertEqual(grade_symbols(1), ["++"])
-        self.assertEqual(grade_symbols(0), [])
+    def test_every_row_in_a_list_can_share_one_band(self):
+        # absolute bands, not deciles: nothing forces a loser into existence
+        rows = _rows([(90.0, 1.0), (91.0, 1.0), (92.0, 1.0)])
+        self.assertEqual([r.grade for r in grade_rows(rows)],
+                         ["++", "++", "++"])
 
-    def test_bands_never_overlap_on_tiny_lists(self):
-        for n in range(1, 40):
-            symbols = grade_symbols(n)
-            self.assertEqual(len(symbols), n, n)
-            self.assertEqual(symbols.count("++"), max(1, round(0.1 * n)), n)
-            if n > 1:   # the lone row is its own best, so nothing is `-`
-                self.assertEqual(symbols.count("--"),
-                                 max(1, round(0.2 * n)), n)
+    def test_position_never_changes_a_grade(self):
+        forward = grade_rows(_rows([(90.0, 1.0), (40.0, 1.0)]))
+        backward = grade_rows(_rows([(40.0, 1.0), (90.0, 1.0)]))
+        self.assertEqual([r.grade for r in forward], ["++", "--"])
+        self.assertEqual([r.grade for r in backward], ["--", "++"])
 
     def test_unscored_rows_are_unranked_not_last(self):
         # a free model nobody benchmarks is not the bottom of the table,
@@ -410,7 +401,7 @@ class GradeTest(unittest.TestCase):
         entries = [_entry("freebie", 0.0, 0.0, free=True)]
         graded = grade_rows(order_rows(build_rows(
             models, entries, table={TB: (20.0, 80.0), SWE: (20.0, 80.0)})))
-        self.assertEqual([r.grade for r in graded], ["++", "·"])
+        self.assertEqual([r.grade for r in graded], ["+", "·"])
         self.assertIsNone(graded[1].score)
 
     def test_grades_ride_on_the_rows_best_first(self):
@@ -562,6 +553,27 @@ if __name__ == "__main__":
     unittest.main()
 
 
+def _rows(scores_and_prices):
+    """Rows with set scores, for grading without building anything."""
+    from dataclasses import replace
+
+    from opencode_rank.data import Model
+    rows = []
+    for i, (score, price) in enumerate(scores_and_prices):
+        model = Model(model_id=f"l/m{i:02d}", name=f"M{i:02d}", lab="l",
+                      price_input=price, price_output=price,
+                      price_cached_input=price,
+                      scores={"Terminal-Bench 2.1": score}
+                      if score is not None else {})
+        rows.append(replace(Row(model=model, name=f"M{i:02d}", price=price,
+                                free=price == 0, band="included",
+                                score=score,
+                                benchmark="Terminal-Bench 2.1"
+                                if score is not None else None,
+                                provider="zen"), grade="?"))
+    return rows
+
+
 class GradeByScoreTest(unittest.TestCase):
     """The marker answers "how strong is this model", not "how cheap".
 
@@ -571,23 +583,7 @@ class GradeByScoreTest(unittest.TestCase):
     """
 
     def _rows(self, scores_and_prices):
-        from dataclasses import replace
-
-        from opencode_rank.data import Model
-        rows = []
-        for i, (score, price) in enumerate(scores_and_prices):
-            model = Model(model_id=f"l/m{i:02d}", name=f"M{i:02d}", lab="l",
-                          price_input=price, price_output=price,
-                          price_cached_input=price,
-                          scores={"Terminal-Bench 2.1": score}
-                          if score is not None else {})
-            rows.append(replace(Row(model=model, name=f"M{i:02d}", price=price,
-                                    free=price == 0, band="included",
-                                    score=score,
-                                    benchmark="Terminal-Bench 2.1"
-                                    if score is not None else None,
-                                    provider="zen"), grade="?"))
-        return rows
+        return _rows(scores_and_prices)
 
     def test_a_strong_but_pricey_model_is_graded_top(self):
         rows = self._rows([(90.0, 100.0), (50.0, 0.0), (40.0, 0.0),
@@ -602,7 +598,7 @@ class GradeByScoreTest(unittest.TestCase):
         self.assertNotEqual(graded["M01"], "++")
         # and the bands follow the scores, top to bottom
         self.assertEqual([graded[f"M{i:02d}"] for i in range(5)],
-                         ["++", "+", "o", "o", "--"])
+                         ["++", "-", "--", "--", "--"])
 
     def test_the_grades_do_not_depend_on_price_at_all(self):
         cheap = grade_rows(self._rows([(90.0, 100.0), (50.0, 0.0)]))

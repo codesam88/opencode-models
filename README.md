@@ -249,11 +249,10 @@ lists it — the per-axis raw numbers live in `scores`, not here. `--benchmark
 X` switches to the single-score layout: that benchmark's raw score and its
 tag.
 
-Each line is prefixed with a rank marker — `++` the top decile of the
-ordering, `+` the next tenth, `o` the middle, `--` the bottom fifth, `·` a row
-no benchmark reaches (unranked, not last). The marker rides on position in
-the *whole* ordering, so a row in the worst-score or highest-cost table still
-shows how it ranked overall — a priciest-model row can be `++`.
+Each line is prefixed with a rank marker read off the score itself — `++`
+at 85 and above, `+` at 75, `o` at 60, `-` at 50, `--` below that, `·` where
+a row has no score to rank (unranked, not last). Absolute bands mean a
+strong field can share the top and a weak one is never flattered by it.
 
 Ranking is best score per dollar first. The score is already comparable
 across axes — each benchmark reads on its own 0–100 scale and the median

@@ -195,6 +195,35 @@ class CommittedOverridesTest(unittest.TestCase):
                 self.assertIn("/", model_id)
 
 
+class StepFiveOverrideTest(unittest.TestCase):
+    """Step 5 Preview's vendor page is its only published record.
+
+    Upstream carries nothing for the model, so every scored axis on that
+    page is a new benchmark that applies cleanly. The contract is the set
+    of keys, not the values: values are data and may be re-read, but a
+    dropped or added axis changes what the model ranks on.
+    """
+
+    def _entries(self):
+        root = Path(__file__).resolve().parent.parent / "data" / "overrides"
+        payload = json.loads(
+            (root / "stepfun__step-5-preview.json").read_text())["model"]
+        return payload["benchmarks"]
+
+    def test_it_covers_exactly_the_three_scored_axes(self):
+        keys = {(e["name"], e["version"]) for e in self._entries()}
+        self.assertEqual(keys, {("Terminal-Bench", "2.1"),
+                                ("Terminal-Bench", "4.0"),
+                                ("DeepSWE", "1.1")})
+
+    def test_every_entry_names_the_page_and_the_effort(self):
+        for entry in self._entries():
+            with self.subTest(benchmark=(entry["name"], entry["version"])):
+                self.assertIn("stepfun.com/step-5-preview",
+                              entry.get("source", ""))
+                self.assertIn("High", entry.get("note", ""))
+
+
 class OverrideRulesTest(unittest.TestCase):
     """The rules, enforced by the loader rather than by scanning the repo.
 

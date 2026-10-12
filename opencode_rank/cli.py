@@ -25,7 +25,8 @@ from .boards import (fetch_boards, load_boards, merge_boards,
                     save_boards)
 from .overrides import TIER_LABELS, load_curated, off_band_models, source_tier
 from .pricing import load_prices, refresh_prices
-from .ranking import RECOMMEND_GRADE, next_up
+from .ranking import (RECOMMEND_FLOOR, RECOMMEND_GRADE, next_up,
+                      plans_of)
 from .ranking import (
     BAND_FREE,
     BAND_INCLUDED,
@@ -440,7 +441,9 @@ NEXT_REASONS = {
 
 
 def _next_reason(row) -> str:
-    if row.provider not in ("zen", "go"):
+    # a row sold by both tiers is labelled "go,zen", so membership decides,
+    # not equality with a single plan name
+    if not {"zen", "go"} & plans_of(row):
         return NEXT_REASONS["catalog"]
     return NEXT_REASONS["included" if row.band == "included"
                         else ("free" if row.free else "payg")]
@@ -466,10 +469,11 @@ def _cmd_next(args: argparse.Namespace) -> int:
                      f"{data_dir} — nothing to recommend yet")
 
     width = max(len(r.name) for r in picks)
-    print(f"next {len(picks)} to use, in order · free first by score, then "
-          f"best score per ¢ · Zen and Go alternated where both can supply one")
-    print(f"eligible: {RECOMMEND_GRADE} only — the top decile of the same "
-          f"ordering the list view shows")
+    print(f"next {len(picks)} to use, in order · Zen and Go alternated "
+          f"where both can supply one, strongest eligible first")
+    print(f"eligible: {RECOMMEND_GRADE} only (top decile of the ordering the "
+          f"list view shows) and within {RECOMMEND_FLOOR:.0%} of the best "
+          f"score — {RECOMMEND_GRADE} means strong value, not strong model")
     print()
     print(f"  {'#':<2} {'PLAN':<5} {'SCORE':>6} {'¢/1M':>5} {'SCORE/$':>7}  "
           f"{'MODEL':<{width}}  WHY")

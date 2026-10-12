@@ -366,52 +366,97 @@ def grade_rows(rows: list[Row]) -> list[Row]:
 #: tell the reader which model is actually the better pick.
 RECOMMEND_GRADE = "++"
 
+#: How much weaker than the best candidate a pick may be, as a fraction.
+#:
+#: The rank marker says "strong *value*" — the ordering divides by price — so
+#: a cheap, weak model inherits a top-decile mark. Recommending one beside a
+#: frontier model reads as incoherent: the reader is told to reach for 39
+#: right after 88. Anything under this share of the best score is not a
+#: recommendation, however good its price.
+RECOMMEND_FLOOR = 0.75
+
 
 def next_up(rows: list[Row], count: int = 4,
-            grade: str = RECOMMEND_GRADE) -> list[Row]:
+            grade: str = RECOMMEND_GRADE,
+            floor: float = RECOMMEND_FLOOR) -> list[Row]:
     """The next *count* models to use, in order.
 
-    Free models first: they cost nothing, so the only thing left to maximise
-    is the score. Paid models follow, ordered by score per dollar, which is
-    the ranking the list view already uses and the one a reader can check.
+    Candidates are ordered free-first — free models by score, since they
+    cost nothing and only the score is left to maximise, then paid models by
+    score per dollar, the measure the list view already ranks on.
 
-    Within each phase the picks alternate between Zen and Go where both can
-    supply one, so following the sequence spreads across the two plans
-    instead of draining one allowance before touching the other. The
-    alternation never demotes the strongest candidate to keep the rhythm —
-    if the best model available is on Zen, it leads.
+    That order is then alternated between Zen and Go wherever both plans can
+    supply a pick, so following the sequence spreads across the two instead
+    of draining one allowance before touching the other. Alternation is
+    forced: a paid Go model may come before a free Zen one. It gives way in
+    two cases only — when a plan has no eligible row left, and when taking
+    the strongest candidate first would otherwise demote it.
 
-    Only rows in the top decile (*grade*) with a real score are eligible, and
-    a short list is a short list, not an error.
+    Only rows in the top decile (*grade*, ``++``) with a real score are
+    eligible. A short list is a short list, not an error.
     """
     eligible = [r for r in rows if r.grade == grade and r.score is not None]
+    best = max((r.score for r in eligible), default=0.0)
+    eligible = [r for r in eligible if r.score >= best * floor]
     free = sorted((r for r in eligible if r.free),
                   key=lambda r: (-r.score, r.name))
     paid = sorted((r for r in eligible if not r.free),
                   key=lambda r: (-ratio(r.score, r.price), -r.score, r.name))
-    picked = _take(free, count)
-    if len(picked) < count:
-        picked += _take(paid, count - len(picked))
-    return picked
+    # Free-first is the order *within* a plan; the sequence as a whole is
+    # then alternated, so it never drains one plan's picks before touching
+    # the other's.
+    return _take(free + paid, count)
 
 
-def _take(phase: list[Row], want: int) -> list[Row]:
-    """Up to *want* rows from *phase*, alternating between plans.
+def plans_of(row: Row) -> set[str]:
+    """The plans a row is sold on; a shared offer counts for each of them.
+
+    ``dedupe_providers`` labels an offer both tiers sell at the same rate as
+    ``"go,zen"``. Treating that as a plan of its own would leave it out of
+    the alternation entirely, so it is read as membership of both.
+    """
+    return set(row.provider.split(","))
+
+
+def _take(ordered: list[Row], want: int) -> list[Row]:
+    """Up to *want* rows from *ordered*, alternating between plans.
+
+    One model is recommended once, however many lines it appears on: free on
+    Zen and paid on Go are two lines for one model, and spending two slots
+    on it wastes a recommendation. Free-first ordering means the cheaper
+    line is the one already in *ordered*, so it is the one that survives.
 
     Plans are visited strongest-first, so the leading pick is the best row
-    in the phase whichever plan it happens to sit on.
+    available whichever plan it sits on. A plan with nothing left is simply
+    passed over — there is nothing to alternate with.
     """
-    by_plan: dict[str, list[Row]] = {}
-    for row in phase:
-        by_plan.setdefault(row.provider, []).append(row)
-    plans = sorted(by_plan, key=lambda p: -by_plan[p][0].score)
+    remaining = list(ordered)
+    seen: set[str] = set()
+    unique: list[Row] = []
+    for row in remaining:
+        if row.model.model_id in seen:
+            continue
+        seen.add(row.model.model_id)
+        unique.append(row)
+    remaining = unique
+    plans = sorted({p for row in remaining for p in plans_of(row)},
+                   key=lambda p: max((r.score for r in remaining
+                                      if p in plans_of(r)), default=0),
+                   reverse=True)
     taken: list[Row] = []
-    while len(taken) < want and any(by_plan[p] for p in plans):
+    while len(taken) < want and remaining:
+        progressed = False
         for plan in plans:
             if len(taken) >= want:
                 break
-            if by_plan[plan]:
-                taken.append(by_plan[plan].pop(0))
+            for i, row in enumerate(remaining):
+                if plan in plans_of(row):
+                    taken.append(row)
+                    remaining.pop(i)
+                    progressed = True
+                    break
+        if not progressed:
+            break
     return taken
 
 

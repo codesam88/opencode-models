@@ -367,6 +367,7 @@ class CliTest(unittest.TestCase):
             code, out = self._run("--data", tmp, "next", "--source", "all")
         self.assertEqual(code, 0)
         self.assertIn("LIMITS.md", out)      # the allowance caveat is stated
+        self.assertIn("top decile", out)      # eligibility is stated
         self.assertIn("free", out.lower())
 
     def test_next_picks_from_the_ordered_ranking_not_catalog_order(self):
@@ -378,6 +379,16 @@ class CliTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("M10", out)          # score 100 at $10 is the best ratio
         self.assertNotIn("M01", out)
+
+    def test_next_only_ever_names_top_decile_rows(self):
+        # ten models, one ++ row: if anything weaker were eligible the
+        # header would count more picks than the ordering can vouch for
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_grid(Path(tmp))
+            code, out = self._run("--data", tmp, "next", "--source", "all")
+        self.assertEqual(code, 0)
+        self.assertIn("next 1 to use", out)
+        self.assertIn("M10", out)
 
     def test_next_labels_a_catalog_only_row_as_such(self):
         # the grid models are in neither tier, so calling them Zen-billed

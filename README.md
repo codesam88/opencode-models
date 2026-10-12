@@ -59,13 +59,25 @@ or serve the directory.
 
 `next` answers the narrower question "what should I reach for next?". It
 draws from the same pipeline `list` uses, so it can never disagree with the
-ranking it came from, and only recommends rows marked `++` — the top decile.
-Free models come first by score (they cost nothing, so only the score is
-left to maximise), then paid models by score per dollar; within each group
-the picks alternate between Zen and Go where both can supply one, so
-following the sequence spreads across the two plans instead of draining one
-allowance before touching the other. It says in its footer that it ignores
-how much of each allowance is left — see [LIMITS.md](LIMITS.md).
+ranking it came from. Three rules shape the sequence:
+
+- **Only `++` rows, and only within 75% of the best score.** The rank marker
+  means "strong *value*" — the ordering divides by price — so a cheap, weak
+  model inherits a top-decile mark. Recommending one beside a frontier model
+  reads as incoherent.
+- **Alternation is forced.** Picks alternate between Zen and Go wherever
+  both can supply one, so following the sequence spreads across the two
+  plans instead of draining one allowance before touching the other. A paid
+  Go model may come before a free Zen one. It gives way in two cases only:
+  a plan has nothing eligible left, or taking the strongest candidate first
+  would demote it.
+- **One model, one slot.** Free on Zen and paid on Go are two lines for one
+  model — the `[free]` suffix is the only difference in the name — so a
+  model is never recommended twice, and price variants of one model do not
+  take two slots either.
+
+It says in its footer that it ignores how much of each allowance is left —
+see [LIMITS.md](LIMITS.md).
 
 `list` covers the Console **providers** (`zen` = curated, `go` = open) and
 prints three tables: **best value** first, then **worst score** (bottom 30%)

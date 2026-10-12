@@ -35,6 +35,7 @@ from pathlib import Path
 from dataclasses import asdict, dataclass, replace
 
 from .fetch import http_get
+from .labelmap import mapped_id
 
 #: Tier of a row that comes from the benchmark's own official board.
 TIER_BOARD = 2
@@ -274,41 +275,115 @@ def _id_tokens(model_id: str) -> Counter:
     return normalize(model_id.replace("/", " "))
 
 
-def match_model(row: "BoardRow", models) -> str | None:
-    """The catalog model a board row is about, or None when ambiguous.
+#: opencode marks the canonical row of a model with "(latest)" and keeps the
+#: dated snapshot beside it. The marker says nothing about which model it is.
+LATEST = re.compile(r"\blatest\b", re.I)
 
-    Matched on the *name* tokens: the org is a preference, never part of the
-    target, or "Google DeepMind" would demand tokens the catalog id does not
-    have. An exact token match wins; otherwise the fewest extra tokens win,
-    with the org's lab breaking ties, and a remaining tie means no answer —
-    a wrong merge is worse than a missing one.
+
+def _name_tokens(model) -> Counter:
+    """A model's display name as comparable tokens, marker dropped."""
+    return normalize(LATEST.sub(" ", model.name))
+
+
+def match_models(row: "BoardRow", models) -> list[str]:
+    """Every catalog row the board row is about.
+
+    Boards and the catalog name the same models differently, so this is a
+    mapping rather than a comparison, in two steps.
+
+    First the catalog's own naming: a row whose display name says the same
+    thing, once the "(latest)" marker is dropped. That keeps "Claude 4
+    Sonnet" on Claude Sonnet 4 instead of reaching for 4.6, and recognises
+    ``claude-sonnet-4-0`` and ``claude-sonnet-4-20250514`` as the one model
+    they are — ids that share no shape.
+
+    Failing that, tokens shared with the id, where the id's prefix is the
+    provider and is compared against the row's org: a lab that matches beats
+    one that does not, even at the cost of an extra token.
+
+    More than one result means the catalog holds the same model twice, which
+    is not ambiguity. Empty means the candidates are genuinely different
+    models — a different version, or the same name under a different
+    provider. A wrong merge is worse than a missing one.
     """
     want = normalize(row.model_name)
     if not want:
-        return None
+        return []
+    _CATALOG[0] = list(models)
+
+    # a decision someone already made for this service wins outright
+    recorded = mapped_id(row.source, row.model_name)
+    if recorded:
+        hit = [m for m in models if m.model_id == recorded]
+        if hit:
+            return _all_rows_of(hit)
+
     org = normalize(row.model_org or "")
-    exact: list[str] = []
-    subset: list[tuple[int, int, str]] = []
+
+    by_name = [m for m in models if _name_tokens(m) == want]
+    if by_name:
+        return _one_model(by_name)
+
+    scored: list[tuple[int, int, object]] = []
     for model in models:
-        tokens = _id_tokens(model.model_id) | normalize(model.name)
-        if want == tokens:
-            exact.append(model.model_id)
-            continue
+        tokens = _id_tokens(model.model_id) | _name_tokens(model)
         if want - tokens:            # a token (or count) the model lacks
             continue
-        lab = normalize(model.lab)
-        org_bonus = 0 if org and (org - lab) == Counter() else 1
-        subset.append((len(tokens - want), org_bonus, model.model_id))
-    # An exact match carries the model's lab tokens, so it is unique unless
-    # the catalog holds the same model twice — and then it is not an answer.
-    if exact:
-        return exact[0] if len(exact) == 1 else None
-    if not subset:
-        return None
-    subset.sort()
-    best = subset[0][:2]
-    winners = [mid for extra, bonus, mid in subset if (extra, bonus) == best]
-    return winners[0] if len(winners) == 1 else None
+        lab_miss = 0 if org and (org - normalize(model.lab)) == Counter() else 1
+        scored.append((len(tokens - want), lab_miss, model))
+    if not scored:
+        return []
+    scored.sort(key=lambda t: (t[0], t[1]))
+    best = scored[0][:2]
+    return _one_model([m for extra, lab, m in scored
+                       if (extra, lab) == best])
+
+
+def _all_rows_of(model: list) -> list[str]:
+    """Every catalog row of the model, not just the canonical one.
+
+    A recorded mapping names the canonical id; the dated snapshot beside it
+    is the same model and gets the same score.
+    """
+    if not model:
+        return []
+    target = model[0]
+    same = [m for m in _CATALOG[0]
+            if m.lab == target.lab and _name_tokens(m) == _name_tokens(target)]
+    return sorted((m.model_id for m in same or model),
+                  key=lambda c: (0 if LATEST.search(c) else 1, c))
+
+
+#: the catalog currently being matched against, so _all_rows_of can find the
+#: snapshot rows beside the one a mapping names
+_CATALOG: list[list] = [[]]
+
+
+def _one_model(candidates: list) -> list[str]:
+    """The ids of *candidates* when they are one model, else nothing.
+
+    They must agree on provider and on name — the prefix is what tells
+    ``anthropic/claude-sonnet-5-5`` from ``otherproxy/claude-sonnet-5-5``.
+    The "(latest)" row sorts first: it is the canonical id, and the one an
+    override file is named after.
+    """
+    if len({c.lab for c in candidates}) > 1:
+        return []
+    # Counter is unhashable, so compare the token sets as sorted items
+    if len({tuple(sorted(_name_tokens(c).items())) for c in candidates}) > 1:
+        return []
+    return sorted((c.model_id for c in candidates),
+                  key=lambda c: (0 if LATEST.search(c) else 1, c))
+
+
+def match_model(row: "BoardRow", models) -> str | None:
+    """The one catalog model a board row is about, or None when ambiguous.
+
+    See :func:`match_models`, which returns every row when the catalog holds
+    the same model twice.
+    """
+    found = match_models(row, models)
+    return found[0] if found else None
 
 
 def merge_boards(models, rows: list[BoardRow]):
@@ -327,8 +402,9 @@ def merge_boards(models, rows: list[BoardRow]):
 
     by_model: dict[str, list[BoardRow]] = {}
     for row in rows:
-        model_id = match_model(row, models)
-        if model_id:
+        # every row of the model, not one of them: the catalog keeps a dated
+        # snapshot beside the canonical row and a board does not know that
+        for model_id in match_models(row, models):
             by_model.setdefault(model_id, []).append(row)
 
     conflicts: list[Conflict] = []

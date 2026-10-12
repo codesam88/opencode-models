@@ -6,6 +6,8 @@ from pathlib import Path
 
 from opencode_rank.boards import (
     BoardRow,
+    match_model,
+    match_models,
     tbench_page_rows,
     merge_boards,
     match_model,
@@ -368,3 +370,135 @@ class TbenchPageTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ModelNameTest(unittest.TestCase):
+    """The catalog's own naming decides which model a board row means.
+
+    opencode marks a canonical row with "(latest)" and keeps the dated
+    snapshot beside it — ``claude-sonnet-4-0`` is "Claude Sonnet 4 (latest)"
+    and ``claude-sonnet-4-20250514`` is "Claude Sonnet 4". The two ids share
+    no shape at all, so the name is the only thing that says they are one
+    model. It is also what keeps "Claude 4 Sonnet" off Sonnet 4.6.
+    """
+
+    def _models(self):
+        from opencode_rank.data import Model
+        rows = [("anthropic/claude-sonnet-4-0", "Claude Sonnet 4 (latest)"),
+                ("anthropic/claude-sonnet-4-20250514", "Claude Sonnet 4"),
+                ("anthropic/claude-sonnet-4-6", "Claude Sonnet 4.6"),
+                ("anthropic/claude-opus-4-5", "Claude Opus 4.5 (latest)"),
+                ("anthropic/claude-opus-4-5-20251101", "Claude Opus 4.5")]
+        return [Model(model_id=i, name=n, lab=i.split("/")[0],
+                      price_input=1.0, price_output=1.0, price_cached_input=1.0)
+                for i, n in rows]
+
+    def _row(self, name):
+        return BoardRow(benchmark="SWE-Bench Verified", model_name=name,
+                        score=70.0, source="https://www.swebench.com/")
+
+    def test_a_name_without_a_version_does_not_reach_the_newer_one(self):
+        found = match_models(self._row("Claude 4 Sonnet"), self._models())
+        self.assertEqual(set(found),
+                         {"anthropic/claude-sonnet-4-0",
+                          "anthropic/claude-sonnet-4-20250514"})
+
+    def test_latest_and_dated_rows_are_one_model_whatever_the_id(self):
+        # ids share no shape: -4-0 vs -4-20250514
+        self.assertEqual(
+            set(match_models(self._row("Claude Sonnet 4"), self._models())),
+            {"anthropic/claude-sonnet-4-0",
+             "anthropic/claude-sonnet-4-20250514"})
+
+    def test_the_single_answer_prefers_the_latest_row(self):
+        self.assertEqual(match_model(self._row("Claude Sonnet 4"),
+                                     self._models()),
+                         "anthropic/claude-sonnet-4-0")
+
+    def test_a_board_row_reaches_every_row_of_the_model(self):
+        models = self._models()
+        merged, conflicts = merge_boards(models, [
+            BoardRow(benchmark="SWE-Bench Verified", model_name="Claude Opus 4.5",
+                     score=74.4, source="https://www.swebench.com/")])
+        opus = [m for m in merged if m.model_id.startswith(
+            "anthropic/claude-opus-4-5")]
+        self.assertEqual(len(opus), 2)
+        self.assertTrue(all(m.scores.get("SWE-Bench Verified") == 74.4
+                            for m in opus))
+        self.assertEqual(conflicts, [])
+
+    def test_a_distinct_version_is_still_its_own_model(self):
+        found = match_models(self._row("Claude Sonnet 4.6"), self._models())
+        self.assertEqual(found, ["anthropic/claude-sonnet-4-6"])
+
+
+class LabelMapTest(unittest.TestCase):
+    """A recorded decision beats re-deriving the same call every fetch."""
+
+    def _row(self, name, source="https://www.swebench.com/"):
+        return BoardRow(benchmark="SWE-Bench Verified", model_name=name,
+                        score=10.0, source=source)
+
+    def _models(self):
+        from opencode_rank.data import Model
+        rows = [("openai/gpt-3.5-turbo", "GPT-3.5-turbo"),
+                ("openai/gpt-5.3-codex", "GPT-5.3 Codex"),
+                ("anthropic/claude-opus-5-5", "Claude Opus 5.5"),
+                ("anthropic/claude-opus-4-5", "Claude Opus 4.5 (latest)"),
+                ("anthropic/claude-opus-4-5-20251101", "Claude Opus 4.5")]
+        return [Model(model_id=i, name=n, lab=i.split("/")[0],
+                      price_input=1.0, price_output=1.0, price_cached_input=1.0)
+                for i, n in rows]
+
+    def test_a_recorded_label_wins_over_a_token_tie(self):
+        # "GPT-3.5" fits the turbo and GPT-5.3 Codex equally by token count
+        self.assertEqual(match_model(self._row("GPT-3.5"), self._models()),
+                         "openai/gpt-3.5-turbo")
+
+    def test_a_recorded_label_applies_to_its_own_service_only(self):
+        # "GPT-3.5" is decided for swebench; another service publishing the
+        # same label gets no free ride on that decision — it falls through
+        # to the matcher, which cannot resolve it
+        swebench = self._row("GPT-3.5", "https://www.swebench.com/")
+        self.assertEqual(match_model(swebench, self._models()),
+                         "openai/gpt-3.5-turbo")
+        elsewhere = self._row("GPT-3.5", "https://www.tbench.ai/leaderboard/x")
+        self.assertIsNone(match_model(elsewhere, self._models()))
+
+    def test_a_mapped_label_reaches_every_row_of_the_model(self):
+        from opencode_rank.labelmap import LABEL_MAPS
+        LABEL_MAPS.setdefault("www.tbench.ai", {})["Opus 4.5"] = \
+            "anthropic/claude-opus-4-5"
+        try:
+            row = self._row("Opus 4.5", "https://www.tbench.ai/leaderboard/x")
+            self.assertEqual(
+                set(match_models(row, self._models())),
+                {"anthropic/claude-opus-4-5",
+                 "anthropic/claude-opus-4-5-20251101"})
+        finally:
+            LABEL_MAPS["www.tbench.ai"].pop("Opus 4.5")
+
+    def test_a_mapping_to_a_model_the_catalog_lost_is_ignored(self):
+        from opencode_rank.labelmap import LABEL_MAPS
+        LABEL_MAPS.setdefault("www.swebench.com", {})["Ghost"] = \
+            "nobody/ghost-model"
+        try:
+            self.assertEqual(match_model(self._row("Ghost"), self._models()),
+                             None)
+        finally:
+            LABEL_MAPS["www.swebench.com"].pop("Ghost")
+
+    def test_every_recorded_id_exists_in_the_real_catalog(self):
+        from pathlib import Path
+
+        from opencode_rank.data import load_models
+        from opencode_rank.labelmap import LABEL_MAPS
+        ids = {m.model_id for m in load_models(Path("data/opencode"))}
+        if not ids:                      # no dataset fetched: nothing to check
+            self.skipTest("no catalog fetched")
+        for host, table in LABEL_MAPS.items():
+            for label, model_id in table.items():
+                with self.subTest(host=host, label=label):
+                    self.assertIn(model_id, ids,
+                                  f"{host}: {label} points at a model the "
+                                  f"catalog no longer has")

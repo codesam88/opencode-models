@@ -81,10 +81,24 @@ MIN_AXES = 2
 #: on chat answers rather than task completion, and no model in the catalog
 #: carries it.
 #:
+#: DeepSWE 1.1 earns its place by being the only thing that pairs with the
+#: rest. It is the broadest benchmark carried by models that hold nothing
+#: else scored - nine of the 25 offered models on a single axis carry it -
+#: so admitting it is what makes those models rankable at all. It is also
+#: the weakest entry on provenance and on signal, and both facts are worth
+#: stating plainly: every one of its 29 numbers is a vendor self-report (no
+#: board runs it), and its rank correlation with Terminal-Bench 2.1 over the
+#: models carrying both is 0.87, so it mostly re-ranks what TB 2.1 already
+#: says rather than adding an independent read. A median over five
+#: benchmarks therefore leans on TB 2.1 twice.
+#:
+#: The bare "DeepSWE" name stays out: it shares no model with "DeepSWE 1.1"
+#: in the catalog, so it is an older revision carrying four models.
+#:
 #: The order is also the order the benchmarks are shown in: the axis the
 #: console ranks on first, then the axes that fill in.
 _TRACKED = ("Terminal-Bench 2.1", "Terminal-Bench 4.0",
-            "SWE-Bench Verified", "SWE-Bench Pro")
+            "SWE-Bench Verified", "SWE-Bench Pro", "DeepSWE 1.1")
 
 
 def _folded(name: str) -> str:

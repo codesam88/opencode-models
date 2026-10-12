@@ -203,7 +203,7 @@ NAMES = ("Terminal-Bench 2.0", "Terminal-Bench 2.1", "Terminal-Bench 4.0",
          "Terminal Bench 2.1", "SWE-Bench Verified", "SWE-Bench Pro",
          "SWE Bench Pro", "SWE-Bench Lite", "SWE-Bench Multimodal",
          "SWE-Bench Multilingual", "Terminal-Bench 3.0", "Terminal-Bench Hard",
-         "LMArena Elo", "SEC-Bench Pro")
+         "LMArena Elo", "SEC-Bench Pro", "DeepSWE 1.1", "DeepSWE")
 
 
 class TrackedTest(unittest.TestCase):
@@ -250,11 +250,16 @@ class TrackedTest(unittest.TestCase):
             with self.subTest(benchmark=name):
                 self.assertFalse(tracked(name))
 
-    def test_the_shortlist_is_the_three_axes_the_console_orders_on(self):
+    def test_the_shortlist_is_the_five_benchmarks_the_console_orders_on(self):
         self.assertEqual(
             sorted({canonical(n) for n in NAMES if tracked(n)}),
-            ["SWE Bench Pro", "SWE Bench Verified", "Terminal Bench 2.1",
-             "Terminal Bench 4.0"])
+            ["DeepSWE 1.1", "SWE Bench Pro", "SWE Bench Verified",
+             "Terminal Bench 2.1", "Terminal Bench 4.0"])
+
+    def test_the_older_deepswe_revision_is_not_scored_on(self):
+        # "DeepSWE" and "DeepSWE 1.1" share no models in the catalog: they
+        # are different revisions, and only 1.1 is broadly carried
+        self.assertFalse(tracked("DeepSWE"))
 
     def test_an_untracked_benchmark_cannot_drag_the_median(self):
         models = [_model("a/one", **{"Terminal-Bench 2.1": 90.0,

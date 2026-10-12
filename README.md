@@ -120,15 +120,16 @@ or a provider list outgrows the rest.
 
 ### Which benchmarks are scored
 
-Four benchmarks carry the scores, and they are named one by one in
+Five benchmarks carry the scores, and they are named one by one in
 `scoring._TRACKED` rather than matched by prefix:
 
 | benchmark | tier models | all models |
 |---|---|---|
 | Terminal-Bench 2.1 | 37 | 50 |
+| SWE-Bench Pro | 34 | 57 |
 | Terminal-Bench 4.0 | 27 | 28 |
 | SWE-Bench Verified | 18 | 77 |
-| SWE-Bench Pro | 34 | 57 |
+| **DeepSWE 1.1** | **25** | **29** |
 
 They are the most relevant and the most broadly available at the same time:
 Terminal-Bench is the closest thing to "can this model finish a task on a
@@ -138,6 +139,24 @@ measured on enough models to compare anyone to anyone. The two SWE-bench
 subsets are both kept deliberately — Pro is what the tier broadly carries
 (34 models against Verified's 18), and Verified is the canonical metric and by
 far the broadest number in the catalog (77).
+
+**DeepSWE 1.1 is the exception, and it earns its place by pairing rather than
+by relevance.** It is the narrowest thing here — 29 models out of 476 — and
+the weakest on provenance: all 29 numbers are vendor self-reports, and no
+board runs it, so it can never set the ends of its own scale. What it does is
+supply the second axis for models that have nothing else: nine of the 25
+offered models sitting on a single benchmark carry it, and admitting it takes
+the scored field from 36 models to 45. `opencode-rank scores` names that
+group explicitly — "N on one benchmark" — so a thin row is never presented as
+a ranked one.
+
+Its signal is largely redundant with the axis next to it. Rank correlation
+with Terminal-Bench 2.1, over the models carrying both, is **0.87**: it
+mostly re-ranks what TB 2.1 already says. A median over five benchmarks
+therefore leans on TB 2.1 twice, which is worth knowing before reading a
+small score gap as a real difference. The bare `DeepSWE` name stays out — it
+shares no model with `DeepSWE 1.1` in the catalog, so it is an older revision
+carrying four models.
 
 Everything else the catalog mentions is context rather than signal, and the
 list is short enough to be worth spelling out. The catalog carries 212
@@ -185,11 +204,11 @@ scores` gives each of those benchmarks its own column and shows the raw
 number beside where it lands, so the arithmetic is checkable:
 
 ```
-476 models · 4 benchmarks scored on · 175 with scores · 301 without
+476 models · 5 benchmarks scored on · 45 with scores · 21 on one benchmark · 12 without any
 
-  MODEL                     SCORE  AXES  TB 2.1    TB 4.0     SWE Verified  SWE Pro
-  Claude Fable 5                   99     4  88→97     44.55→62   95→100        80.3→100
-  Claude Opus 5                    99     3            53.94→80   96→100        79.2→99
+  MODEL                     SCORE  AXES  TB 2.1    TB 4.0     SWE Verified  SWE Pro   DeepSWE 1.1
+  Muse Spark 1.3 Contributor     99     2  88.8→98                                      75.4→100
+  Claude Fable 5                 99     4  88→97     44.55→62   95→100        80.3→100
 ```
 
 Two more rules decide what counts as evidence.

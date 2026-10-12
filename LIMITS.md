@@ -97,10 +97,27 @@ Limits range **$15–$60/month on Go** and **$60–$240/month on Go Plus**.
 
 | usage model | examples | behaviour |
 |---|---|---|
-| **Free, unlimited** | LongCat 2.5 Preview Free, Step 5 Preview Free | listed `Unlimited limited time` in the price table and `Unlimited` in all three windows — a promotion with an end date, not a permanent guarantee |
+| **Free — no dollar allowance, but rate-limited** | LongCat 2.5 Preview Free, Step 5 Preview Free | the price table lists `Unlimited` in the **Monthly limit** column, i.e. they draw no included usage — it does **not** mean unthrottled (see below) |
 | **Included in subscription** | everything else | drawn from the model's monthly dollar limit; token prices as published |
 | **Beyond the limit** | — | requests are **blocked**… |
 | **…unless "Use balance" is on** | — | Go **falls back to the Zen balance** and keeps going, spending credits |
+
+`Unlimited` is the value in a *dollar* column, and the estimate table
+repeats it because it derives from that column. It says nothing about rate
+limits. Two pieces of evidence say the free models are throttled anyway:
+
+- The Console has a distinct limit state, *"**Free limit reached** — Subscribe
+  to OpenCode Go for reliable access to the best open-source models"*,
+  separate from its *"Go limit reached"* dialog. A free-tier limit exists and
+  triggers on its own.
+- Both free models carry **identical model ids on Zen and Go**
+  (`longcat-2.5-preview-free`, `step-5-preview-free`), so they are the same
+  models behind the same free tier — whatever throttles them on Zen applies
+  on Go.
+
+The free-tier cap itself (`dailyRequests` in the server's `ZEN_LIMITS`) is
+still unpublished, so the honest reading is "free, and rate-limited by an
+unknown amount", not unlimited.
 
 Why limits differ per model: *"For most models, we make this work through
 bulk discounts and reserved GPU capacity… For some models, we haven't had
@@ -201,4 +218,12 @@ as if they were known:
    "what did I use today", never for remaining allowance.
 4. **Go overages may be invisible in Go's own numbers.** With "Use balance"
    enabled, requests past the limit are billed to Zen credits and keep
-   flowing, so Go usage can exceed its cap without an error.
+   flowing, so Go usage can exceed its cap without an error. The Console
+   confirms this is the designed path — its *"Go limit reached"* dialog
+   offers *"enable usage from your available balance"* as the remedy.
+5. **A model's cost is a step function, not a number.** For a Go model with
+   an allowance it is $0 until the cap and list price after it; for a free
+   model it is $0 until an unpublished cap and then blocked or converted.
+   That is why the list view should not rank Go's included models by
+   score-per-list-price: the dollar it divides by is already spent, and the
+   constraint that binds is the per-model allowance.

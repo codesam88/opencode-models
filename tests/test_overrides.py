@@ -234,15 +234,13 @@ COMPETITOR_KEYS = {
     "openai__gpt-6-astra.json": {("Terminal-Bench", "2.1")},
     "anthropic__claude-fable-5-1.json": {("DeepSWE", "1.1"),
                                          ("Terminal-Bench", "2.1")},
-    "anthropic__claude-opus-5.json": {("Terminal-Bench", "2.1"),
-                                         ("Terminal-Bench", "4.0")},
-    "meta__muse-spark-1-3.json": {("Terminal-Bench", "4.0")},
-    "openai__gpt-5-6-terra.json": {("Terminal-Bench", "4.0")},
-    "openai__gpt-5-6-luna.json": {("Terminal-Bench", "4.0")},
-    "deepseek__deepseek-v4-1-flash.json": {("Terminal-Bench", "4.0")},
-    "alibaba__qwen3-8-flash-next.json": {("Terminal-Bench", "4.0")},
-    "deepseek__deepseek-v4-pro-0813.json": {("Terminal-Bench", "4.0")},
-    "deepseek__deepseek-v4-flash-vision-exp.json": {("Terminal-Bench", "4.0")},
+    # Deliberately short: nine cells from AA's TB 4.0 chart were adopted
+    # and then reverted, because bar-to-run attribution from a screenshot
+    # cannot be verified from here - the page text confirms only its top
+    # three (Sonnet 5.5 63.6, Opus 5.5 Max/Xhigh 59.6), and one transcribed
+    # bar collides with those. What stays is machine-read from StepFun's
+    # page bundle, where column headers name the model.
+    "anthropic__claude-opus-5.json": {("Terminal-Bench", "2.1")},
 }
 
 

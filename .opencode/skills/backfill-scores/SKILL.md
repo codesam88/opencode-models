@@ -161,7 +161,12 @@ model is unbenchmarked, exactly as LongCat-2.5-Preview was.
 ### Verified NOT scrapable — do not waste a pass
 
 StepFun's model pages (JS shell, ~2KB served; numbers render in a browser),
-Artificial Analysis (per-model pages are 4MB app shells, no data API), Vals
+Artificial Analysis eval pages (e.g. `/evaluations/terminalbench-4-0`):
+machine-readable model registry with exact run slugs (which settles
+"Opus 5 vs 5.5" questions), but chart scores are client-rendered - only
+the top three are stated in the page prose. A screenshot transcription is
+not a source: one transcribed bar collided with the prose, so nine adopted
+cells were reverted. Per-model pages are 4MB app shells, no data API. Vals
 AI, Scale's SWE-Atlas, DeepSWE, LiveBench, the Epoch AI benchmarking
 dashboard, and the Open LLM Leaderboard HF space: all render their numbers in
 a browser. **Check whether the data is embedded before writing a source off**

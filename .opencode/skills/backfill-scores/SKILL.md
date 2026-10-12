@@ -1,13 +1,14 @@
 ---
 name: backfill-scores
-description: Use when an opencode-rank model has no benchmark score, or when asked to find, research or add benchmark numbers — covers where to look, which sources are actually scrapable, how to write a data/overrides JSON file, and how to verify it landed.
+description: Use when an opencode-rank model has only one scored benchmark and is therefore unranked, or when asked to find, research or add benchmark numbers — covers where to look, which sources are actually scrapable, how to write a data/overrides JSON file, and how to verify it landed.
 ---
 
 # Backfilling missing benchmark scores
 
-Some models in the catalog ship with `benchmarks: []` or with scores too weak
-to rank on. This is how to find them, source a number, write it down, and
-prove it landed.
+A model needs two of the four scored benchmarks to carry a score at all
+(`scoring.MIN_AXES`), so the models worth chasing are the ones sitting on
+one. This is how to find them, source a number, write it down, and prove it
+landed.
 
 The rule everything else serves: **a number without a source is not data.**
 The loader drops any override entry that has no `source`, so a file without
@@ -15,27 +16,47 @@ one is inert — it will not appear, fail, or warn.
 
 ## 1. Find what is missing
 
-Coverage per benchmark:
+The target list is models that are **listed in a Zen or Go plan** and carry
+**one** scored benchmark. Both filters matter:
 
-```sh
-uv run opencode-rank --data data benchmarks
-```
-
-The count next to each name is how many models carry it. The primary axis is
-Terminal-Bench 2.x; to list the models that have none of it:
+- A model no plan lists is a model about to be unlisted. A number for it
+  changes nothing, because nothing recommends it.
+- A model with no scored benchmark at all is a different problem (nothing to
+  pair with, and usually nothing published). A model with *one* is a missing
+  pair away from being ranked.
 
 ```sh
 PYTHONPATH=. uv run python -c "
 from pathlib import Path
-from opencode_rank.data import load_models
-from opencode_rank.ranking import PRIMARY_FAMILY, TB4_FAMILY, _best
-models = load_models(Path('data/opencode'))
-missing = [m for m in models if not _best(m.scores, PRIMARY_FAMILY,
-                                           skip=TB4_FAMILY, versioned=True)]
-print(f'{len(missing)} of {len(models)} carry no Terminal-Bench 2.x score')
-for m in sorted(missing, key=lambda m: m.model_id):
-    print(' ', m.model_id, '|', m.name, '|', list(m.scores) or 'nothing')
+from opencode_rank.cli import _load
+from opencode_rank.scoring import scales, derived_scores, canonical, _TRACKED
+import opencode_rank.sources as sources
+
+models, *_ = _load(Path('data'))
+table = scales(models)
+plans = {svc: {m.model_id for m in sources.members(models, sources.load_source(svc))[0]}
+         for svc in ('zen', 'go')}
+for m in models:
+    derived = derived_scores(m, table)
+    plan = next((s for s in ('zen', 'go') if m.model_id in plans[s]), None)
+    if not (plan and len(derived) == 1):
+        continue
+    has = canonical(next(iter(derived)))
+    missing = [b.replace('Terminal-Bench ', 'TB ').replace('SWE-Bench ', 'SWE ')
+               for b in _TRACKED if canonical(b) != has]
+    print(f'{plan:4} {m.model_id:34} has {has:20} missing {\", \".join(missing)}')
 "
+```
+
+**Skip old and superseded models.** A nano, a mini, a two-generations-back
+release, and anything the provider is about to retire will not change a
+recommendation. Chase the new frontier and the opencode-exclusive ones first;
+those are where a second axis moves a row.
+
+Coverage per benchmark, for a wider view:
+
+```sh
+uv run opencode-rank --data data benchmarks
 ```
 
 Filter that list down before spending time on it: an unreleased model or a
@@ -61,7 +82,55 @@ for name in ('tbench', 'swebench'):
 Those two boards are fetched by `opencode-rank fetch` and merged by tier. Do
 not hand-copy a number that is already in there.
 
+**Checked and empty for the thin models (2026-10).** Of the 26 Zen/Go models
+sitting on exactly one axis, neither board holds a second scored axis for any
+of them: `tbench.json` carries only Terminal-Bench 4.0 rows we already have,
+and the one SWE-bench row that matches (Kimi K2.5) is Multilingual, which is
+not scored on. Do not re-run this check hoping for a different answer — it
+only changes when the boards themselves gain rows, and `fetch` reports that.
+
 ## 3. Where to look, in order
+
+### Vendor pages, and what they actually publish
+
+Vendor launch pages **are** scrapable — `curl -sL` with a real User-Agent
+returns 200–300 KB of HTML — but for new frontier models they publish
+Terminal-Bench 4.0 and little else. Checked on Anthropic's Haiku 5.5 and
+Sonnet 5.5 pages and xAI's Grok 4.7 post: all three carry Terminal-Bench 4.0,
+none carries SWE-bench or Terminal-Bench 2.1.
+
+Normalise before concluding a page lacks a benchmark: vendor HTML writes
+"SWE‑bench" with U+2011, "SWE-bench™" with a trademark, and non-breaking
+spaces. A plain-space search misses all three and reports a false negative.
+
+```sh
+python3 - <<'EOF'
+import re, subprocess, unicodedata
+html = subprocess.run(["curl", "-sL", "--max-time", "30",
+                       "-H", "User-Agent: opencode-rank/0.1", URL],
+                      capture_output=True, text=True).stdout
+for a, b in (("\u2011", "-"), ("\u00a0", " "), ("\u2122", ""), ("\u00ae", "")):
+    html = html.replace(a, b)
+html = unicodedata.normalize("NFKC", html)
+print(sorted({m.group(0) for m in
+              re.finditer(r"(terminal[\s-]*bench|swe[\s-]*bench)[^<>\n]{0,30}",
+                          html, re.I)}))
+EOF
+```
+
+This is the structural finding behind the thin-model list: the axis vendors
+publish is Terminal-Bench 4.0, and it is the one axis a model can be alone
+on. A model announced today will usually have exactly one scored axis.
+
+### Hugging Face model cards
+
+Public and reliable to read, and they carry the metrics a lab chose to
+publish. Kimi K3's card has Terminal-Bench 2.1 (88.3) in an HTML results
+table — the benchmark name is in one `<td>`, the numbers in the next ones, so
+parse the table rather than searching for a "name: value" pattern. MiMo-V2.5's
+card carries no scored axis at all. A 29-byte card means the repo name is
+wrong (`Entry not found`), not that the model is unbenchmarked — search
+`https://huggingface.co/api/models?search=<name>` for the real id.
 
 ### Primary for opencode-exclusive and stealth models
 
@@ -99,25 +168,33 @@ page streams the data it renders from. Look for `self.__next_f`,
 
 When the only remaining source is one a scraper cannot reach, hand the user a
 request they can answer in one sitting. Vague asks ("can you find benchmarks
-for X?") come back with nothing. Give them:
+for X?") come back with nothing. Give them, per model, **only the axes it
+lacks** — asking for a number the catalog already holds wastes their time and
+yours:
 
 ```
-Model:  <model id>  (<display name>)
-Looking for:
-  - Terminal-Bench 2.1 (pass@1)  — the primary axis
-  - Terminal-Bench 4.0 (pass@1)  — its own scale, ranked separately
-  - SWE-Bench Verified (% resolved)
+Model:  moonshotai/kimi-k3  (Kimi K3)  — Zen
+Has:     Terminal-Bench 2.1  88.3
+Looking for (one of these is enough to make it rankable):
+  - SWE-Bench Verified (% resolved), or SWE-Bench Pro
+  - Terminal-Bench 4.0 (pass@1)
 What makes a number usable:
   - which harness/agent ran it (Claude Code, Codex, mini-swe-agent, …)
   - reasoning effort, if the board distinguishes it
   - the date, and the CI or trial count if published
   - the exact URL to the run, not a screenshot
-Why it matters: it is the only axis this model is ranked on.
+Why it matters: one axis is not a score (scoring.MIN_AXES), so this model is
+unranked and never recommended, however strong that one number is.
 ```
 
 A bare score with no harness is worth far less than the ranking suggests —
 Terminal-Bench 2.x and 4.0 are different scales, and a run on a bespoke
 scaffold is not comparable with a standardized board.
+
+Batch the ask: one message listing the models, each with the single axis it
+most needs, beats 26 separate ones. Prioritise by how strong the model
+already looks on its one axis — a model at 88 on Terminal-Bench 2.1 that
+cannot be ranked is the most expensive gap in the console.
 
 ## 5. Write the file
 

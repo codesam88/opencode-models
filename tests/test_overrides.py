@@ -224,50 +224,67 @@ class StepFiveOverrideTest(unittest.TestCase):
                 self.assertIn("High", entry.get("note", ""))
 
 
-#: StepFun's Step-5-Preview page, competitor columns (all "(Max)" effort).
-#: Only cells upstream does not already hold at equal-or-better tier: exact
-#: duplicates (Kimi DeepSWE 67.5, Astra DeepSWE 74.1, GLM-5.3 DeepSWE 66.9),
-#: same-tier disagreements (Kimi TB 2.1, Opus 5 DeepSWE) and board-held cells
-#: (all three TB 4.0s) stay out - each would be recorded-but-kept noise.
-COMPETITOR_KEYS = {
-    "moonshotai__kimi-k3.json": {("Terminal-Bench", "4.0")},
+#: Every override file's contract: the exact set of (benchmark, version)
+#: keys it holds. Keys are the contract; values are data and may be re-read.
+#: Two sources feed these files - StepFun's page bundle (machine-read column
+#: headers) and AA's TB 2.1 chart (eyewitness transcription, adopted only
+#: where a run slug ties the bar to a model).
+FILE_KEYS = {
+    # StepFun's Step-5-Preview page: only cells upstream lacks at
+    # equal-or-better tier
+    "moonshotai__kimi-k3.json": {("Terminal-Bench", "4.0"),
+                                 ("Terminal-Bench", "2.1")},
     "openai__gpt-6-astra.json": {("Terminal-Bench", "2.1")},
     "anthropic__claude-fable-5-1.json": {("DeepSWE", "1.1"),
                                          ("Terminal-Bench", "2.1")},
-    # Deliberately short: nine cells from AA's TB 4.0 chart were adopted
-    # and then reverted, because bar-to-run attribution from a screenshot
-    # cannot be verified from here - the page text confirms only its top
-    # three (Sonnet 5.5 63.6, Opus 5.5 Max/Xhigh 59.6), and one transcribed
-    # bar collides with those. What stays is machine-read from StepFun's
-    # page bundle, where column headers name the model.
     "anthropic__claude-opus-5.json": {("Terminal-Bench", "2.1")},
+    # AA's TB 2.1 chart: missing cells with a run slug behind the bar, plus
+    # Kimi's 85.0, which StepFun's bundle states identically
+    "alibaba__qwen3-8-flash-next.json": {("Terminal-Bench", "2.1")},
+    "deepseek__deepseek-v4-flash.json": {("Terminal-Bench", "2.1")},
+    "inclusionai__ling-3-0-flash-fin.json": {("Terminal-Bench", "2.1")},
+    "alibaba__qwen3-8-max-0902.json": {("Terminal-Bench", "2.1")},
+}
+
+#: Where each file's entries must come from. A screenshot transcription is
+#: adopted only with a run slug tying bar to model - nine TB 4.0 cells were
+#: reverted for lacking exactly that.
+FILE_HOSTS = {
+    "moonshotai__kimi-k3.json": {"stepfun.com/step-5-preview",
+                                 "artificialanalysis.ai"},
+    "openai__gpt-6-astra.json": {"stepfun.com/step-5-preview"},
+    "anthropic__claude-fable-5-1.json": {"stepfun.com/step-5-preview"},
+    "anthropic__claude-opus-5.json": {"stepfun.com/step-5-preview"},
+    "alibaba__qwen3-8-flash-next.json": {"artificialanalysis.ai"},
+    "deepseek__deepseek-v4-flash.json": {"artificialanalysis.ai"},
+    "inclusionai__ling-3-0-flash-fin.json": {"artificialanalysis.ai"},
+    "alibaba__qwen3-8-max-0902.json": {"artificialanalysis.ai"},
 }
 
 
 class CompetitorOverrideTest(unittest.TestCase):
     """One file per competitor, holding only what is missing upstream."""
 
-    def _keys(self, filename):
+    def _payload(self, filename):
         root = Path(__file__).resolve().parent.parent / "data" / "overrides"
-        payload = json.loads((root / filename).read_text())["model"]
-        return {(e["name"], e["version"]) for e in payload["benchmarks"]}
+        return json.loads((root / filename).read_text())["model"]
 
     def test_each_file_holds_exactly_the_missing_cells(self):
-        for filename, keys in COMPETITOR_KEYS.items():
+        for filename, keys in FILE_KEYS.items():
             with self.subTest(override=filename):
-                self.assertEqual(self._keys(filename), keys)
+                got = {(e["name"], e["version"])
+                       for e in self._payload(filename)["benchmarks"]}
+                self.assertEqual(got, keys)
 
-    def test_competitor_cells_carry_the_max_effort(self):
-        root = Path(__file__).resolve().parent.parent / "data" / "overrides"
-        for filename in COMPETITOR_KEYS:
-            payload = json.loads((root / filename).read_text())["model"]
-            for entry in payload["benchmarks"]:
+    def test_each_cell_names_its_source_and_effort(self):
+        for filename, hosts in FILE_HOSTS.items():
+            for entry in self._payload(filename)["benchmarks"]:
                 with self.subTest(override=filename,
                                   benchmark=(entry["name"],
                                              entry["version"])):
-                    source = entry.get("source", "")
-                    self.assertTrue("stepfun.com/step-5-preview" in source
-                                    or "artificialanalysis.ai" in source)
+                    self.assertTrue(
+                        any(h in entry.get("source", "") for h in hosts),
+                        f"{filename}: {entry.get('source')}")
                     self.assertRegex(entry.get("note", ""),
                                      r"Max|max|effort")
 

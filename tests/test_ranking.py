@@ -368,11 +368,11 @@ class AxisScoresTest(unittest.TestCase):
 
 
 class GradeTest(unittest.TestCase):
-    """The rank marker reads the score, not the position: 85+ is ++, 75+ is
+    """The rank marker reads the score, not the position: 90+ is ++, 75+ is
     +, 60+ is o, 50+ is -, below that --, and no score is ·."""
 
     def test_thresholds(self):
-        cases = [(100.0, "++"), (85.0, "++"), (84.9, "+"), (75.0, "+"),
+        cases = [(100.0, "++"), (90.0, "++"), (89.9, "+"), (75.0, "+"),
                  (74.9, "o"), (60.0, "o"), (59.9, "-"), (50.0, "-"),
                  (49.9, "--"), (0.0, "--")]
         for score, marker in cases:

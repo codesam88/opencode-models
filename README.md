@@ -250,7 +250,7 @@ X` switches to the single-score layout: that benchmark's raw score and its
 tag.
 
 Each line is prefixed with a rank marker read off the score itself — `++`
-at 85 and above, `+` at 75, `o` at 60, `-` at 50, `--` below that, `·` where
+at 90 and above, `+` at 75, `o` at 60, `-` at 50, `--` below that, `·` where
 a row has no score to rank (unranked, not last). Absolute bands mean a
 strong field can share the top and a weak one is never flattered by it.
 

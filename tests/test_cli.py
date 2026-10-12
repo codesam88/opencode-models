@@ -1721,7 +1721,9 @@ class ScoresCommandTest(unittest.TestCase):
         ones, so the gap is what delimits them.
         """
         head = next(l for l in out.splitlines() if "SCORE" in l and "TB 2.1" in l)
-        return re.split(r"\s{2,}", head.strip())[3:]
+        # everything from AXES on is column-separated; MODEL/GRADE/SCORE
+        # are single-spaced and cannot be split the same way
+        return re.split(r"\s{2,}", head.split("AXES", 1)[1].strip())
 
     def _row(self, out, name):
         # the grade marker leads the line, so the name is a token in it,
@@ -1801,8 +1803,8 @@ class ScoresCommandTest(unittest.TestCase):
         self.assertNotIn("TB 2.0", out)
         # M5 measured on nothing we score on: no score, no axes
         self.assertIn("M5", self._row(out, "M5"))
-        self.assertEqual(re.split(r"\s{2,}", self._row(out, "M5").strip()),
-                         ["· M5", "—", "0"])
+        self.assertEqual(self._row(out, "M5").split()[:4],
+                         ["M5", "·", "—", "0"])
 
     def test_both_spellings_of_a_benchmark_share_one_column(self):
         import json
@@ -1886,18 +1888,22 @@ class ScoresCommandTest(unittest.TestCase):
         self.assertIn("1 with none scored", head)     # M0: benchmarks, no axes
         self.assertNotIn("4 with scores", head)
 
-    def test_rows_carry_the_grade_in_front_of_the_score(self):
-        # the same markers as `list`: ++ top decile down to -- bottom fifth,
-        # · where there is no score to rank
+    def test_the_grade_sits_between_the_name_and_the_score(self):
+        # MODEL GRADE SCORE AXES: the same markers as `list`, as a column
+        # rather than a prefix
         with tempfile.TemporaryDirectory() as tmp:
             self._grid(tmp)
             code, out = self._run("--data", tmp, "scores")
         self.assertEqual(code, 0)
+        head = next(l for l in out.splitlines()
+                    if "SCORE" in l and "TB 2.1" in l)
+        self.assertLess(head.index("MODEL"), head.index("GRADE"))
+        self.assertLess(head.index("GRADE"), head.index("SCORE"))
         grades = {}
         for line in out.splitlines():
             parts = line.split()
-            if len(parts) > 3 and parts[0] in ("++", "+", "o", "--", "·"):
-                grades[parts[1]] = parts[0]
+            if len(parts) > 3 and parts[1] in ("++", "+", "o", "--", "·"):
+                grades[parts[0]] = parts[1]
         self.assertEqual(grades.get("M1"), "++")   # best of the grid
         self.assertEqual(grades.get("M3"), "--")   # worst of the grid
 
@@ -1915,8 +1921,8 @@ class ScoresCommandTest(unittest.TestCase):
                                "source": ""}]}}))
             code, out = self._run("--data", tmp, "scores")
         self.assertEqual(code, 0)
-        row = next(l for l in out.splitlines() if "M9" in l)
-        self.assertTrue(row.strip().startswith("·"))
+        row = next(l for l in out.splitlines() if "M9" in l.split())
+        self.assertEqual(row.split()[1], "·")
 
     def test_no_line_pads_itself_out_with_trailing_spaces(self):
         with tempfile.TemporaryDirectory() as tmp:

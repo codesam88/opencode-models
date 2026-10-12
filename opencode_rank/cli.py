@@ -86,7 +86,7 @@ AXIS_HEADERS = ("SCORE", "¢/1M", "PROV")
 SINGLE_HEADERS = ("SCORE", "BENCH", "¢/1M", "PROV")
 
 #: Every row is prefixed by its rank marker, outside the column grid and
-#: without a header of its own: ++ at 85+, + at 75+, o at 60+, - at 50+,
+#: without a header of its own: ++ at 90+, + at 75+, o at 60+, - at 50+,
 #: -- below that, · unranked (no score at all). The header line is indented
 #: by the same width so the columns still line up.
 GRADE_WIDTH = 5
@@ -408,16 +408,17 @@ def _cmd_scores(args: argparse.Namespace) -> int:
              for m in ranked}
     widths = [max([len(label)] + [len(row[i]) for row in cells if row[i]] or [0])
               for i, (_key, label, _n) in enumerate(columns)]
-    print("GRADE: ++ ≥85 · + ≥75 · o 60–75 · - 50–60 · -- <50 · "
+    print("GRADE: ++ ≥90 · + ≥75 · o 60–75 · - 50–60 · -- <50 · "
           "· unranked")
-    print((f"  {'MODEL':<{width}} {'SCORE':>6} {'AXES':>5}  "
+    print((f"  {'MODEL':<{width}} {'GRADE':>{GRADE_WIDTH}} {'SCORE':>6} "
+           f"{'AXES':>5}  "
            + "  ".join(f"{label:<{w}}" for (_k, label, _n), w
                        in zip(columns, widths))).rstrip())
     for model, row in zip(ranked, cells):
         derived = derived_scores(model, table)
         score = combined(derived)
-        print((f"{marks.get(id(model), '·'):>{GRADE_WIDTH - 1}} "
-               f"{model.name:<{width}} "
+        print((f"  {model.name:<{width}} "
+               f"{marks.get(id(model), '·'):>{GRADE_WIDTH}} "
                f"{(f'{score:.0f}' if score is not None else '—'):>6} "
                f"{len(derived):>5}  "
                + "  ".join(f"{cell:<{w}}" for cell, w in zip(row, widths))
@@ -608,7 +609,7 @@ def _cmd_list(args: argparse.Namespace) -> int:
             more = f" (+{len(slugs) - 6} more)" if len(slugs) > 6 else ""
             print(f"{tier}: {len(slugs)} no longer listed by the provider, "
                   f"hidden here — {shown_slugs}{more} · --all-models to see them")
-    print("GRADE: ++ ≥85 · + ≥75 · o 60–75 · - 50–60 · -- <50 · "
+    print("GRADE: ++ ≥90 · + ≥75 · o 60–75 · - 50–60 · -- <50 · "
           "· unranked")
 
     # the split always happens — the cull is what keeps the worst-scoring

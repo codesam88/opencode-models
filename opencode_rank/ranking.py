@@ -68,10 +68,10 @@ AXES = (
 CULL_FRACTION = 0.3
 
 #: Rank grades for the console's marker column, read off the 0-100 score
-#: itself rather than off position in the list: 85+ is `++`, 75+ is `+`,
+#: itself rather than off position in the list: 90+ is `++`, 75+ is `+`,
 #: 60+ is `o`, 50+ is `-`, below that `--`. Absolute bands mean a strong
 #: field can share the top and a weak one is never flattered by it.
-GRADE_PLUSPLUS = 85.0
+GRADE_PLUSPLUS = 90.0
 GRADE_PLUS = 75.0
 GRADE_O = 60.0
 GRADE_MINUS = 50.0

@@ -49,11 +49,23 @@ opencode-rank render --benchmark "SWE-Bench Verified" --out swe.html
 opencode-rank list                      # both providers merged, three tables
 opencode-rank list --source zen         # one provider only
 opencode-rank list --source all --benchmark "SWE-Bench Verified"
+opencode-rank next                      # the next 4 models to use, in order
+opencode-rank next --count 6 --source go
 ```
 
 `render` defaults to the benchmark covering the most models. The output is one
 self-contained HTML file (inline SVG, no external assets) — open it from disk
 or serve the directory.
+
+`next` answers the narrower question "what should I reach for next?". It
+draws from the same pipeline `list` uses, so it can never disagree with the
+ranking it came from, and only recommends rows marked `++` — the top decile.
+Free models come first by score (they cost nothing, so only the score is
+left to maximise), then paid models by score per dollar; within each group
+the picks alternate between Zen and Go where both can supply one, so
+following the sequence spreads across the two plans instead of draining one
+allowance before touching the other. It says in its footer that it ignores
+how much of each allowance is left — see [LIMITS.md](LIMITS.md).
 
 `list` covers the Console **providers** (`zen` = curated, `go` = open) and
 prints three tables: **best value** first, then **worst score** (bottom 30%)

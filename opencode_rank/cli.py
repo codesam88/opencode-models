@@ -25,6 +25,7 @@ from .boards import (fetch_boards, load_boards, merge_boards,
                     save_boards)
 from .overrides import TIER_LABELS, load_curated, off_band_models, source_tier
 from .pricing import load_prices, refresh_prices
+from .ranking import RECOMMEND_GRADE, next_up
 from .ranking import (
     BAND_FREE,
     BAND_INCLUDED,
@@ -312,24 +313,28 @@ def _print_row(row, widths: tuple[int, ...], curated: set[str] = frozenset(),
           + _row_line(_cells(row, axis), widths) + f"  {name}")
 
 
-def _cmd_list(args: argparse.Namespace) -> int:
-    data_dir = Path(args.data)
-    if not data_dir.is_dir():
-        return _fail(f"no data directory at {data_dir} — run `fetch` first")
+def _select(data_dir: Path, source: str | None,
+            price: str = "weighted"):
+    """Which providers a view covers, or None if the name is not one.
 
-    # providers: zen and go, plus `-` for catalog models in neither tier
+    Providers are zen and go, plus ``-`` for catalog models in neither tier.
+    """
     tiers = sources.available_sources()
-    source = args.source
     if source is None:
-        selected, scope = list(tiers), "tiers"      # both, merged
-    elif source == "all":
-        selected, scope = list(tiers) + ["-"], "all"
-    elif source in tiers:
-        selected, scope = [source], "tier"
-    else:
-        return _fail(f"unknown source {source!r} — available: "
-                     f"{', '.join(tiers)}, all")
+        return list(tiers), "tiers"                   # both, merged
+    if source == "all":
+        return list(tiers) + ["-"], "all"
+    if source in tiers:
+        return [source], "tier"
+    return None
 
+
+def _rows_for(data_dir: Path, selected: list[str], price: str):
+    """Build, merge and dedupe the rows for *selected* providers.
+
+    Shared by `list` and `next` so a recommendation can never disagree with
+    the ranking it was drawn from.
+    """
     models, curated, _ = _load(data_dir)
     groups, listed, counts, tier_slugs = [], [], {}, {}
     covered: set[str] = set()
@@ -344,13 +349,29 @@ def _cmd_list(args: argparse.Namespace) -> int:
             covered |= {m.model_id for m in pool}
         listed += pool
         groups.append(build_rows(pool, _entries_for(provider, data_dir),
-                                 free_ids, axis=args.price, provider=provider))
+                                 free_ids, axis=price, provider=provider))
+    rows = dedupe_providers(merge_rows(*groups))
+    return rows, listed, curated, counts, tier_slugs, models
+
+
+def _cmd_list(args: argparse.Namespace) -> int:
+    data_dir = Path(args.data)
+    if not data_dir.is_dir():
+        return _fail(f"no data directory at {data_dir} — run `fetch` first")
+
+    source = args.source
+    chosen = _select(data_dir, source)
+    if chosen is None:
+        return _fail(f"unknown source {source!r} — available: "
+                     f"{', '.join(sources.available_sources())}, all")
+    selected, scope = chosen
+
+    rows, listed, curated, counts, tier_slugs, models = _rows_for(
+        data_dir, selected, args.price)
     if not listed:
         return _fail(f"no model of {source or 'zen+go'} is in {data_dir} "
                      f"— run `fetch`")
     # one line per (model, variant, score, cost) before the culls see them
-    rows = dedupe_providers(merge_rows(*groups))
-
     if args.benchmark:
         wanted = args.benchmark
         if wanted not in dict(available(listed)):
@@ -408,6 +429,64 @@ def _cmd_list(args: argparse.Namespace) -> int:
     return 0
 
 
+#: Why a pick is in the sequence, in the reader's terms.
+NEXT_REASONS = {
+    "free": "free — costs nothing, so only the score matters",
+    "included": "in your subscription — $0 until this model's own monthly "
+                "allowance runs out",
+    "payg": "billed from the Zen balance",
+    "catalog": "in the catalog only — not carried by the zen or go tier",
+}
+
+
+def _next_reason(row) -> str:
+    if row.provider not in ("zen", "go"):
+        return NEXT_REASONS["catalog"]
+    return NEXT_REASONS["included" if row.band == "included"
+                        else ("free" if row.free else "payg")]
+
+
+def _cmd_next(args: argparse.Namespace) -> int:
+    """A short ordered sequence: free models by score, then best value."""
+    data_dir = Path(args.data)
+    if not data_dir.is_dir():
+        return _fail(f"no data directory at {data_dir} — run `fetch` first")
+    chosen = _select(data_dir, args.source)
+    if chosen is None:
+        return _fail(f"unknown source {args.source!r} — available: "
+                     f"{', '.join(sources.available_sources())}, all")
+    rows, listed, _curated, _counts, _slugs, _models = _rows_for(
+        data_dir, chosen[0], args.price)
+    if not listed:
+        return _fail(f"no model of {args.source or 'zen+go'} is in {data_dir} "
+                     f"— run `fetch` first")
+    picks = next_up(grade_rows(order_rows(rows)), count=args.count)
+    if not picks:
+        return _fail(f"no {RECOMMEND_GRADE} model has a benchmark score in "
+                     f"{data_dir} — nothing to recommend yet")
+
+    width = max(len(r.name) for r in picks)
+    print(f"next {len(picks)} to use, in order · free first by score, then "
+          f"best score per ¢ · Zen and Go alternated where both can supply one")
+    print(f"eligible: {RECOMMEND_GRADE} only — the top decile of the same "
+          f"ordering the list view shows")
+    print()
+    print(f"  {'#':<2} {'PLAN':<5} {'SCORE':>6} {'¢/1M':>5} {'SCORE/$':>7}  "
+          f"{'MODEL':<{width}}  WHY")
+    for i, row in enumerate(picks, 1):
+        cells = _cells(row)
+        price, value = cells[-3], cells[-2]   # _cells ends (price, value, prov)
+        print(f"  {i:<2} {row.provider:<5} {row.score:>6g} {price:>5} "
+              f"{value:>7}  {row.name:<{width}}  {_next_reason(row)}")
+    print()
+    print("free models are rate-limited by a cap OpenCode does not publish, "
+          "so free is not unlimited;")
+    print("included models cost $0 until their own allowance runs out, then "
+          "draw the Zen balance if that is enabled;")
+    print("this ignores how much of each allowance is left — see LIMITS.md.")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="opencode-rank",
@@ -447,6 +526,19 @@ def main(argv: list[str] | None = None) -> int:
                              "Terminal-Bench 2.x (first) with SWE-Bench and "
                              "Terminal-Bench 4.0")
 
+    p_next = sub.add_parser(
+        "next", help="the next few models to use, in order: free by score, "
+                     "then best score per dollar"
+    )
+    p_next.add_argument("--count", type=int, default=4,
+                        help="how many to recommend (default: %(default)s)")
+    p_next.add_argument("--source", help="provider to draw from: zen or go "
+                                         "(default: both, merged)")
+    p_next.add_argument("--price", choices=("weighted", "input", "output"),
+                        default="weighted",
+                        help="cost of a line (default: weighted 20%% in, "
+                             "60%% cached, 20%% out)")
+
     p_scores = sub.add_parser(
         "scores", help="manage cached arena.ai Elo scores (offline unless --refresh)"
     )
@@ -460,6 +552,7 @@ def main(argv: list[str] | None = None) -> int:
         "benchmarks": _cmd_benchmarks,
         "render": _cmd_render,
         "list": _cmd_list,
+        "next": _cmd_next,
         "scores": _cmd_scores,
     }[args.command](args)
 

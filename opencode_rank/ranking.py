@@ -361,6 +361,60 @@ def grade_rows(rows: list[Row]) -> list[Row]:
             for r, symbol in zip(rows, graded)]
 
 
+#: Grade a row must carry to be eligible for a recommendation. Only the top
+#: decile is recommended: below that, the ordering is not confident enough to
+#: tell the reader which model is actually the better pick.
+RECOMMEND_GRADE = "++"
+
+
+def next_up(rows: list[Row], count: int = 4,
+            grade: str = RECOMMEND_GRADE) -> list[Row]:
+    """The next *count* models to use, in order.
+
+    Free models first: they cost nothing, so the only thing left to maximise
+    is the score. Paid models follow, ordered by score per dollar, which is
+    the ranking the list view already uses and the one a reader can check.
+
+    Within each phase the picks alternate between Zen and Go where both can
+    supply one, so following the sequence spreads across the two plans
+    instead of draining one allowance before touching the other. The
+    alternation never demotes the strongest candidate to keep the rhythm —
+    if the best model available is on Zen, it leads.
+
+    Only rows in the top decile (*grade*) with a real score are eligible, and
+    a short list is a short list, not an error.
+    """
+    eligible = [r for r in rows if r.grade == grade and r.score is not None]
+    free = sorted((r for r in eligible if r.free),
+                  key=lambda r: (-r.score, r.name))
+    paid = sorted((r for r in eligible if not r.free),
+                  key=lambda r: (-ratio(r.score, r.price), -r.score, r.name))
+    picked = _take(free, count)
+    if len(picked) < count:
+        picked += _take(paid, count - len(picked))
+    return picked
+
+
+def _take(phase: list[Row], want: int) -> list[Row]:
+    """Up to *want* rows from *phase*, alternating between plans.
+
+    Plans are visited strongest-first, so the leading pick is the best row
+    in the phase whichever plan it happens to sit on.
+    """
+    by_plan: dict[str, list[Row]] = {}
+    for row in phase:
+        by_plan.setdefault(row.provider, []).append(row)
+    plans = sorted(by_plan, key=lambda p: -by_plan[p][0].score)
+    taken: list[Row] = []
+    while len(taken) < want and any(by_plan[p] for p in plans):
+        for plan in plans:
+            if len(taken) >= want:
+                break
+            if by_plan[plan]:
+                taken.append(by_plan[plan].pop(0))
+    return taken
+
+
 def partition_rows(rows: list[Row], fraction: float = CULL_FRACTION
                    ) -> tuple[list[Row], list[Row], list[Row]]:
     """Split into (best value, worst score, highest cost).

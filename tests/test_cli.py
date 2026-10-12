@@ -340,6 +340,67 @@ class CliTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("zen", out)
 
+    def test_next_prints_an_ordered_sequence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_grid(Path(tmp))
+            code, out = self._run("--data", tmp, "next", "--count", "3",
+                                  "--source", "all")
+        self.assertEqual(code, 0)
+        # fewer ++ rows than asked for is a short list, not an error
+        self.assertRegex(out, r"next [1-3] to use")
+        self.assertIn("MODEL", out)
+        self.assertIn("WHY", out)
+
+    def test_next_numbers_the_picks_in_order(self):
+        import re
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_grid(Path(tmp))
+            code, out = self._run("--data", tmp, "next", "--count", "2",
+                                  "--source", "all")
+        self.assertEqual(code, 0)
+        picks = re.findall(r"^\s+(\d) ", out, re.M)
+        self.assertEqual(picks, [str(i) for i in range(1, len(picks) + 1)])
+
+    def test_next_says_why_and_what_it_ignores(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_grid(Path(tmp))
+            code, out = self._run("--data", tmp, "next", "--source", "all")
+        self.assertEqual(code, 0)
+        self.assertIn("LIMITS.md", out)      # the allowance caveat is stated
+        self.assertIn("free", out.lower())
+
+    def test_next_picks_from_the_ordered_ranking_not_catalog_order(self):
+        # the grid's best value is the last model written, so a `next` that
+        # skipped the ordering would recommend the first one instead
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_grid(Path(tmp))
+            code, out = self._run("--data", tmp, "next", "--source", "all")
+        self.assertEqual(code, 0)
+        self.assertIn("M10", out)          # score 100 at $10 is the best ratio
+        self.assertNotIn("M01", out)
+
+    def test_next_labels_a_catalog_only_row_as_such(self):
+        # the grid models are in neither tier, so calling them Zen-billed
+        # would be a guess
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_grid(Path(tmp))
+            code, out = self._run("--data", tmp, "next", "--source", "all")
+        self.assertEqual(code, 0)
+        self.assertIn("not carried by the zen or go tier", out)
+
+    def test_next_rejects_an_unknown_source(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_sample(Path(tmp))
+            code, out = self._run("--data", tmp, "next", "--source", "nope")
+        self.assertEqual(code, 1)
+        self.assertIn("zen", out)
+
+    def test_next_needs_a_data_directory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            code, out = self._run("--data", str(Path(tmp) / "gone"), "next")
+        self.assertEqual(code, 1)
+        self.assertIn("fetch", out)
+
     def test_list_source_all_includes_everything(self):
         with tempfile.TemporaryDirectory() as tmp:
             _write_sample(Path(tmp))

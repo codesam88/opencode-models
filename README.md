@@ -61,10 +61,13 @@ or serve the directory.
 draws from the same pipeline `list` uses, so it can never disagree with the
 ranking it came from. Three rules shape the sequence:
 
-- **Only `++` rows, and only within 75% of the best score.** The rank marker
-  means "strong *value*" — the ordering divides by price — so a cheap, weak
-  model inherits a top-decile mark. Recommending one beside a frontier model
-  reads as incoherent.
+- **Eligibility is strength, not the `++` marker.** Picks must be within 75%
+  of the strongest score in the catalog. The marker is not used to gate them:
+  it is a position in an ordering that divides by price, so it measures
+  value. In the live data MiMo-V2.6-Pro scores 89.9 — the best model in the
+  catalog — and is graded `o`, while a free model scoring 24.58 is graded
+  `++`. Gating on the marker recommends the weak model and misses the strong
+  one.
 - **Alternation is forced.** Picks alternate between Zen and Go wherever
   both can supply one, so following the sequence spreads across the two
   plans instead of draining one allowance before touching the other. A paid

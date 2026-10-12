@@ -25,8 +25,7 @@ from .boards import (fetch_boards, load_boards, merge_boards,
                     save_boards)
 from .overrides import TIER_LABELS, load_curated, off_band_models, source_tier
 from .pricing import load_prices, refresh_prices
-from .ranking import (RECOMMEND_FLOOR, RECOMMEND_GRADE, next_up,
-                      plans_of)
+from .ranking import RECOMMEND_FLOOR, next_up, plans_of
 from .ranking import (
     BAND_FREE,
     BAND_INCLUDED,
@@ -469,11 +468,11 @@ def _cmd_next(args: argparse.Namespace) -> int:
                      f"{data_dir} — nothing to recommend yet")
 
     width = max(len(r.name) for r in picks)
-    print(f"next {len(picks)} to use, in order · Zen and Go alternated "
-          f"where both can supply one, strongest eligible first")
-    print(f"eligible: {RECOMMEND_GRADE} only (top decile of the ordering the "
-          f"list view shows) and within {RECOMMEND_FLOOR:.0%} of the best "
-          f"score — {RECOMMEND_GRADE} means strong value, not strong model")
+    print(f"next {len(picks)} to use, in order · free first by score, then "
+          f"best score per ¢ · Zen and Go alternated where both can supply one")
+    print(f"eligible: within {RECOMMEND_FLOOR:.0%} of the strongest score in "
+          f"the catalog — the ++ marker is not used, it ranks value "
+          f"(score per dollar), not strength")
     print()
     print(f"  {'#':<2} {'PLAN':<5} {'SCORE':>6} {'¢/1M':>5} {'SCORE/$':>7}  "
           f"{'MODEL':<{width}}  WHY")

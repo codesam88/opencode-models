@@ -52,12 +52,41 @@ class NextUpTest(unittest.TestCase):
         # the worst value despite the highest raw score
         self.assertEqual([p.name for p in picks], ["cheap", "sweet", "dear"])
 
-    def test_only_top_decile_rows_are_eligible(self):
-        rows = [_row("a/best", 99.0, 0.0, BAND_FREE, grade="++"),
-                _row("a/near", 95.0, 0.0, BAND_FREE, grade="+"),
-                _row("a/worst", 10.0, 0.0, BAND_FREE, grade="-")]
+    def test_a_strong_model_outside_the_top_decile_is_still_recommended(self):
+        # the real ordering: MiMo-V2.6-Pro scores 89.9 — the best model in
+        # the catalog — and is graded "o", while a free model scoring 24.58
+        # is graded "++". The marker divides by price, so it measures value,
+        # not strength, and must not decide who gets recommended.
+        rows = [_row("zen/strong", 89.9, 26.0, BAND_INCLUDED, grade="o"),
+                _row("zen/cheap-weak", 24.58, 0.0, BAND_FREE, grade="++"),
+                _row("zen/mid", 72.0, 0.0, BAND_FREE, grade="+")]
         picks = next_up(rows, count=3)
-        self.assertEqual([p.name for p in picks], ["best"])
+        names = [p.name for p in picks]
+        # free-first is the ordering the reader asked for, so the free
+        # model leads; what matters is that neither weak model appears
+        self.assertEqual(names, ["mid", "strong"])
+
+    def test_the_floor_is_measured_against_the_strongest_model_known(self):
+        # the reference is the whole catalog's best, not the best eligible
+        # row, so the bar cannot be dragged down by a weak top row
+        rows = [_row("a/best", 90.0, 1.0, BAND_INCLUDED, grade="o"),
+                _row("a/near", 70.0, 1.0, BAND_INCLUDED, grade="-"),
+                _row("a/far", 40.0, 0.0, BAND_FREE, grade="++")]
+        picks = next_up(rows, count=3)
+        self.assertEqual([p.name for p in picks], ["best", "near"])
+
+    def test_a_grade_can_still_be_required_by_a_caller(self):
+        # both strong enough for the floor; only one carries the marker
+        rows = [_row("a/paid", 90.0, 1.0, BAND_INCLUDED, grade="o"),
+                _row("a/free", 88.0, 0.0, BAND_FREE, grade="++")]
+        self.assertEqual([p.name for p in next_up(rows, count=2, grade="++")],
+                         ["free"])
+        self.assertEqual([p.name for p in next_up(rows, count=2)],
+                         ["free", "paid"])
+
+    def test_rows_with_no_score_yield_nothing(self):
+        self.assertEqual(next_up([_row("a/x", 50.0, 1.0, BAND_INCLUDED,
+                                       grade="o")], count=4, grade="++"), [])
 
     def test_plans_alternate_when_both_offer_candidates(self):
         rows = [_row("zen/zen-best", 90.0, 0.0, BAND_FREE, provider="zen"),
@@ -110,10 +139,12 @@ class NextUpTest(unittest.TestCase):
         self.assertEqual([p.name for p in picks], ["strong", "similar"])
 
     def test_the_floor_can_be_widened_to_keep_a_weaker_model(self):
+        # 55 is 62% of 88 — below the 75% bar, above a widened one, so the
+        # threshold itself is what decides, not the distance to the floor
         rows = [_row("a/strong", 88.0, 0.0, BAND_FREE),
-                _row("a/weak", 39.0, 1.0, BAND_INCLUDED)]
-        self.assertEqual(len(next_up(rows, count=2, floor=0.0)), 2)
+                _row("a/middling", 55.0, 1.0, BAND_INCLUDED)]
         self.assertEqual(len(next_up(rows, count=2)), 1)
+        self.assertEqual(len(next_up(rows, count=2, floor=0.5)), 2)
 
     def test_a_model_is_never_recommended_twice(self):
         # the same model can appear twice — free on Zen, paid on Go — and a
@@ -190,9 +221,9 @@ class NextUpTest(unittest.TestCase):
         rows = [_row("a/one", 90.0, 0.0, BAND_FREE)]
         self.assertEqual(len(next_up(rows, count=4)), 1)
 
-    def test_no_eligible_rows_yields_nothing(self):
-        self.assertEqual(next_up([_row("a/x", 50.0, 1.0, BAND_INCLUDED,
-                                       grade="o")], count=4), [])
+    def test_rows_with_no_score_at_all_yield_nothing(self):
+        rows = [replace(_row("a/x", 0.0, 1.0, BAND_INCLUDED), score=None)]
+        self.assertEqual(next_up(rows, count=4), [])
 
     def test_a_row_with_no_score_is_never_picked(self):
         rows = [replace(_row("a/none", 0.0, 0.0, BAND_FREE), score=None),

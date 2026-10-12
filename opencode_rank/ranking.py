@@ -361,23 +361,18 @@ def grade_rows(rows: list[Row]) -> list[Row]:
             for r, symbol in zip(rows, graded)]
 
 
-#: Grade a row must carry to be eligible for a recommendation. Only the top
-#: decile is recommended: below that, the ordering is not confident enough to
-#: tell the reader which model is actually the better pick.
-RECOMMEND_GRADE = "++"
-
-#: How much weaker than the best candidate a pick may be, as a fraction.
+#: How much weaker than the strongest model known a pick may be, as a
+#: fraction of its score.
 #:
-#: The rank marker says "strong *value*" — the ordering divides by price — so
-#: a cheap, weak model inherits a top-decile mark. Recommending one beside a
-#: frontier model reads as incoherent: the reader is told to reach for 39
-#: right after 88. Anything under this share of the best score is not a
-#: recommendation, however good its price.
+#: Eligibility is deliberately *strength*, not the rank marker. The marker
+#: is a position in an ordering that divides by price, so it measures value:
+#: in the live ordering MiMo-V2.6-Pro scores 89.9 — the best model in the
+#: catalog — and is graded ``o``, while a free model scoring 24.58 is graded
+#: ``++``. Gating on it recommends the weak model and misses the strong one.
 RECOMMEND_FLOOR = 0.75
 
 
-def next_up(rows: list[Row], count: int = 4,
-            grade: str = RECOMMEND_GRADE,
+def next_up(rows: list[Row], count: int = 4, grade: str | None = None,
             floor: float = RECOMMEND_FLOOR) -> list[Row]:
     """The next *count* models to use, in order.
 
@@ -395,9 +390,15 @@ def next_up(rows: list[Row], count: int = 4,
     Only rows in the top decile (*grade*, ``++``) with a real score are
     eligible. A short list is a short list, not an error.
     """
-    eligible = [r for r in rows if r.grade == grade and r.score is not None]
-    best = max((r.score for r in eligible), default=0.0)
-    eligible = [r for r in eligible if r.score >= best * floor]
+    scored = [r for r in rows if r.score is not None]
+    if not scored:
+        return []
+    # the reference is the strongest model in the whole catalog, so the bar
+    # cannot be dragged down by a weak set of top rows
+    best = max(r.score for r in scored)
+    eligible = [r for r in scored if r.score >= best * floor]
+    if grade:
+        eligible = [r for r in eligible if r.grade == grade]
     free = sorted((r for r in eligible if r.free),
                   key=lambda r: (-r.score, r.name))
     paid = sorted((r for r in eligible if not r.free),

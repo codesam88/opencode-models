@@ -7,9 +7,13 @@ help:
 bootstrap:
     uv sync
 
-# Install the CLI onto your PATH (uv's tool dir, or pipx/uvx)
+# Install the CLI onto your PATH (uv's tool dir, or pipx/uvx), then seed
+# the reference dataset into the XDG data dir for files missing there only -
+# an existing dataset is never overwritten, so a workspace's own fetch
+# results are always safe
 install:
     uv tool install --force .
+    uv run --no-sync python -m opencode_rank.seed
 
 # Unit tests
 test:

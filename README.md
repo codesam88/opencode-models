@@ -23,6 +23,11 @@ uv tool install .            # install the `opencode-rank` binary to $PATH
 uvx --from . opencode-rank   # or run it once without installing
 ```
 
+`just install` does the same, then seeds the reference dataset into your
+user data dir for files missing there only — an existing dataset is never
+overwritten, so a workspace's own fetch results are always safe. The seed
+comes from the checkout first and the `local-data` branch second.
+
 A fresh install has no data yet, so populate it once (this is the only
 network-touching command):
 

@@ -119,7 +119,8 @@ Best value splits into bands — **free** (use first), **included usage**
 ranked by score per dollar *inside* each band. A line's cost is 20% input +
 60% cached read + 20% output; `--price input|output` picks a single rate
 instead. The numbers are all rounded integers: the score is the model's
-calculated 0–100 number, and the cost column counts cents (`¢/1M` =
+calculated 0–100 number, score per dollar explains the best-value order,
+and the cost column counts cents (`¢/1M` =
 round(price·100)), so a $0.0612 line reads as `6`, not `0.0612`. Columns are
 measured from the lines actually being shown (header included), so nothing
 shifts when a price or a provider list outgrows the rest.

@@ -82,8 +82,8 @@ BAND_LABELS = (
 #: model's score beside its cost and plan, and ``--benchmark X`` ranks on
 #: one benchmark and adds that benchmark's tag. The per-axis raw numbers
 #: live in `scores`, not here.
-AXIS_HEADERS = ("SCORE", "¢/1M", "PROV")
-SINGLE_HEADERS = ("SCORE", "BENCH", "¢/1M", "PROV")
+AXIS_HEADERS = ("SCORE", "¢/1M", "SCORE/$", "PROV")
+SINGLE_HEADERS = ("SCORE", "BENCH", "¢/1M", "SCORE/$", "PROV")
 
 #: Every row is prefixed by its rank marker, outside the column grid and
 #: without a header of its own: ++ at 90+, + at 75+, o at 60+, - at 50+,
@@ -461,10 +461,12 @@ def _bench_tag(benchmark: str | None) -> str:
 
 
 def _cells(row, axis: bool = True) -> tuple[str, ...]:
-    """The fixed columns of one row, as text: the score, the cost, the plan.
+    """The fixed columns of one row, as text: score, cost, value, plan.
 
     The score is the model's combined 0-100 number, rounded for the column;
-    the grade prefix carries the exact ordering. *axis* is kept for the
+    the value is score per dollar ("free" where there is no cost, "-" with
+    no score) - the best-value table orders on it, so the column that
+    explains the order stays printed. *axis* is kept for the
     single-benchmark layout, which adds that benchmark's tag. Prices are
     cents, as elsewhere.
     """
@@ -472,8 +474,9 @@ def _cells(row, axis: bool = True) -> tuple[str, ...]:
     price = "0" if no_cost else f"{round(row.price * 100)}"
     score = "-" if row.score is None else f"{round(row.score)}"
     if axis:
-        return (score, price, row.provider)
-    return (score, _bench_tag(row.benchmark), price, row.provider)
+        return (score, price, _pick_value(row), row.provider)
+    return (score, _bench_tag(row.benchmark), price, _pick_value(row),
+            row.provider)
 
 
 def _widths(rows, axis: bool = True) -> tuple[int, ...]:
@@ -693,7 +696,7 @@ def _cmd_next(args: argparse.Namespace) -> int:
     print(f"  {'#':<2} {'PLAN':<5} {'SCORE':>6} {'¢/1M':>5} {'SCORE/$':>7}  "
           f"{'MODEL':<{width}}  BAND")
     for i, row in enumerate(picks, 1):
-        _score, price, _prov = _cells(row)
+        _score, price, value, _prov = _cells(row)
         print(f"  {i:<2} {row.provider:<5} {row.score:>6g} {price:>5} "
               f"{_pick_value(row):>7}  {row.name:<{width}}  {_next_band(row)}")
     print()

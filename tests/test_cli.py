@@ -379,7 +379,7 @@ class CliTest(unittest.TestCase):
         self.assertIn("M1", out)
         self.assertNotIn("M2", out)
 
-    def test_list_shows_score_cost_and_plan_columns(self):
+    def test_list_shows_score_cost_value_and_plan_columns(self):
         import opencode_rank.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -396,7 +396,7 @@ class CliTest(unittest.TestCase):
         self.assertEqual(code, 0)
         line = next(l for l in out.splitlines() if l.rstrip().endswith("M1"))
         # the calculated score, the benchmark tag, $1.00 as 100 cents
-        self.assertRegex(line, r"\s50\s+TB\s+100\s+zen\s+M1$")
+        self.assertRegex(line, r"\s50\s+TB\s+100\s+50\s+zen\s+M1$")
 
     def test_numbers_are_shown_as_rounded_integers(self):
         import json
@@ -442,7 +442,7 @@ class CliTest(unittest.TestCase):
         line = next(l for l in out.splitlines() if l.rstrip().endswith("CHEAP"))
         # the calculated score (100, the best of the 40-88.8 range);
         # $0.0612 shows as 6 cents
-        self.assertRegex(line, r"\s100\s+6\s+go,zen\s+CHEAP$")
+        self.assertRegex(line, r"\s100\s+6\s+1634\s+go,zen\s+CHEAP$")
         self.assertNotIn("0.0612", line)   # cents, never dollars
 
     def test_list_output_price_uses_output_axis(self):
@@ -473,7 +473,7 @@ class CliTest(unittest.TestCase):
         self.assertEqual(code, 0)
         # output price $5.00 shown as 500 cents; ratio 50/5 → 10
         line = next(l for l in out.splitlines() if l.rstrip().endswith("M1"))
-        self.assertRegex(line, r"\s50\s+TB\s+500\s+zen\s+M1$")
+        self.assertRegex(line, r"\s50\s+TB\s+500\s+10\s+zen\s+M1$")
 
     def test_list_unknown_source_errors(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -615,7 +615,7 @@ class CliTest(unittest.TestCase):
         for title in ("best value", "worst score", "highest cost"):
             self.assertRegex(out, rf"(?m)^── [^\n]*{title}")
         # one column header per table: score, cost, plan, in order
-        header = re.compile(r"(?m)^\s*SCORE\s+¢/1M\s+PROV\s+MODEL\s*$")
+        header = re.compile(r"(?m)^\s*SCORE\s+¢/1M\s+SCORE/\$\s+PROV\s+MODEL\s*$")
         self.assertEqual(len(header.findall(out)), 3)
 
     def test_headers_are_bold_when_the_output_is_a_terminal(self):
@@ -673,7 +673,7 @@ class CliTest(unittest.TestCase):
                 sources.load_source = orig
         self.assertEqual(code, 0)
         lines = out.splitlines()
-        self.assertEqual(len(re.findall(r"(?m)^\s+\S+\s+\S+\s+\S+\s+\S+\s+"
+        self.assertEqual(len(re.findall(r"(?m)^\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+"
                                         r"DS$", out)), 2)
         self.assertTrue(any(line.endswith("go  DS") for line in lines))   # provider
         self.assertTrue(any(line.endswith("zen  DS") for line in lines))  # before name
@@ -770,7 +770,7 @@ class CliTest(unittest.TestCase):
         gift = [l for l in out.splitlines() if "GIFT [free]" in l]
         self.assertEqual(len(gift), 1, out)
         self.assertNotIn("0.1", gift[0])       # the nominal price stays hidden
-        self.assertRegex(gift[0], r"-\s+0\s+go\s+GIFT \[free\]$")
+        self.assertRegex(gift[0], r"-\s+0\s+free\s+go\s+GIFT \[free\]$")
 
     def test_columns_stay_aligned_whatever_the_cell_widths(self):
         """Column widths are measured once, across the whole view.
@@ -1054,7 +1054,7 @@ class CliTest(unittest.TestCase):
             # shown as 66 cents rather than the bare $1.00 input rate;
             # the score is the calculated 100 (best of 25-50 on both).
             line = next(l for l in out.splitlines() if l.rstrip().endswith("M1"))
-            self.assertRegex(line, r"\s100\s+66\s+zen\s+M1$")
+            self.assertRegex(line, r"\s100\s+66\s+152\s+zen\s+M1$")
     def test_list_gives_each_priced_variant_its_own_line(self):
         import json
 

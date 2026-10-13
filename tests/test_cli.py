@@ -488,7 +488,10 @@ class CliTest(unittest.TestCase):
             code, out = self._run("--data", tmp, "next", "--count", "3",
                                   "--source", "all")
         self.assertEqual(code, 0)
-        self.assertRegex(out, r"^Next \d+ recommended models\.")
+        self.assertRegex(out, r"^Next \d+ recommended models, >75% overall "
+                               r"score, sorted by best value/\$, alternating "
+                               r"Zen/Go plans\.")
+        self.assertNotIn("LIMITS.md", out)
         self.assertIn("MODEL", out)
         self.assertIn("BAND", out)
 
@@ -523,15 +526,15 @@ class CliTest(unittest.TestCase):
         picks = out.split("BAND", 1)[1]
         self.assertRegex(picks, r"\bfree\b")
 
-    def test_next_trailer_states_the_rules(self):
+    def test_next_has_no_trailer(self):
+        # headline and rules merged into the first line; nothing dangles
+        # at the bottom of the view
         with tempfile.TemporaryDirectory() as tmp:
             _write_grid(Path(tmp))
             code, out = self._run("--data", tmp, "next", "--source", "all")
         self.assertEqual(code, 0)
-        trailer = out.splitlines()[-1]
-        self.assertIn(">75%", trailer)
-        self.assertIn("best value/$", trailer)
-        self.assertIn("Zen/Go", trailer)
+        self.assertNotIn("LIMITS.md", out.splitlines()[-1])
+        self.assertIn("Zen/Go", out.splitlines()[0])
 
     def test_next_shows_free_for_free_lines_and_the_ratio_for_paid(self):
         from opencode_rank.cli import _pick_value

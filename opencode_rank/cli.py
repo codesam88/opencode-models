@@ -687,7 +687,9 @@ def _cmd_next(args: argparse.Namespace) -> int:
                      f"recommend yet")
 
     width = max(len(r.name) for r in picks)
-    print(f"Next {len(picks)} recommended models.")
+    print(f"Next {len(picks)} recommended models, "
+          f">{RECOMMEND_FLOOR:.0%} overall score, sorted by best value/$, "
+          f"alternating Zen/Go plans.")
     print()
     print(f"  {'#':<2} {'PLAN':<5} {'SCORE':>6} {'¢/1M':>5} {'SCORE/$':>7}  "
           f"{'MODEL':<{width}}  BAND")
@@ -695,9 +697,6 @@ def _cmd_next(args: argparse.Namespace) -> int:
         _score, price, value, _prov = _cells(row)
         print(f"  {i:<2} {row.provider:<5} {row.score:>6g} {price:>5} "
               f"{_pick_value(row):>7}  {row.name:<{width}}  {_next_band(row)}")
-    print()
-    print(f"Models with >{RECOMMEND_FLOOR:.0%} overall score, sorted by "
-          f"best value/$, alternating Zen/Go plans.")
     return 0
 
 

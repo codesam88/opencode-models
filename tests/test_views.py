@@ -172,7 +172,7 @@ class ScoresViewContract(unittest.TestCase):
 
 
 class NextViewContract(unittest.TestCase):
-    COLUMNS = ["#", "PLAN", "SCORE", "¢/1M", "SCORE/$", "MODEL", "BAND"]
+    COLUMNS = ["#", "PLAN", "SCORE", "¢/1M", "SCORE/$", "ENDPOINT", "BAND"]
 
     def test_columns(self):
         import opencode_rank.sources as sources
@@ -185,7 +185,9 @@ class NextViewContract(unittest.TestCase):
             finally:
                 sources.load_source = orig
         self.assertEqual(code, 0)
-        self.assertEqual(_header(out).split(), self.COLUMNS)
+        head = next(l for l in out.splitlines()
+                    if "ENDPOINT" in l and "SCORE" in l)
+        self.assertEqual(head.split(), self.COLUMNS)
 
     def test_picks_stay_within_a_quarter_of_the_best(self):
         import opencode_rank.sources as sources
@@ -200,8 +202,8 @@ class NextViewContract(unittest.TestCase):
                 sources.load_source = orig
         self.assertEqual(code, 0)
         # floor is 75% of 100: M1 at 0 never appears
-        self.assertNotIn("M1", out.split("BAND")[1])
-        self.assertIn("M3", out)
+        self.assertNotIn("m1", out.split("BAND")[1].lower())
+        self.assertIn("opencode-go/m3", out)
 
 
 class OverridesViewContract(unittest.TestCase):

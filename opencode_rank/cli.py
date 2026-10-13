@@ -657,6 +657,22 @@ def _pick_value(row) -> str:
     return f"{round(ratio(row.score, row.price))}"
 
 
+def _endpoint(row) -> str:
+    """A pick as an API identifier: provider prefix plus the plan-local id.
+
+    Display names are not callable, so the view shows what goes in the
+    request instead: ``opencode-go/step-5-preview-free``. The prefix follows
+    the plans on the line, preferring Go where both list it; the id is the
+    tier's own entry where documented, else the catalog slug. Variants and
+    free tags are display concerns and stay out of it.
+    """
+    plans = plans_of(row)
+    prefix = "opencode-go" if "go" in plans else "opencode"
+    if row.entry is not None and row.entry.model_id:
+        return f"{prefix}/{row.entry.model_id}"
+    return f"{prefix}/{row.model.model_id.split('/')[-1]}"
+
+
 def _next_band(row) -> str:
     # a row sold by both tiers is labelled "go,zen", so membership decides,
     # not equality with a single plan name
@@ -686,17 +702,17 @@ def _cmd_next(args: argparse.Namespace) -> int:
                      f"{MIN_AXES}+ benchmarks in {data_dir} — nothing to "
                      f"recommend yet")
 
-    width = max(len(r.name) for r in picks)
+    width = max(len(_endpoint(r)) for r in picks)
     print(f"Next {len(picks)} recommended models, "
           f">{RECOMMEND_FLOOR:.0%} overall score, sorted by best value/$, "
           f"alternating Zen/Go plans.")
     print()
     print(f"  {'#':<2} {'PLAN':<5} {'SCORE':>6} {'¢/1M':>5} {'SCORE/$':>7}  "
-          f"{'MODEL':<{width}}  BAND")
+          f"{'ENDPOINT':<{width}}  BAND")
     for i, row in enumerate(picks, 1):
         _score, price, value, _prov = _cells(row)
         print(f"  {i:<2} {row.provider:<5} {row.score:>6g} {price:>5} "
-              f"{_pick_value(row):>7}  {row.name:<{width}}  {_next_band(row)}")
+              f"{value:>7}  {_endpoint(row):<{width}}  {_next_band(row)}")
     return 0
 
 

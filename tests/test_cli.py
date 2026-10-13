@@ -492,8 +492,50 @@ class CliTest(unittest.TestCase):
                                r"score, sorted by best value/\$, alternating "
                                r"Zen/Go plans\.")
         self.assertNotIn("LIMITS.md", out)
-        self.assertIn("MODEL", out)
+        self.assertIn("ENDPOINT", out)
         self.assertIn("BAND", out)
+
+    def test_next_lists_the_endpoint_not_the_display_name(self):
+        from opencode_rank.cli import _endpoint
+        from opencode_rank.data import Model
+        from opencode_rank.pricing import PriceEntry
+        from opencode_rank.ranking import Row
+
+        def row(provider, mid, entry_id=None):
+            model = Model(model_id=mid, name="Display Name", lab="l",
+                          price_input=1.0, price_output=1.0,
+                          price_cached_input=1.0, scores={})
+            entry = (PriceEntry(tier="go", model_id=entry_id, name="N",
+                                input=1.0, output=1.0)
+                     if entry_id is not None else None)
+            return Row(model=model, name="Display Name", price=1.0,
+                       free=False, band="included", score=80.0,
+                       benchmark=None, provider=provider, grade="+",
+                       entry=entry)
+
+        # the plan-local id under a provider prefix, never the display name
+        self.assertEqual(_endpoint(row("go", "stepfun/step-5-preview",
+                                       "step-5-preview-free")),
+                         "opencode-go/step-5-preview-free")
+        self.assertEqual(_endpoint(row("zen", "meta/muse-spark-1.3",
+                                       "muse-spark-1.3")),
+                         "opencode/muse-spark-1.3")
+        # both plans list it: Go wins the prefix, one line stays one line
+        self.assertEqual(_endpoint(row("go,zen", "stepfun/step-5-preview",
+                                       "step-5-preview-free")),
+                         "opencode-go/step-5-preview-free")
+        # no documented entry: the catalog slug still identifies the model
+        self.assertEqual(_endpoint(row("-", "l/m1")), "opencode/m1")
+
+    def test_next_endpoint_column_carries_no_display_names(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_grid(Path(tmp))
+            code, out = self._run("--data", tmp, "next", "--count", "2",
+                                  "--source", "all")
+        self.assertEqual(code, 0)
+        for line in out.splitlines():
+            if line.strip().startswith(("1", "2")):
+                self.assertNotIn("M10", line)
 
     def test_next_keeps_the_billing_prose_out_of_the_output(self):
         # LIMITS.md is the place for what an allowance costs; the view must
@@ -570,8 +612,8 @@ class CliTest(unittest.TestCase):
             _write_grid(Path(tmp))
             code, out = self._run("--data", tmp, "next", "--source", "all")
         self.assertEqual(code, 0)
-        self.assertIn("M10", out)          # score 100 at $10 is the best ratio
-        self.assertNotIn("M01", out)
+        self.assertIn("opencode/m10", out)  # score 100 at $10 is the best ratio
+        self.assertNotIn("m01", out.lower())
 
     def test_next_gates_on_strength_not_on_the_rank_marker(self):
         # the grid scores i², so the two strongest are M09 and M10 — and
@@ -580,8 +622,8 @@ class CliTest(unittest.TestCase):
             _write_grid(Path(tmp))
             code, out = self._run("--data", tmp, "next", "--source", "all")
         self.assertEqual(code, 0)
-        self.assertIn("M10", out)
-        self.assertNotIn("M01", out)      # weakest, however cheap
+        self.assertIn("opencode/m10", out)
+        self.assertNotIn("m01", out.lower())  # weakest, however cheap
 
     def test_next_labels_a_catalog_only_row_as_such(self):
         # the grid models are in neither tier, so calling them Zen-billed

@@ -1,11 +1,17 @@
-"""Seed a reference dataset on install, without touching what's there.
+"""Seed a reference dataset on install, and deploy pushed curation.
 
 A fresh `uv tool install` leaves the XDG data dir empty (or stale from an
-older fetch): the curated `overrides/` live in the repo, the catalog lives
-in no branch at all, and a bare `opencode-rank list` then silently disagrees
-with `just list`. Seeding copies reference files into the target directory
-for files that are *missing* only - an existing file is never overwritten,
-so a workspace's own fetch results are always safe.
+older fetch): the catalog lives in no branch at all, and a bare
+`opencode-rank list` then silently disagrees with `just list`. Seeding
+copies reference files into the target directory for files that are
+*missing* only - an existing file is never overwritten, so a workspace's
+own fetch results are always safe.
+
+`data/overrides/` plays by a different rule on purpose: it is versioned
+curation, not fetched records, so installing newer code must bring newer
+pins. Same-named override files sync from the reference (the target's stale
+pin is the bug being fixed); local files the reference never shipped are
+left alone, and fetched layers stay missing-only whatever happens.
 
 Reference precedence per file: the repo working tree first, then the
 `local-data` branch. The branch is read with `ls-tree`/`show`, so the
@@ -77,28 +83,62 @@ def read_branch_files(repo: Path, branch: str,
     return files
 
 
-def seed(target: Path, repo: Path) -> dict[str, int]:
-    """Seed *target* (a data dir) from *repo*, never overwriting.
+def sync_tracked(src: Path, dst: Path) -> set[str]:
+    """Deploy curated files, returning the relative names written.
 
-    Working-tree reference data first, then the branch for whatever is
-    still missing. Returns ``{"copied": n, "skipped": m}``.
+    Same-named files sync (overwrite); local files the reference never
+    shipped are not even listed. Missing source deploys nothing.
+    """
+    src, dst = Path(src), Path(dst)
+    written: set[str] = set()
+    if not src.is_dir():
+        return written
+    for path in sorted(src.rglob("*")):
+        if not path.is_file():
+            continue
+        rel = path.relative_to(src)
+        dest = dst / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(path.read_bytes())
+        written.add(str(rel))
+    return written
+
+
+def seed(target: Path, repo: Path) -> dict[str, int]:
+    """Seed *target* (a data dir) from *repo*.
+
+    Fetched layers copy missing files only; `overrides/` deploys (same-named
+    files sync). Working-tree reference data first, then the branch for
+    whatever the tree lacks. Returns
+    ``{"copied": n, "skipped": m, "synced": k}``.
     """
     target, repo = Path(target), Path(repo)
-    copied = skipped = 0
+    copied = skipped = synced = 0
     for sub in SEED_SUBDIRS:
+        if sub == "overrides":
+            continue
         c, s = copy_missing(repo / "data" / sub, target / sub)
         copied += c
         skipped += s
+    provided = sync_tracked(repo / "data" / "overrides",
+                              target / "overrides")
+    synced += len(provided)
     for key, text in sorted(read_branch_files(repo, BRANCH, PREFIX).items()):
         rel = key[len(PREFIX):] if key.startswith(PREFIX) else key
         dest = target / rel
-        if dest.exists():
+        if rel.startswith("overrides/"):
+            if rel[len("overrides/"):] in provided:
+                continue  # the working tree already deployed this pin
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(text.encode("utf-8"))
+            synced += 1
+        elif dest.exists():
             skipped += 1
-            continue
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_text(text)
-        copied += 1
-    return {"copied": copied, "skipped": skipped}
+        else:
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_text(text)
+            copied += 1
+    return {"copied": copied, "skipped": skipped, "synced": synced}
 
 
 def _repo_root() -> Path:
@@ -115,7 +155,8 @@ def main() -> int:
     from .cli import default_data_dir
     target = default_data_dir()
     result = seed(target, _repo_root())
-    print(f"seeded {result['copied']} file(s) into {target} "
+    print(f"seeded {result['copied']} file(s) and deployed "
+          f"{result['synced']} override(s) into {target} "
           f"({result['skipped']} already present)")
     return 0
 

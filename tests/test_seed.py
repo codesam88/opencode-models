@@ -111,6 +111,60 @@ class BranchFilesTest(unittest.TestCase):
 
 
 @unittest.skipIf(NEEDS_GIT, "no git on PATH")
+class OverrideDeployTest(unittest.TestCase):
+    """Tracked overrides deploy with the code; fetched data never does.
+
+    `data/overrides/` is versioned curation, not fetched records: installing
+    a newer tool must bring newer curation, or the XDG dir silently keeps
+    ranking on stale pins. Same-named files sync from the repo; local files
+    the repo never shipped are left alone; fetched layers stay missing-only.
+    """
+
+    def _seed_repo(self, tmp: Path) -> Path:
+        tmp.mkdir(parents=True, exist_ok=True)
+        _git(["init", "-qb", "main"], tmp)
+        _git(["config", "user.email", "t@t"], tmp)
+        _git(["config", "user.name", "t"], tmp)
+        _write(tmp, "data/overrides/pinned.json", '{"v": 2}')
+        _write(tmp, "data/opencode/a.json", '{"a": 1}')
+        _git(["add", "-A"], tmp)
+        _git(["commit", "-qm", "seed"], tmp)
+        return tmp
+
+    def test_a_shipped_override_updates_even_when_present(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = self._seed_repo(Path(tmp) / "repo")
+            target = Path(tmp) / "xdg"
+            _write(target, "overrides/pinned.json", '{"v": 1}')
+            result = seed(target, repo)
+            self.assertEqual((target / "overrides/pinned.json").read_text(),
+                             '{"v": 2}')
+            self.assertEqual(result["synced"], 1)
+
+    def test_a_local_override_the_repo_never_shipped_survives(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = self._seed_repo(Path(tmp) / "repo")
+            target = Path(tmp) / "xdg"
+            _write(target, "overrides/mine.json", '{"v": 9}')
+            seed(target, repo)
+            self.assertEqual((target / "overrides/mine.json").read_text(),
+                             '{"v": 9}')
+
+    def test_fetched_files_are_still_never_overwritten(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = self._seed_repo(Path(tmp) / "repo")
+            target = Path(tmp) / "xdg"
+            _write(target, "opencode/a.json", "mine")
+            result = seed(target, repo)
+            self.assertEqual((target / "opencode/a.json").read_text(), "mine")
+            self.assertEqual(result["copied"], 0)
+            self.assertEqual(result["synced"], 1)
+
+
+@unittest.skipIf(NEEDS_GIT, "no git on PATH")
 class SeedTest(unittest.TestCase):
     def test_repo_data_wins_over_the_branch_and_reruns_change_nothing(self):
         import tempfile

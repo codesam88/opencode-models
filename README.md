@@ -24,8 +24,9 @@ uvx --from . opencode-rank   # or run it once without installing
 ```
 
 `just install` does the same, then seeds the reference dataset into your
-user data dir for files missing there only — an existing dataset is never
-overwritten, so a workspace's own fetch results are always safe. The seed
+user data dir: fetched layers copy missing files only, so a workspace's own
+fetch results are never overwritten — but the tracked `overrides/` deploy,
+same-named pins included, because curation ships with the code. The seed
 comes from the checkout first and the `local-data` branch second.
 
 A fresh install has no data yet, so populate it once (this is the only

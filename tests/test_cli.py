@@ -504,11 +504,24 @@ class CliTest(unittest.TestCase):
             self.assertNotIn(boilerplate, out)
 
     def test_next_names_the_band_rather_than_a_sentence(self):
+        import json
         with tempfile.TemporaryDirectory() as tmp:
             _write_grid(Path(tmp))
+            (_models(Path(tmp)) / "l__zfree.json").write_text(json.dumps({
+                "model": {"id": "l/zfree", "name": "ZFREE", "lab": "l",
+                          "priceUsdPer1M": {"input": 0.0, "output": None,
+                                            "cachedInput": None},
+                          "benchmarks": [
+                              {"name": "Terminal-Bench", "version": "2.1",
+                               "score": 60.0, "metric": "acc", "source": ""},
+                              {"name": "SWE-Bench", "version": "Verified",
+                               "score": 60.0, "metric": "acc",
+                               "source": ""}]}}))
             code, out = self._run("--data", tmp, "next", "--source", "all")
         self.assertEqual(code, 0)
-        self.assertRegex(out, r"\b(payg|included|free)\b")
+        # a BAND cell, not the headline prose (which no longer names one)
+        picks = out.split("BAND", 1)[1]
+        self.assertRegex(picks, r"\bfree\b")
 
     def test_next_trailer_states_the_rules(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1542,6 +1555,7 @@ class AvailabilityTest(unittest.TestCase):
         self.assertIn("KEPT", out)
         self.assertIn("GONE", out)
         self.assertNotIn("no longer listed", out)
+        self.assertNotIn("available right now", out)
 
     def test_all_is_an_alias_for_all_models(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1631,14 +1645,17 @@ class AvailabilityTest(unittest.TestCase):
                   if l.rstrip().endswith("M2"))
         self.assertLess(m2, m1)
 
-    def test_a_dropped_model_is_reported_not_just_hidden(self):
+    def test_the_headline_states_availability_without_naming_names(self):
         with tempfile.TemporaryDirectory() as tmp:
             self._data(tmp, offered=["kept", "third", "fourth"],
                        shipped=["kept", "third", "fourth", "gone"])
             code, out = self._run("--data", tmp, "list", "--source", "zen")
         self.assertEqual(code, 0)
-        self.assertIn("no longer listed", out)
-        self.assertIn("gone", out)
+        self.assertIn("available right now", out)
+        self.assertIn("--all-models", out)
+        self.assertIn("on the zen plan", out)
+        self.assertNotIn("gone", out)
+        self.assertNotIn("no longer listed", out)
 
     def test_the_scales_still_span_the_whole_catalog(self):
         # a model you cannot buy still says where the field is, so a score

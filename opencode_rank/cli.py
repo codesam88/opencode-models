@@ -45,8 +45,7 @@ from .ranking import (
 )
 from .render import render_html
 from . import arena as arena_mod
-from .availability import (available_ids, load_available, offered,
-                          unlisted)
+from .availability import available_ids, load_available, offered
 from . import sources
 
 #: Where the data lives for an installed tool: $OPENCODE_RANK_DATA, else the
@@ -607,11 +606,9 @@ def _cmd_list(args: argparse.Namespace) -> int:
         head = f"all: {len(models)} models in catalog"
     print(f"{head} · {len(rows)} lines · {order_note} · {COST_NOTE}")
     if not getattr(args, "all_models", False):
-        for tier, slugs in sorted(unlisted(data_dir).items()):
-            shown_slugs = ", ".join(sorted(slugs)[:6])
-            more = f" (+{len(slugs) - 6} more)" if len(slugs) > 6 else ""
-            print(f"{tier}: {len(slugs)} no longer listed by the provider, "
-                  f"hidden here — {shown_slugs}{more} · --all-models to see them")
+        plans = "Go/Zen plans" if source in (None, "all") else f"{source} plan"
+        print(f"Only models available right now on the {plans} — "
+              f"full list with --all-models.")
     print("GRADE: ++ ≥90 · + ≥75 · o 60–75 · - 50–60 · -- <50 · "
           "· unranked")
 

@@ -330,9 +330,10 @@ from the same source as the prices and is current by construction.
   recommends a model that has been dropped.
 - **`--all-models`** (alias `--all`) lists the whole catalog instead, which is
   what you want when auditing rather than choosing.
-- **A dropped model is reported, not just hidden** — `list` names them, so a
-  model quietly disappearing from a plan is a change the console tells you
-  about rather than one you notice is missing.
+- **The view says what it covers.** `list` notes it shows only what the
+  plans offer right now and points at `--all-models` for the rest, without
+  naming names — which models a plan dropped is audit material, not a
+  headline.
 - **A tier with no snapshot is unknown, not empty.** Offline and before the
   first `fetch`, nothing is filtered; restricting the console to an empty set
   because nobody fetched would hide everything.

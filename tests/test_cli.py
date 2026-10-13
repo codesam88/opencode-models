@@ -488,7 +488,7 @@ class CliTest(unittest.TestCase):
             code, out = self._run("--data", tmp, "next", "--count", "3",
                                   "--source", "all")
         self.assertEqual(code, 0)
-        self.assertRegex(out, r"^next \d+ · ")
+        self.assertRegex(out, r"^Next \d+ recommended models\.")
         self.assertIn("MODEL", out)
         self.assertIn("BAND", out)
 
@@ -510,12 +510,15 @@ class CliTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertRegex(out, r"\b(payg|included|free)\b")
 
-    def test_next_points_at_the_limits_doc(self):
+    def test_next_trailer_states_the_rules(self):
         with tempfile.TemporaryDirectory() as tmp:
             _write_grid(Path(tmp))
             code, out = self._run("--data", tmp, "next", "--source", "all")
         self.assertEqual(code, 0)
-        self.assertIn("LIMITS.md", out)
+        trailer = out.splitlines()[-1]
+        self.assertIn(">75%", trailer)
+        self.assertIn("best value/$", trailer)
+        self.assertIn("Zen/Go", trailer)
 
     def test_next_shows_free_for_free_lines_and_the_ratio_for_paid(self):
         from opencode_rank.cli import _pick_value

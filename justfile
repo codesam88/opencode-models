@@ -24,6 +24,10 @@ check: test
     uv run --no-sync opencode-rank --help >/dev/null
     uv build
 
+# Local opsec sweep: tracked secret patterns
+audit:
+    @grep -rniE 'BEGIN (RSA |OPENSSH |EC )?PRIVATE KEY|aws_secret_access_key|ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9]{22}' --exclude-dir=.venv --exclude-dir=.git --exclude-dir=__pycache__ . || echo "no tracked secret patterns"
+
 # Console smoke test — needs the dataset on disk (fetch, or the local-data branch)
 smoke:
     uv run --no-sync opencode-rank --data data list --source zen

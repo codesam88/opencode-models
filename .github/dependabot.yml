@@ -1,0 +1,8 @@
+version: 2
+updates:
+  # The package itself is stdlib-only, so there is nothing to bump here.
+  # The Actions pinned in .github/workflows still drift, so watch them.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

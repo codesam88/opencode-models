@@ -100,19 +100,20 @@ class NextUpTest(unittest.TestCase):
                          ["go", "zen", "go", "zen"])
 
     def test_alternation_spans_the_free_and_paid_groups(self):
-        # free-first is the ordering *within* a plan; the sequence itself
-        # still has to alternate, so a paid Go pick may precede a free Zen
-        # one rather than the plan being drained first
+        # free and paid bands interleave slot by slot; the plan still
+        # alternates wherever the wanted band can supply the other plan,
+        # so a paid Go pick precedes the second free Zen one here
         rows = [_row("zen/zen-free", 88.0, 0.0, BAND_FREE, provider="zen"),
                 _row("zen/zen-paid", 68.0, 3.0, BAND_INCLUDED, provider="zen"),
                 _row("go/go-free", 87.0, 0.0, BAND_FREE, provider="go"),
                 _row("go/go-paid", 72.0, 2.0, BAND_INCLUDED, provider="go")]
         picks = next_up(rows, count=4)
         self.assertEqual([p.provider for p in picks],
-                         ["zen", "go", "zen", "go"])
-        # and within each plan, free still comes before paid
+                         ["zen", "go", "go", "zen"])
+        # bands strictly alternate; within each band the plan still
+        # alternates where it can
         self.assertEqual([p.name for p in picks],
-                         ["zen-free", "go-free", "zen-paid", "go-paid"])
+                         ["zen-free", "go-paid", "go-free", "zen-paid"])
 
     def test_alternation_continues_until_a_plan_runs_dry(self):
         rows = [_row("zen/one", 90.0, 0.0, BAND_FREE, provider="zen"),
@@ -229,6 +230,28 @@ class NextUpTest(unittest.TestCase):
                 _row("a/real", 50.0, 0.0, BAND_FREE)]
         picks = next_up(rows, count=4)
         self.assertEqual([p.name for p in picks], ["real"])
+
+    def test_free_and_paid_bands_alternate_fifty_fifty(self):
+        # even slots take the best remaining free pick, odd slots the best
+        # remaining paid one, so a stocked field reads free/paid/free/paid
+        rows = [_row("a/f1", 90.0, 0.0, BAND_FREE),
+                _row("a/f2", 80.0, 0.0, BAND_FREE),
+                _row("a/p1", 70.0, 1.0, BAND_INCLUDED),
+                _row("a/p2", 72.0, 2.0, BAND_INCLUDED)]
+        picks = next_up(rows, count=4)
+        self.assertEqual([p.name for p in picks],
+                         ["f1", "p1", "f2", "p2"])
+
+    def test_a_dry_band_yields_its_slots_to_the_other(self):
+        # one paid pick cannot cover two paid slots: the second falls back
+        # to free rather than ending the sequence short
+        rows = [_row("a/f1", 90.0, 0.0, BAND_FREE),
+                _row("a/f2", 80.0, 0.0, BAND_FREE),
+                _row("a/f3", 78.0, 0.0, BAND_FREE),
+                _row("a/p1", 70.0, 1.0, BAND_INCLUDED)]
+        picks = next_up(rows, count=4)
+        self.assertEqual([p.name for p in picks],
+                         ["f1", "p1", "f2", "f3"])
 
 
 if __name__ == "__main__":

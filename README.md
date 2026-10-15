@@ -78,12 +78,16 @@ ranking it came from. Three rules shape the sequence:
   catalog — and is graded `o`, while a free model scoring 24.58 is graded
   `++`. Gating on the marker recommends the weak model and misses the strong
   one.
-- **Alternation is forced.** Picks alternate between Zen and Go wherever
-  both can supply one, so following the sequence spreads across the two
-  plans instead of draining one allowance before touching the other. A paid
-  Go model may come before a free Zen one. It gives way in two cases only:
-  a plan has nothing eligible left, or taking the strongest candidate first
-  would demote it.
+- **Alternation is forced, on two axes.** Slots alternate between the free
+  and paid bands — even slots take the best remaining free pick, odd slots
+  the best remaining paid one — so a capped free tier still leaves half the
+  sequence usable, and a fresh one still leads with what costs nothing.
+  Within each slot the pick alternates between Zen and Go wherever both can
+  supply one, so following the sequence spreads across the two plans instead
+  of draining one allowance before touching the other. Either alternation
+  gives way when it must: a dry band yields its slot to the other band, a
+  plan with nothing eligible left is passed over, and the strongest free
+  pick always leads.
 - **One model, one slot.** Free on Zen and paid on Go are two lines for one
   model — the `[free]` suffix is the only difference in the name — so a
   model is never recommended twice, and price variants of one model do not

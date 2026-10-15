@@ -489,8 +489,8 @@ class CliTest(unittest.TestCase):
                                   "--source", "all")
         self.assertEqual(code, 0)
         self.assertRegex(out, r"^Next \d+ recommended models, >75% overall "
-                               r"score, sorted by best value/\$, alternating "
-                               r"Zen/Go plans\.")
+                               r"score, free and paid picks interleaved, "
+                               r"alternating Zen/Go plans\.")
         self.assertNotIn("LIMITS.md", out)
         self.assertIn("ENDPOINT", out)
         self.assertIn("BAND", out)

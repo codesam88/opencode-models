@@ -350,16 +350,20 @@ def next_up(rows: list[Row], count: int = 4, grade: str | None = None,
             floor: float = RECOMMEND_FLOOR) -> list[Row]:
     """The next *count* models to use, in order.
 
-    Candidates are ordered free-first — free models by score, since they
-    cost nothing and only the score is left to maximise, then paid models by
-    score per dollar, the measure the list view already ranks on.
+    Candidates alternate between the free and paid bands slot by slot —
+    even slots take the best remaining free pick, odd slots the best
+    remaining paid one — so a capped free tier still leaves half the
+    sequence usable, and a fresh one still leads with what costs nothing.
+    Free picks order by score, since they cost nothing and only the score
+    is left to maximise; paid picks order by score per dollar, the measure
+    the list view already ranks on.
 
-    That order is then alternated between Zen and Go wherever both plans can
-    supply a pick, so following the sequence spreads across the two instead
-    of draining one allowance before touching the other. Alternation is
-    forced: a paid Go model may come before a free Zen one. It gives way in
-    two cases only — when a plan has no eligible row left, and when taking
-    the strongest candidate first would otherwise demote it.
+    That order is then alternated between Zen and Go wherever both plans
+    can supply a pick, so following the sequence spreads across the two
+    instead of draining one allowance before touching the other. Plan
+    alternation is a preference, not a rule: it gives way when the wanted
+    band has nothing on the other plan, and band alternation gives way
+    when a band runs dry — the other band fills the slot instead.
 
     Eligibility is strength, not the rank marker: a pick must be within
     *floor* of the strongest score in *rows*, and may be narrowed further by
@@ -378,10 +382,9 @@ def next_up(rows: list[Row], count: int = 4, grade: str | None = None,
                   key=lambda r: (-r.score, r.name))
     paid = sorted((r for r in eligible if not r.free),
                   key=lambda r: (-ratio(r.score, r.price), -r.score, r.name))
-    # Free-first is the order *within* a plan; the sequence as a whole is
-    # then alternated, so it never drains one plan's picks before touching
-    # the other's.
-    return _take(free + paid, count)
+    # Band alternation is the slot order; the plan alternation inside each
+    # slot prefers a plan the previous pick did not touch.
+    return _take_banded(free, paid, count)
 
 
 def plans_of(row: Row) -> set[str]:
@@ -392,6 +395,61 @@ def plans_of(row: Row) -> set[str]:
     the alternation entirely, so it is read as membership of both.
     """
     return set(row.provider.split(","))
+
+
+def _take_banded(free: list[Row], paid: list[Row], want: int) -> list[Row]:
+    """Up to *want* rows, alternating free and paid slots.
+
+    One model is recommended once, however many lines it appears on: free on
+    Zen and paid on Go are two lines for one model, and spending two slots
+    on it wastes a recommendation. Even slots draw from the free pool, odd
+    slots from the paid pool; a dry band yields its slot to the other pool
+    rather than ending the sequence short.
+
+    Within a slot the plan alternates too: the first unseen row on a plan
+    the previous pick did not touch wins, falling back to the strongest
+    unseen row in the pool when every plan left touches it. The leading pick
+    is the strongest free row available, whichever plan it sits on. A plan
+    with nothing left is simply passed over — there is nothing to
+    alternate with.
+    """
+    pools = [list(free), list(paid)]
+    seen: set[str] = set()
+    taken: list[Row] = []
+    previous: set[str] = set()
+    for slot in range(want):
+        first, second = pools if slot % 2 == 0 else pools[::-1]
+        row = (_off_plan(first, seen, previous) or _first_unseen(first, seen)
+               or _off_plan(second, seen, previous)
+               or _first_unseen(second, seen))
+        if row is None:
+            break
+        taken.append(row)
+        seen.add(row.model.model_id)
+        previous = plans_of(row)
+    return taken
+
+
+def _first_unseen(pool: list[Row], seen: set[str]) -> Row | None:
+    """The strongest row in *pool* for a model not yet recommended."""
+    for row in pool:
+        if row.model.model_id not in seen:
+            return row
+    return None
+
+
+def _off_plan(pool: list[Row], seen: set[str],
+              previous: set[str]) -> Row | None:
+    """The strongest unseen row in *pool* on a fresh plan.
+
+    Nothing is fresh before the first pick, so the lead always falls
+    through to the strongest row outright.
+    """
+    for row in pool:
+        if row.model.model_id not in seen \
+                and not plans_of(row) & previous:
+            return row
+    return None
 
 
 def _take(ordered: list[Row], want: int) -> list[Row]:

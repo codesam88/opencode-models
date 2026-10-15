@@ -683,7 +683,7 @@ def _next_band(row) -> str:
 
 
 def _cmd_next(args: argparse.Namespace) -> int:
-    """A short ordered sequence: free models by score, then best value."""
+    """A short ordered sequence: free and paid picks interleaved band by band."""
     data_dir = Path(args.data)
     if not data_dir.is_dir():
         return _fail(f"no data directory at {data_dir} — run `fetch` first")
@@ -704,8 +704,8 @@ def _cmd_next(args: argparse.Namespace) -> int:
 
     width = max(len(_endpoint(r)) for r in picks)
     print(f"Next {len(picks)} recommended models, "
-          f">{RECOMMEND_FLOOR:.0%} overall score, sorted by best value/$, "
-          f"alternating Zen/Go plans.")
+          f">{RECOMMEND_FLOOR:.0%} overall score, free and paid picks "
+          f"interleaved, alternating Zen/Go plans.")
     print()
     print(f"  {'#':<2} {'PLAN':<5} {'SCORE':>6} {'¢/1M':>5} {'SCORE/$':>7}  "
           f"{'ENDPOINT':<{width}}  BAND")
@@ -766,10 +766,10 @@ def main(argv: list[str] | None = None) -> int:
                              "Terminal-Bench 4.0")
 
     p_next = sub.add_parser(
-        "next", help="the next few models to use, in order: free by score, "
-                     "then best score per dollar"
+        "next", help="the next few models to use, in order: free and paid "
+                     "picks interleaved, best score then best score per dollar"
     )
-    p_next.add_argument("--count", type=int, default=4,
+    p_next.add_argument("--count", type=int, default=6,
                         help="how many to recommend (default: %(default)s)")
     p_next.add_argument("--source", help="provider to draw from: zen or go "
                                          "(default: both, merged)")

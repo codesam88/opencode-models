@@ -60,6 +60,10 @@ list-zen:
 list-go:
     uv run --no-sync opencode-rank --data data list --source go
 
+# Next models to use, free and paid picks interleaved
+next:
+    uv run --no-sync opencode-rank --data data next
+
 # Text table: full catalog, incl. models in neither provider
 list-all:
     uv run --no-sync opencode-rank --data data list --source all

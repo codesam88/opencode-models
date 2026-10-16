@@ -242,10 +242,22 @@ def _cmd_conflicts(args: argparse.Namespace) -> int:
     return 0
 
 
+#: How often the long model-file walk reports: one line per file would bury
+#: the per-source announcements, so every fiftieth file plus the last one.
+_FETCH_TICK = 50
+
+
+def _model_tick(done: int, total: int, name: str) -> None:
+    if done % _FETCH_TICK == 0 or done == total:
+        print(f"  opencode.ai/data: {done}/{total} model files ...")
+
+
 def _cmd_fetch(args: argparse.Namespace) -> int:
     data_dir = Path(args.data)
-    saved = refresh(data_dir, get=http_get)
+    print("fetch model records from opencode.ai/data ...")
+    saved = refresh(data_dir, get=http_get, progress=_model_tick)
     print(f"saved {len(saved)} model files to {data_dir / 'opencode'}")
+    print("fetch tier pricing from opencode.ai/docs ...")
     try:
         prices = refresh_prices(data_dir / "tier_prices", get=http_get)
     except (OSError, ValueError) as exc:  # docs down must not fail the fetch
@@ -256,6 +268,7 @@ def _cmd_fetch(args: argparse.Namespace) -> int:
         else:
             print("warning: tier pricing docs parsed to nothing, "
                   "keeping existing snapshots")
+    print("fetch arena Elo from datasets-server.huggingface.co ...")
     try:
         elo = arena_mod.lookup_arena_elo(get=http_get)
     except (OSError, ValueError) as exc:  # one dead source must not stop the rest
@@ -281,6 +294,7 @@ def _cmd_fetch(args: argparse.Namespace) -> int:
             free_slugs = {e["model_id"] for prices in
                           load_prices(data_dir / "tier_prices").values()
                           for e in prices if e.free and e.model_id}
+            print("fetch usage export from opencode.ai/console ...")
             nominals = refresh_free_nominals(data_dir / "usage",
                                              data_dir / "opencode",
                                              _usage_get, free_slugs)
@@ -297,7 +311,9 @@ def _cmd_fetch(args: argparse.Namespace) -> int:
     if n:
         print(f"{n} curated override(s) disagree with upstream — "
               f"run `overrides` to review")
-    boards = fetch_boards(get=http_get)
+    boards = fetch_boards(
+        get=http_get,
+        progress=lambda done, total, desc: print(f"fetch {desc} ..."))
     saved = save_boards(data_dir / "boards", boards)
     rows = sum(len(v) for v in boards.values())
     if saved:

@@ -445,14 +445,19 @@ def merge_boards(models, rows: list[BoardRow]):
     return out, conflicts
 
 
-def fetch_boards(get=http_get) -> dict[str, list[BoardRow]]:
+def fetch_boards(get=http_get, progress=None) -> dict[str, list[BoardRow]]:
     """Fetch every board source, keyed by source name.
 
     A source that fails is skipped, not fatal: the boards are independent
     of each other and of the registry, so one dead source leaves the rest.
+    *progress* is an optional ``(done, total, description)`` callback,
+    fired before each source is attempted.
     """
     out = {}
-    for name, fetch, _ in SOURCES:
+    sources = list(SOURCES)
+    for done, (name, fetch, description) in enumerate(sources, 1):
+        if progress is not None:
+            progress(done, len(sources), description)
         try:
             out[name] = fetch(get)
         except (OSError, ValueError, json.JSONDecodeError):
@@ -490,6 +495,6 @@ def load_boards(directory) -> list[BoardRow]:
 
 #: Every board source, in the order `fetch --boards` walks them.
 SOURCES = (
-    ("tbench", fetch_tbench, "Terminal-Bench 4.0 official board"),
-    ("swebench", fetch_swebench, "SWE-bench official leaderboards"),
+    ("tbench", fetch_tbench, "Terminal-Bench 4.0 board from www.tbench.ai"),
+    ("swebench", fetch_swebench, "SWE-bench boards from www.swebench.com"),
 )

@@ -6,6 +6,7 @@ from pathlib import Path
 
 from opencode_rank.boards import (
     BoardRow,
+    fetch_boards,
     match_model,
     match_models,
     tbench_page_rows,
@@ -502,3 +503,18 @@ class LabelMapTest(unittest.TestCase):
                     self.assertIn(model_id, ids,
                                   f"{host}: {label} points at a model the "
                                   f"catalog no longer has")
+
+
+class FetchBoardsProgressTest(unittest.TestCase):
+    def test_progress_callback_reports_each_source(self):
+        calls = []
+
+        def get(url):
+            raise OSError("offline")
+
+        out = fetch_boards(
+            get, progress=lambda d, t, n: calls.append((d, t, n)))
+        self.assertEqual(out, {})
+        self.assertEqual(len(calls), 2)
+        self.assertEqual([c[0] for c in calls], [1, 2])
+        self.assertTrue(all(c[1] == 2 for c in calls))

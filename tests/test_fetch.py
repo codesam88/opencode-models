@@ -116,6 +116,21 @@ class RefreshTest(unittest.TestCase):
             saved = refresh(Path(tmp), get)
         self.assertEqual(saved, ["deepseek__deepseek-v4-pro.json"])
 
+    def test_progress_callback_reports_each_model(self):
+        calls = []
+        with tempfile.TemporaryDirectory() as tmp:
+            get = self._fetcher(
+                {
+                    SITEMAP_URL: SITEMAP_XML,
+                    "https://opencode.ai/data/ai21/jamba-large.json": '{"a":1}',
+                    "https://opencode.ai/data/deepseek/deepseek-v4-pro.json": "{}",
+                }
+            )
+            refresh(Path(tmp), get,
+                    progress=lambda d, t, n: calls.append((d, t, n)))
+        self.assertEqual(calls, [(1, 2, "ai21__jamba-large.json"),
+                                 (2, 2, "deepseek__deepseek-v4-pro.json")])
+
 
 if __name__ == "__main__":
     unittest.main()

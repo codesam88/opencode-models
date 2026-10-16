@@ -44,25 +44,34 @@ def _filename_for(url: str) -> str:
     return f"{lab}__{model}.json"
 
 
-def refresh(data_dir: Path, get=http_get) -> list[str]:
+def refresh(data_dir: Path, get=http_get, progress=None) -> list[str]:
     """Download every model's JSON into *data_dir*/opencode; return names.
 
     The upstream layer is verbatim: ``fetch`` writes only here, and the
     curated overlays in ``data/overrides/`` are layered on at load time
     (see overrides.py). A failed or empty download for one model is
     skipped, not fatal — the rest of the dataset still refreshes.
+
+    *progress* is an optional ``(done, total, name)`` callback, fired
+    after every model URL is attempted (saved or skipped), so a caller
+    can show the long sequential walk instead of silence.
     """
     out = Path(data_dir) / "opencode"
     out.mkdir(parents=True, exist_ok=True)
     saved: list[str] = []
-    for url in urls_from_sitemap(get(SITEMAP_URL)):
+    urls = urls_from_sitemap(get(SITEMAP_URL))
+    total = len(urls)
+    for done, url in enumerate(urls, 1):
         try:
             body = get(f"{url}.json")
         except (urllib.error.URLError, OSError):
-            continue
-        if not body.strip():
-            continue
-        name = _filename_for(url)
-        (out / name).write_text(body)
-        saved.append(name)
+            body = ""
+        if body.strip():
+            name = _filename_for(url)
+            (out / name).write_text(body)
+            saved.append(name)
+        else:
+            name = _filename_for(url)
+        if progress is not None:
+            progress(done, total, name)
     return saved

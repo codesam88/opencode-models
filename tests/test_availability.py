@@ -101,3 +101,19 @@ class AvailabilityTest(unittest.TestCase):
 if __name__ == "__main__":
     unittest.main()
 
+
+
+class LivePrecedenceTest(unittest.TestCase):
+    def test_the_live_snapshot_wins_over_the_docs_snapshot(self):
+        from opencode_rank.live import save_live
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            _snapshot(d, "zen", ["stale-model"])
+            save_live(d, {"zen": {"live-model"}})
+            self.assertEqual(load_available(d)["zen"], {"live-model"})
+
+    def test_the_docs_snapshot_survives_where_live_was_never_fetched(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            _snapshot(d, "zen", ["doc-model"])
+            self.assertEqual(load_available(d)["zen"], {"doc-model"})

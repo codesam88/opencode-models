@@ -134,3 +134,51 @@ class RefreshTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class OnlyFilterTest(unittest.TestCase):
+    def _get(self, responses):
+        def get(url):
+            if url not in responses:
+                raise KeyError(url)
+            return responses[url]
+        return get
+
+    def test_only_downloads_the_offered_models(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            get = self._get(
+                {
+                    SITEMAP_URL: SITEMAP_XML,
+                    "https://opencode.ai/data/ai21/jamba-large.json": "{}",
+                    "https://opencode.ai/data/deepseek/deepseek-v4-pro.json": "{}",
+                }
+            )
+            saved = refresh(Path(tmp), get, only={"deepseek-v4-pro"})
+        self.assertEqual(saved, ["deepseek__deepseek-v4-pro.json"])
+
+    def test_only_reaches_a_model_through_its_free_slug(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            get = self._get(
+                {
+                    SITEMAP_URL: SITEMAP_XML,
+                    "https://opencode.ai/data/ai21/jamba-large.json": "{}",
+                    "https://opencode.ai/data/deepseek/deepseek-v4-pro.json": "{}",
+                }
+            )
+            saved = refresh(Path(tmp), get, only={"jamba-large-free"})
+        self.assertEqual(saved, ["ai21__jamba-large.json"])
+
+    def test_what_is_on_disk_is_kept_whatever_the_filter_says(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            kept = Path(tmp) / "opencode" / "ai21__jamba-large.json"
+            kept.parent.mkdir(parents=True, exist_ok=True)
+            kept.write_text('{"old":true}')
+            get = self._get(
+                {
+                    SITEMAP_URL: SITEMAP_XML,
+                    "https://opencode.ai/data/deepseek/deepseek-v4-pro.json": "{}",
+                }
+            )
+            saved = refresh(Path(tmp), get, only={"deepseek-v4-pro"})
+            self.assertEqual(saved, ["deepseek__deepseek-v4-pro.json"])
+            self.assertEqual(kept.read_text(), '{"old":true}')

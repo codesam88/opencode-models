@@ -13,6 +13,8 @@ import urllib.request
 from pathlib import Path
 from xml.etree import ElementTree
 
+from .availability import offered
+
 SITEMAP_URL = "https://opencode.ai/data/sitemap.xml"
 _BASE = "https://opencode.ai/data/"
 _SITEMAP_NS = "{http://www.sitemaps.org/schemas/sitemap/0.9}"
@@ -44,7 +46,8 @@ def _filename_for(url: str) -> str:
     return f"{lab}__{model}.json"
 
 
-def refresh(data_dir: Path, get=http_get, progress=None) -> list[str]:
+def refresh(data_dir: Path, get=http_get, progress=None,
+            only: set[str] | None = None) -> list[str]:
     """Download every model's JSON into *data_dir*/opencode; return names.
 
     The upstream layer is verbatim: ``fetch`` writes only here, and the
@@ -55,11 +58,19 @@ def refresh(data_dir: Path, get=http_get, progress=None) -> list[str]:
     *progress* is an optional ``(done, total, name)`` callback, fired
     after every model URL is attempted (saved or skipped), so a caller
     can show the long sequential walk instead of silence.
+
+    *only* restricts downloads to the models the plans offer (slugs or
+    ids — ``-free`` variants reaching their model, as elsewhere). Files
+    already on disk are never deleted: a model the plans dropped keeps
+    its record, so the scales it anchors do not move under the scores.
+    None downloads everything.
     """
     out = Path(data_dir) / "opencode"
     out.mkdir(parents=True, exist_ok=True)
     saved: list[str] = []
     urls = urls_from_sitemap(get(SITEMAP_URL))
+    if only is not None:
+        urls = [u for u in urls if offered(u[len(_BASE):], only)]
     total = len(urls)
     for done, url in enumerate(urls, 1):
         try:

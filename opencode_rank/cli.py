@@ -46,6 +46,7 @@ from .ranking import (
 from .render import render_html
 from . import arena as arena_mod
 from .availability import available_ids, load_available, offered
+from .live import LIVE_CONFIG_URL, fetch_live, save_live
 from . import sources
 
 #: Where the data lives for an installed tool: $OPENCODE_RANK_DATA, else the
@@ -252,10 +253,81 @@ def _model_tick(done: int, total: int, name: str) -> None:
         print(f"  opencode.ai/data: {done}/{total} model files ...")
 
 
+def _api_get(key: str):
+    """Authed transport for the key-gated Console API (30s per request)."""
+    def get(url: str) -> str:
+        req = urllib.request.Request(
+            url, headers={"Authorization": f"Bearer {key}",
+                          "User-Agent": "opencode-rank/0.1"})
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return resp.read().decode("utf-8", errors="replace")
+    return get
+
+
+def _cmd_models(args: argparse.Namespace) -> int:
+    """The models the plans offer right now, per tier.
+
+    Live from the Console config API when ``OPENCODE_API_KEY`` is set,
+    else the snapshots the last ``fetch`` left behind. Read-only either
+    way: refreshing the snapshots is ``fetch``'s job, not this one's.
+    """
+    data_dir = Path(args.data)
+    key = os.environ.get("OPENCODE_API_KEY")
+    if key:
+        try:
+            live = fetch_live(_api_get(key))
+        except (OSError, ValueError, KeyError) as exc:
+            print(f"warning: live config unreachable ({exc}) — "
+                  f"showing the last snapshots")
+        else:
+            print(f"live from {LIVE_CONFIG_URL}")
+            for tier in sorted(live):
+                slugs = sorted(live[tier])
+                print(f"{tier} · {len(slugs)} models")
+                for slug in slugs:
+                    print(f"  {slug}")
+            return 0
+    known = load_available(data_dir)
+    if all(ids is None for ids in known.values()):
+        return _fail(f"no availability known in {data_dir} — run `fetch` "
+                     f"first (with OPENCODE_API_KEY for the live set)")
+    print(f"snapshots in {data_dir} (run `fetch` to refresh)")
+    for tier in sorted(known):
+        ids = known[tier]
+        if ids is None:
+            print(f"{tier} · unknown")
+            continue
+        print(f"{tier} · {len(ids)} models")
+        for slug in sorted(ids):
+            print(f"  {slug}")
+    return 0
+
+
 def _cmd_fetch(args: argparse.Namespace) -> int:
     data_dir = Path(args.data)
+    key = os.environ.get("OPENCODE_API_KEY")
+    only: set[str] | None = None
+    if args.all_models:
+        print("fetching the full catalog (--all)")
+    elif key:
+        print(f"fetch live model set from {LIVE_CONFIG_URL} ...")
+        try:
+            live = fetch_live(_api_get(key))
+        except (OSError, ValueError, KeyError) as exc:
+            print(f"warning: live config unreachable ({exc}) — "
+                  f"downloading the full catalog")
+        else:
+            saved_live = save_live(data_dir, live)
+            print(f"saved {', '.join(saved_live)} to "
+                  f"{data_dir / 'available'}")
+            only = set().union(*live.values()) or set()
+    if only is None and not args.all_models:
+        only = available_ids(data_dir)
+    if only is not None:
+        print(f"{len(only)} models offered — downloading those "
+              f"(--all for the full catalog)")
     print("fetch model records from opencode.ai/data ...")
-    saved = refresh(data_dir, get=http_get, progress=_model_tick)
+    saved = refresh(data_dir, get=http_get, progress=_model_tick, only=only)
     print(f"saved {len(saved)} model files to {data_dir / 'opencode'}")
     print("fetch tier pricing from opencode.ai/docs ...")
     try:
@@ -278,18 +350,10 @@ def _cmd_fetch(args: argparse.Namespace) -> int:
         cache.save(elo)
         print(f"saved {len(elo)} arena Elo scores to "
               f"{data_dir / 'aiarena' / arena_mod.CACHE_NAME}")
-    key = os.environ.get("OPENCODE_API_KEY")
     if not key:
         print("free-tier nominals not refreshed (no OPENCODE_API_KEY) — "
               "keeping the existing snapshot")
     else:
-        def _usage_get(url: str) -> str:
-            req = urllib.request.Request(
-                url, headers={"Authorization": f"Bearer {key}",
-                              "User-Agent": "opencode-rank/0.1"})
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                return resp.read().decode("utf-8", errors="replace")
-
         try:
             free_slugs = {e["model_id"] for prices in
                           load_prices(data_dir / "tier_prices").values()
@@ -297,7 +361,7 @@ def _cmd_fetch(args: argparse.Namespace) -> int:
             print("fetch usage export from opencode.ai/console ...")
             nominals = refresh_free_nominals(data_dir / "usage",
                                              data_dir / "opencode",
-                                             _usage_get, free_slugs)
+                                             _api_get(key), free_slugs)
         except (OSError, ValueError) as exc:
             print(f"warning: free-tier nominals not refreshed ({exc})")
         else:
@@ -741,7 +805,14 @@ def main(argv: list[str] | None = None) -> int:
                         help="data directory (default: %(default)s)")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    sub.add_parser("fetch", help="refresh data from opencode.ai")
+    sub.add_parser("fetch", help="refresh data from opencode.ai").add_argument(
+        "--all", dest="all_models", action="store_true",
+        help="download the full model catalog, not just the models the "
+             "plans offer (kept records are never deleted either way)")
+    sub.add_parser("models", help="the models the plans offer right now, "
+                                  "per tier: live from the Console config "
+                                  "API with OPENCODE_API_KEY, else the last "
+                                  "fetch snapshots")
     sub.add_parser("overrides",
                    help="every benchmark number more than one source "
                         "reports, and which value the console keeps")
@@ -805,6 +876,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     return {
         "fetch": _cmd_fetch,
+        "models": _cmd_models,
         "overrides": _cmd_conflicts,
         "benchmarks": _cmd_benchmarks,
         "render": _cmd_render,

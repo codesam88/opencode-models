@@ -7,7 +7,8 @@ runs entirely on data committed in this repository.
 
 | command | network | destination |
 |---|---|---|
-| `fetch` | yes, one sequential pass | `opencode.ai/data` model records, the Console tier docs for pricing snapshots, the Terminal-Bench 4.0 board page (tbench.ai), and swebench.com's leaderboard |
+| `fetch` | yes, one sequential pass | `opencode.ai/data` model records, the Console tier docs for pricing snapshots, the Terminal-Bench 4.0 board page (tbench.ai), swebench.com's leaderboard, and — with `OPENCODE_API_KEY` — the Console config API (live model set) plus the usage export (free-tier nominals) |
+| `models` | yes with `OPENCODE_API_KEY`, else no | the Console config API (live model set); the last snapshots offline |
 | `scores --refresh` | yes | the Hugging Face `datasets-server` copy of the arena Elo table |
 | everything else (`list`, `scores`, `benchmarks`, `conflicts`, `render`) | **no** | — |
 

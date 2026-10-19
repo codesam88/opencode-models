@@ -64,6 +64,10 @@ list-go:
 next:
     uv run --no-sync opencode-rank --data data next
 
+# Models the plans offer right now, per tier (live with OPENCODE_API_KEY)
+models:
+    uv run --no-sync opencode-rank --data data models
+
 # Text table: full catalog, incl. models in neither provider
 list-all:
     uv run --no-sync opencode-rank --data data list --source all

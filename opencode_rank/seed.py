@@ -26,7 +26,7 @@ from pathlib import Path
 #: Data subdirectories worth seeding. Everything fetched belongs here;
 #: nothing curated is ever written by `fetch`, so seeding it is safe.
 SEED_SUBDIRS = ("opencode", "tier_prices", "boards", "aiarena", "usage",
-                "overrides")
+                "available", "overrides")
 
 BRANCH = "local-data"
 PREFIX = "data/"

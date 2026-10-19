@@ -48,6 +48,8 @@ installing anything.
 
 ```sh
 opencode-rank fetch                     # refresh the data from opencode.ai
+opencode-rank fetch --all                 # also re-download unoffered models
+opencode-rank models                   # the models the plans offer, per tier
 opencode-rank overrides                 # every number more than one source reports
 opencode-rank benchmarks                # list benchmarks + coverage
 opencode-rank render                    # pareto.html, best-covered benchmark
@@ -310,7 +312,8 @@ committed**. They are third-party records, they go stale, and they are large;
 |---|---|---|---|
 | `opencode/` | upstream records, one JSON per model, verbatim from `https://opencode.ai/data/<lab>/<model>.json` | `fetch` only | no — `.gitignore`d |
 | `aiarena/` | arena.ai (LMArena) Elo cache, `{slug: elo}` | `fetch` | no — `.gitignore`d |
-| `tier_prices/` | snapshots of the Console tier pricing tables — **and the record of which models the plans offer** (see below) | `fetch` | no — `.gitignore`d |
+| `tier_prices/` | snapshots of the Console tier pricing tables (see below for what counts as offered) | `fetch` | no — `.gitignore`d |
+| `available/` | the live model set per tier from the Console config API — the plans as the API serves them right now | `fetch` (needs `OPENCODE_API_KEY`) | no — `.gitignore`d |
 | `boards/` | official benchmark boards, fetched from whoever runs them (see below) | `fetch` | no — `.gitignore`d |
 | `usage/` | free-tier nominal rates derived from the workspace usage export (per-model traffic only, no user columns) | `fetch` (needs `OPENCODE_API_KEY`) | no — `.gitignore`d |
 | `overrides/` | an escape hatch for hand-pinned benchmark values — currently empty, since `fetch` brings the boards themselves (see `data/overrides/README.md`) | nobody — `fetch` reports replacements via `overrides` | **yes** (the directory, no data) |
@@ -325,10 +328,18 @@ Go models were still being listed, scored and recommended after the provider's
 own documentation had stopped listing them, among them `hy3-preview` and
 `glm-5`, two of the models an active backfill was chasing numbers for.
 
-`fetch` already snapshots each tier's documentation for prices, and every row
-of that snapshot names a model the plan offers. That snapshot is now the
-availability record (`opencode_rank/availability.py`), so availability comes
-from the same source as the prices and is current by construction.
+`fetch` already snapshots each tier's documentation for prices, but the
+docs go stale — providers unlist models the pages still name, and list new
+ones the pages do not. So availability now comes from the Console config
+API (`/api/v2/config`, the workspace's live model set), snapshotted to
+`data/available/` on every keyed `fetch` (`opencode_rank/live.py`). The
+docs snapshot stays the offline fallback, and `opencode-rank models`
+prints whichever record is in force, per tier — live from the API with
+`OPENCODE_API_KEY`, else the last snapshots.
+
+`fetch` downloads only the models the plans offer (use `--all` for the
+full catalog). Records already on disk are never deleted, so a dropped
+model keeps its place in the scales rather than moving every score.
 
 - **`list` and `scores` show only what a plan lists.** `next` therefore never
   recommends a model that has been dropped.

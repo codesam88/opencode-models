@@ -137,7 +137,10 @@ class CliTest(unittest.TestCase):
             orig = cli.http_get
             cli.http_get = fake_get
             try:
-                code, _ = self._run("--data", tmp, "fetch")
+                with mock.patch.dict("os.environ"):
+                    import os
+                    os.environ.pop("OPENCODE_API_KEY", None)
+                    code, _ = self._run("--data", tmp, "fetch")
             finally:
                 cli.http_get = orig
             saved = (_models(Path(tmp)) / "x__y.json").exists()
@@ -2047,3 +2050,47 @@ class ScoresCommandTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("M1", out)
         self.assertRegex(out, r"(?i)(no benchmarks|none|—)")
+
+
+class ModelsCommandTest(unittest.TestCase):
+    def _snapshot(self, data_dir, tier, model_ids):
+        import json
+        out = Path(data_dir) / "tier_prices"
+        out.mkdir(parents=True, exist_ok=True)
+        (out / f"{tier}_prices.json").write_text(json.dumps(
+            [{"tier": tier, "model_id": mid, "name": mid, "input": 1.0,
+              "output": 1.0, "cached_read": None, "limit": None,
+              "free": False} for mid in model_ids]))
+
+    def _run(self, *argv):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = main(list(argv))
+        return code, out.getvalue()
+
+    def test_models_lists_each_tiers_slugs_from_snapshots(self):
+        import os
+        with tempfile.TemporaryDirectory() as tmp:
+            self._snapshot(tmp, "zen", ["m-zen"])
+            self._snapshot(tmp, "go", ["m-go"])
+            with mock.patch.dict(os.environ, {}, clear=False):
+                os.environ.pop("OPENCODE_API_KEY", None)
+                code, out = self._run("--data", tmp, "models")
+            self.assertEqual(code, 0)
+            self.assertIn("m-zen", out)
+            self.assertIn("m-go", out)
+
+    def test_models_prefers_the_live_api_when_keyed(self):
+        import os
+        import opencode_rank.cli as cli_mod
+        with tempfile.TemporaryDirectory() as tmp:
+            self._snapshot(tmp, "zen", ["m-stale"])
+            with mock.patch.dict(os.environ,
+                                 {"OPENCODE_API_KEY": "oc_sk_test"}):
+                with mock.patch.object(
+                        cli_mod, "fetch_live",
+                        return_value={"zen": {"m-live"}, "go": set()}):
+                    code, out = self._run("--data", tmp, "models")
+            self.assertEqual(code, 0)
+            self.assertIn("m-live", out)
+            self.assertNotIn("m-stale", out)

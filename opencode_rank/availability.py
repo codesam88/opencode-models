@@ -24,6 +24,7 @@ import json
 from pathlib import Path
 
 from . import sources
+from .live import load_live
 
 
 def _snapshot_ids(data_dir: Path, tier: str) -> set[str] | None:
@@ -42,10 +43,17 @@ def load_available(data_dir: Path) -> dict[str, set[str] | None]:
     """Model ids each plan offers, by tier; None where there is no snapshot.
 
     None means "we have not fetched this tier", which is different from an
-    empty set, which means "the plan offers nothing".
+    empty set, which means "the plan offers nothing". The live API snapshot
+    wins wherever it exists — it is what the next request is checked
+    against; the docs snapshot stays the offline fallback.
     """
-    return {tier: _snapshot_ids(data_dir, tier)
-            for tier in sources.available_sources()}
+    live = load_live(data_dir)
+    tiers = set(sources.available_sources()) | set(live)
+    out = {}
+    for tier in sorted(tiers):
+        ids = live.get(tier)
+        out[tier] = ids if ids is not None else _snapshot_ids(data_dir, tier)
+    return out
 
 
 def available_ids(data_dir: Path) -> set[str] | None:

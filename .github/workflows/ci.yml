@@ -56,10 +56,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     # contents: read comes from the top level; the SARIF upload bundled
-    # with the action needs security-events: write, scoped to this job.
+    # with the action needs security-events: write for the code-scanning
+    # upload and actions: read to associate it with this workflow run.
+    # Both are scoped to this job only.
     permissions:
       contents: read
       security-events: write
+      actions: read
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:

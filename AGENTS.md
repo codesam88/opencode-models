@@ -17,15 +17,11 @@ against `data/`.
 
 **Entry points for a new agent:**
 
-1. **What it does** — `README.md` (usage, scoring arithmetic, data layout). The scoring rationale lives next to the code it governs (`scoring.py`, `ranking.py`); read both together.
-2. **What the plans cost** — `LIMITS.md`. Workspace billing reality, verified against the live docs. Treat the doc links as authority.
-3. **Security posture** — `SECURITY.md`. What touches the network, key handling (`OPENCODE_API_KEY` env first, `~/.config/opencode-models/api_key` fallback), reporting channel.
-4. **Dev commands** — `justfile` at the repo root. Key recipes: `just test` (unittest), `just check` (tests + entry point + wheel), `just lint` (ruff: lint + format check + complexity gate; dev-only dependency, locked in `uv.lock`), `just audit` (secret-pattern sweep), `just run <command> [args...]` (the console against the checkout dataset, e.g. `just run next`, `just run fetch` — needs `data/` on disk: `fetch` once, or the `local-data` branch). Git hooks live in `.githooks/` (pre-push guards `local-data`; pre-commit runs the audit sweep plus ruff via the project venv); `just bootstrap` enables them with `core.hooksPath` unless you already use your own.
-5. **Sources** — `opencode_models/cli.py` (every subcommand), `fetch.py` + `boards.py` + `arena.py` (network layer, injected `get` for offline tests), `pricing.py` (tier docs, free-tier nominals), `scoring.py` + `ranking.py` (scales, ordering, `next` sequence), `availability.py` + `live.py` (what the plans offer), `tables.py` (aligned console output).
-6. **Tests** — `tests/test_<module>.py` mirrors the package; view contracts live in `tests/test_views.py` (a view change starts there). Fixtures are synthetic; the only test that reads the checkout is the label-map existence check.
-7. **Curated scores workflow** — `.opencode/skills/backfill-scores/SKILL.md` (finding, verifying, and pinning benchmark numbers via `data/overrides/`).
-
-The `.plan/` directory tracks pending and completed work. Run `plan list` to view the list of issues.
+1. **What it does** - `README.md` (usage, scoring arithmetic, data layout). The scoring rationale lives next to the code it governs (`scoring.py`, `ranking.py`); read both together.
+2. **What the plans cost** - `LIMITS.md`. Workspace billing reality, verified against the live docs. Treat the doc links as authority.
+3. **Security posture** - See `SECURITY.md`. App saves the `OPENCODE_API_KEY` token and scrapes public websites. Must not publish other people's secrets or data.
+4. **Dev commands** - `justfile` at the repo root. Key recipes: `just test` (unittest), `just check` (tests, run, build), `just lint` (ruff: lint, format, complexity gate, plus zizmor offline workflow analysis), `just audit` (secret-pattern sweep). `just setup` pulls dev dependencies and enables `.githooks/`.
+5. **Custom Skills** - `.opencode/skills/backfill-scores/SKILL.md` (finding, verifying, and pinning benchmark numbers via `data/overrides/`).
 
 ## Project Development Workflow
 
@@ -68,8 +64,9 @@ The `.plan/` directory tracks pending and completed work. Run `plan list` to vie
 
 ## Task Management (.plan)
 
-Every task lives as a markdown file in `.plan/<slug>.md` with YAML frontmatter. The filename (without `.md`) is the unique key — no numeric ID needed.
-Trivial single-fix tasks skip the plan file; say so in one line and do the work.
+Every task lives as a markdown file in `.plan/<slug>.md` with YAML frontmatter.
+The filename (without `.md`) is the unique key — no numeric ID needed.  Trivial
+single-fix tasks skip the plan file; say so in one line and do the work.
 
 ### Status lifecycle
 

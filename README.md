@@ -49,7 +49,7 @@ tier prices, official boards — into your data directory:
 ### Working from a checkout
 
 ```sh
-just bootstrap   # uv sync + enable git hooks (pre-commit lint/audit,
+just setup       # uv sync + enable git hooks (pre-commit lint/audit,
                  # pre-push guard for the local-data branch)
 just test        # unittest suite
 just lint        # ruff lint, format check, complexity gate

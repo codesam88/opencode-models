@@ -440,7 +440,7 @@ def _cmd_fetch(args: argparse.Namespace) -> int:
     else:
         try:
             free_slugs = {
-                e["model_id"]
+                e.model_id
                 for prices in load_prices(data_dir / "tier_prices").values()
                 for e in prices
                 if e.free and e.model_id
@@ -742,6 +742,17 @@ def _current_offered(
     return available_ids(data_dir)
 
 
+def _in_tier_slug_list(model_id: str, slugs: set[str]) -> bool:
+    """Whether *model_id* is claimed by a tier's shipped slug list.
+
+    Mirrors :func:`sources.members` matching: slug, full id, or the
+    ``-free`` variant of the slug. Used to keep tier-listed models out of
+    the catalog-only pool even when a tier dropped them from its offer.
+    """
+    slug = model_id.split("/")[-1]
+    return slug in slugs or model_id in slugs or f"{slug}-free" in slugs
+
+
 def _rows_for(
     data_dir: Path, selected: list[str], price: str, all_models: bool = False
 ):
@@ -767,10 +778,23 @@ def _rows_for(
     table = scales(models)
     groups, listed, counts, tier_slugs = [], [], {}, {}
     covered: set[str] = set()
+    # slugs shipped for every selected tier: a model listed by any of them
+    # belongs to that tier (or is dropped by availability) and must not be
+    # routed to the catalog-only "-" pool, even when the tier dropped it
+    selected_tier_slugs: set[str] = set()
+    for provider in selected:
+        if provider != "-":
+            selected_tier_slugs |= sources.load_source(provider)
     for provider in selected:
         if provider == "-":
-            pool = [m for m in models if m.model_id not in covered]
+            pool = [
+                m
+                for m in models
+                if m.model_id not in covered
+                and not _in_tier_slug_list(m.model_id, selected_tier_slugs)
+            ]
             free_ids = sources.members(models, None)[1]
+            free_ids &= {m.model_id for m in pool}
         else:
             tier_slugs[provider] = sources.load_source(provider)
             pool, free_ids = sources.members(models, tier_slugs[provider])
@@ -1115,9 +1139,7 @@ def main(argv: list[str] | None = None) -> int:
         "default shows only what a plan currently lists",
     )
 
-    p_scores = sub.add_parser(
-        "scores", help="manage cached arena.ai Elo scores (offline unless --refresh)"
-    )
+    p_scores = sub.add_parser("scores", help="manage cached arena.ai Elo scores")
     p_scores.add_argument(
         "--all-models",
         "--all",

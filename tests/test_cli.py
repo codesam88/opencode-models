@@ -333,6 +333,62 @@ class CliTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("no OPENCODE_API_KEY", out)
 
+    def test_fetch_keyed_free_slugs_use_attribute_access(self):
+        import os
+
+        import opencode_rank.cli as cli
+
+        sitemap = (
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+            "<url><loc>https://opencode.ai/data/x/y</loc></url></urlset>"
+        )
+        endpoints = (
+            "<table><tr><th>Model</th><th>Model ID</th></tr>"
+            "<tr><td>M1</td><td>m1</td></tr></table>"
+        )
+        pricing = (
+            "<table><tr><th>Model</th><th>Input</th><th>Output</th></tr>"
+            "<tr><td>M1</td><td>Free</td><td>Free</td></tr></table>"
+        )
+
+        def fake_get(url):
+            if url.endswith("/sitemap.xml"):
+                return sitemap
+            if "/docs/" in url:
+                return endpoints + pricing
+            return "{}"
+
+        calls = {}
+
+        def fake_refresh(usage_dir, catalog_dir, get, free_slugs):
+            calls["slugs"] = set(free_slugs)
+            return {"m1": 0.0018}
+
+        orig_get = cli.http_get
+        orig_fn = cli.refresh_free_nominals
+        orig_live = cli.fetch_live
+        orig_key = os.environ.get("OPENCODE_API_KEY")
+        os.environ["OPENCODE_API_KEY"] = "oc_sk_test"
+        cli.http_get = fake_get
+        cli.refresh_free_nominals = fake_refresh
+        cli.fetch_live = lambda get: {"zen": {"m1"}, "go": set()}
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                d = Path(tmp)
+                _write_sample(d)
+                code, out = self._run("--data", str(d), "fetch")
+        finally:
+            cli.http_get = orig_get
+            cli.refresh_free_nominals = orig_fn
+            cli.fetch_live = orig_live
+            if orig_key is None:
+                os.environ.pop("OPENCODE_API_KEY", None)
+            else:
+                os.environ["OPENCODE_API_KEY"] = orig_key
+        self.assertEqual(code, 0)
+        self.assertIn("free-tier nominals", out)
+        self.assertEqual(calls.get("slugs"), {"m1"})
+
     def test_scores_reads_the_cache_and_never_the_network(self):
         import opencode_rank.arena as arena
 
@@ -2468,6 +2524,26 @@ class AvailabilityTest(unittest.TestCase):
         self.assertIn("on the zen plan", out)
         self.assertNotIn("gone", out)
         self.assertNotIn("no longer listed", out)
+
+    def test_source_all_omits_a_tier_listed_unoffered_model(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._data(
+                tmp,
+                offered=["kept", "third", "fourth"],
+                shipped=["kept", "third", "fourth", "gone"],
+            )
+            code, out = self._run("--data", tmp, "list", "--source", "all")
+            self.assertEqual(code, 0)
+            self.assertIn("KEPT", out)
+            self.assertNotIn("GONE", out)
+            self.assertFalse(
+                any(line.rstrip().endswith("-  GONE") for line in out.splitlines())
+            )
+            code, out = self._run(
+                "--data", tmp, "list", "--source", "all", "--all-models"
+            )
+            self.assertEqual(code, 0)
+            self.assertIn("GONE", out)
 
     def test_the_scales_still_span_the_whole_catalog(self):
         # a model you cannot buy still says where the field is, so a score

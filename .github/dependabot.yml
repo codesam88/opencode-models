@@ -9,6 +9,10 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # delay version updates N days after release: avoids yanked-release
+    # haste, and satisfies the zizmor dependabot-cooldown audit
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 3
     groups:
       github-actions:

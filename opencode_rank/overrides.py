@@ -168,7 +168,6 @@ def apply(model: Model, override: dict) -> tuple[Model, list[Conflict]]:
         value = entry.get("score")
         if not isinstance(value, (int, float)):
             continue  # a note or a half-filled entry adds nothing
-        sources[key] = entry.get("source")
         if key in scores and scores[key] != value:
             conflict = Conflict(
                 model_id=model.model_id,
@@ -182,6 +181,7 @@ def apply(model: Model, override: dict) -> tuple[Model, list[Conflict]]:
             conflicts.append(replace(conflict, applied=conflict.override_wins))
             if not conflict.override_wins:
                 continue
+        sources[key] = entry.get("source")
         scores[key] = value
     return replace(model, scores=scores, sources=sources), conflicts
 

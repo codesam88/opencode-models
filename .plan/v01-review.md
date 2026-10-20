@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: done
 type: bug
 priority: high
 area: cli
@@ -12,8 +12,17 @@ Standard-tier critical review of `opencode_rank/` (2026-10-20): one discoverer
 different provider and family (`opencode-go/beam-free`), parent consolidation
 with spot-checks against source and live `data/`. Raw transcript (Phase 1
 claims verbatim + Phase 2 verdicts) lives at `/tmp/opencode/review-findings.md`
-— ephemeral; this file is the durable record. Fixes are separate TDD work,
-one item at a time, and nothing here is approved to fix yet.
+— ephemeral; this file is the durable record.
+
+## Outcome
+
+All FIX NOW items implemented, reviewed, and green on PR #4 (merged as noted
+below unless stated otherwise):
+R1 (keyed fetch crash), R3 (source-all availability leak), R2 step 1
+(canonical dedupe in `next`), R4+R7 (arena provenance + corrupt-cache guard),
+R8 (snapshot loader guards), R6 docs (stale `--refresh` references removed).
+Deferred follow-up: R2 step 2 (full `merge_aliases` wiring across load path,
+pricing entries, and availability) — needs its own task when scheduled.
 
 ## Findings, ordered for fixing
 

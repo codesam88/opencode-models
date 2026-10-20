@@ -65,25 +65,36 @@ def merge_aliases(models: list[Model]) -> list[Model]:
     for model in models:
         plain = canonical_id(model.model_id)
         if plain in seen:
-            continue                  # already emitted as part of its group
+            continue  # already emitted as part of its group
         twin = known.get(plain)
-        group = [known[alias] for alias, target in MODEL_ALIASES.items()
-                 if target == plain and alias in known] if twin else []
+        group = (
+            [
+                known[alias]
+                for alias, target in MODEL_ALIASES.items()
+                if target == plain and alias in known
+            ]
+            if twin
+            else []
+        )
         seen.add(model.model_id)
         seen.update(m.model_id for m in group)
         if twin is None or not group:
-            merged.append(model)      # no twin: renaming must not hide it
+            merged.append(model)  # no twin: renaming must not hide it
             continue
         scores, sources = dict(twin.scores), dict(twin.sources)
         for other in group:
-            scores = {**other.scores, **scores}    # plain record wins
+            scores = {**other.scores, **scores}  # plain record wins
             sources = {**other.sources, **sources}
-        merged.append(replace(
-            twin,
-            price_input=min([twin.price_input] + [m.price_input for m in group]),
-            price_output=min([twin.price_output] + [m.price_output for m in group]),
-            price_cached_input=min([twin.price_cached_input]
-                                   + [m.price_cached_input for m in group]),
-            scores=scores,
-            sources=sources))
+        merged.append(
+            replace(
+                twin,
+                price_input=min([twin.price_input] + [m.price_input for m in group]),
+                price_output=min([twin.price_output] + [m.price_output for m in group]),
+                price_cached_input=min(
+                    [twin.price_cached_input] + [m.price_cached_input for m in group]
+                ),
+                scores=scores,
+                sources=sources,
+            )
+        )
     return merged

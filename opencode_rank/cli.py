@@ -11,42 +11,56 @@ from __future__ import annotations
 
 import argparse
 import os
-import urllib.request
 import sys
+import urllib.request
 from dataclasses import replace
 from pathlib import Path
 
-from .arena import ARENA_BENCHMARK, ArenaCache, merge_from_file
+from . import arena as arena_mod
+from . import sources
+from .arena import ArenaCache, merge_from_file
+from .auth import load_key, save_key
+from .availability import available_ids, load_available, offered
 from .benchmarks import available
+from .boards import fetch_boards, load_boards, merge_boards, save_boards
 from .data import load_models
 from .fetch import http_get, refresh
-from .boards import (fetch_boards, load_boards, merge_boards,
-                    save_boards)
-from .overrides import TIER_LABELS, load_curated, off_band_models, source_tier
-from .pricing import (FREE_TIER_NOMINAL_RATES, FREE_TIER_SNAPSHOT_NAME,
-                     load_free_nominals, load_prices, refresh_free_nominals,
-                     refresh_prices)
-from .ranking import RECOMMEND_FLOOR, grade_for, next_up, plans_of
-from .scoring import (MIN_AXES, _TRACKED, _folded, canonical,
-                     combined, derived_scores, scales)
+from .live import LIVE_CONFIG_URL, fetch_live, save_live
+from .overrides import load_curated, off_band_models, source_tier
+from .pricing import (
+    FREE_TIER_NOMINAL_RATES,
+    FREE_TIER_SNAPSHOT_NAME,
+    load_free_nominals,
+    load_prices,
+    refresh_free_nominals,
+    refresh_prices,
+)
 from .ranking import (
     BAND_FREE,
     BAND_INCLUDED,
     BAND_PAYG,
+    RECOMMEND_FLOOR,
     build_rows,
     dedupe_providers,
+    grade_for,
     grade_rows,
     merge_rows,
+    next_up,
     order_rows,
     partition_rows,
+    plans_of,
     ratio,
 )
-from . import arena as arena_mod
-from .availability import available_ids, load_available, offered
-from .auth import key_file, load_key, save_key
+from .scoring import (
+    _TRACKED,
+    MIN_AXES,
+    _folded,
+    canonical,
+    combined,
+    derived_scores,
+    scales,
+)
 from .tables import column_widths, format_row, render
-from .live import LIVE_CONFIG_URL, fetch_live, save_live
-from . import sources
 
 #: Where the data lives for an installed tool: $OPENCODE_RANK_DATA, else the
 #: XDG user-data dir (~/.local/share/opencode-rank). `fetch` populates it and
@@ -105,8 +119,7 @@ def _header(widths: tuple[int, ...], axis: bool = True) -> str:
     return _style(format_row(headings, widths) + "  MODEL")
 
 
-def _section(title: str, widths: tuple[int, ...],
-             axis: bool = True) -> None:
+def _section(title: str, widths: tuple[int, ...], axis: bool = True) -> None:
     """Open a table: blank line, rule-wrapped title, highlighted header."""
     print()
     print(f"── {title} " + "─" * max(4, RULE_WIDTH - len(title)))
@@ -152,7 +165,7 @@ def _note_text(c) -> str:
     is cut: the full record is in ``data/boards/``.
     """
     text = " ".join((c.reason or "").split())
-    return text if len(text) <= _NOTE_WIDTH else text[:_NOTE_WIDTH - 1] + "…"
+    return text if len(text) <= _NOTE_WIDTH else text[: _NOTE_WIDTH - 1] + "…"
 
 
 def _print_conflicts(conflicts, orphans=()) -> int:
@@ -165,13 +178,20 @@ def _print_conflicts(conflicts, orphans=()) -> int:
     """
     rows = []
     for c in conflicts:
-        rows.append((
-            c.model_id, c.benchmark,
-            f"{c.upstream:g} {_tier_word(c.upstream_source)}",
-            f"{c.override:g} {_tier_word(c.override_source)}",
-            f"{c.used:g}", _note_text(c)))
-    orphans = [(model_id, "", "", "", "", "override file has no upstream record")
-               for model_id in sorted(orphans)]
+        rows.append(
+            (
+                c.model_id,
+                c.benchmark,
+                f"{c.upstream:g} {_tier_word(c.upstream_source)}",
+                f"{c.override:g} {_tier_word(c.override_source)}",
+                f"{c.used:g}",
+                _note_text(c),
+            )
+        )
+    orphans = [
+        (model_id, "", "", "", "", "override file has no upstream record")
+        for model_id in sorted(orphans)
+    ]
     rows += orphans
     if not rows:
         return 0
@@ -197,12 +217,18 @@ def _cmd_conflicts(args: argparse.Namespace) -> int:
         print("— official boards —")
         _print_conflicts(board_conflicts)
     for mid, s21, s40, resid in off_band_models(curated.models):
-        print(f"{mid}  Terminal-Bench 2.1 {s21} vs 4.0 {s40} — "
-              f"{resid:+.0f} off the 2.1→4.0 band, check the run")
-    print(f"{len(curated.curated)} curated models · {n} curated "
-          f"disagreements · {len(board_conflicts)} from official boards")
-    print("tiers: self = vendor self-report · board = official board · "
-          "indep = independent evaluator")
+        print(
+            f"{mid}  Terminal-Bench 2.1 {s21} vs 4.0 {s40} — "
+            f"{resid:+.0f} off the 2.1→4.0 band, check the run"
+        )
+    print(
+        f"{len(curated.curated)} curated models · {n} curated "
+        f"disagreements · {len(board_conflicts)} from official boards"
+    )
+    print(
+        "tiers: self = vendor self-report · board = official board · "
+        "indep = independent evaluator"
+    )
     return 0
 
 
@@ -218,12 +244,18 @@ def _model_tick(done: int, total: int, name: str) -> None:
 
 def _api_get(key: str):
     """Authed transport for the key-gated Console API (30s per request)."""
+
     def get(url: str) -> str:
         req = urllib.request.Request(
-            url, headers={"Authorization": f"Bearer {key}",
-                          "User-Agent": "opencode-rank/0.1"})
+            url,
+            headers={
+                "Authorization": f"Bearer {key}",
+                "User-Agent": "opencode-rank/0.1",
+            },
+        )
         with urllib.request.urlopen(req, timeout=30) as resp:
             return resp.read().decode("utf-8", errors="replace")
+
     return get
 
 
@@ -238,8 +270,10 @@ def _cmd_auth(args: argparse.Namespace) -> int:
     import getpass
 
     if not sys.stdin.isatty():
-        return _fail("auth needs an interactive terminal — pipe a key via "
-                     "OPENCODE_API_KEY instead")
+        return _fail(
+            "auth needs an interactive terminal — pipe a key via "
+            "OPENCODE_API_KEY instead"
+        )
     key = getpass.getpass("OPENCODE_API_KEY: ").strip()
     if not key:
         return _fail("no key entered — nothing saved")
@@ -251,8 +285,10 @@ def _cmd_auth(args: argparse.Namespace) -> int:
         print(f"warning: key saved but not verified ({exc})")
         return 0
     count = len(set().union(*live.values()))
-    print(f"verified live: {count} models across "
-          f"{len([t for t in live.values() if t])} tiers")
+    print(
+        f"verified live: {count} models across "
+        f"{len([t for t in live.values() if t])} tiers"
+    )
     return 0
 
 
@@ -277,8 +313,8 @@ def _model_name(names: dict[str, str], slug: str) -> str:
     """
     if slug in names:
         return names[slug]
-    if slug.endswith("-free") and slug[:-len("-free")] in names:
-        return names[slug[:-len("-free")]]
+    if slug.endswith("-free") and slug[: -len("-free")] in names:
+        return names[slug[: -len("-free")]]
     return slug
 
 
@@ -297,21 +333,24 @@ def _cmd_models(args: argparse.Namespace) -> int:
         try:
             tiers = fetch_live(_api_get(key))
         except (OSError, ValueError, KeyError) as exc:
-            print(f"warning: live config unreachable ({exc}) — "
-                  f"showing the last snapshots")
+            print(
+                f"warning: live config unreachable ({exc}) — showing the last snapshots"
+            )
             tiers = None
         else:
             save_live(data_dir, tiers)
-            origin = (f"live from {LIVE_CONFIG_URL} "
-                      f"(recorded to {data_dir / 'available'})")
+            origin = (
+                f"live from {LIVE_CONFIG_URL} (recorded to {data_dir / 'available'})"
+            )
     if tiers is None:
         known = load_available(data_dir)
         if all(ids is None for ids in known.values()):
-            return _fail(f"no availability known in {data_dir} — run `fetch` "
-                         f"first (with OPENCODE_API_KEY for the live set)")
+            return _fail(
+                f"no availability known in {data_dir} — run `fetch` "
+                f"first (with OPENCODE_API_KEY for the live set)"
+            )
         tiers = {t: ids for t, ids in known.items() if ids is not None}
-        origin = (f"snapshots in {data_dir} "
-                  f"(run `fetch` to refresh)")
+        origin = f"snapshots in {data_dir} (run `fetch` to refresh)"
         unknown = sorted(t for t, ids in known.items() if ids is None)
     else:
         unknown = []
@@ -323,8 +362,7 @@ def _cmd_models(args: argparse.Namespace) -> int:
                 by_slug[slug] = tier
     rows = []
     for slug, tier in by_slug.items():
-        endpoint = (f"opencode-go/{slug}" if tier == "go"
-                    else f"opencode/{slug}")
+        endpoint = f"opencode-go/{slug}" if tier == "go" else f"opencode/{slug}"
         name = _model_name(names, slug)
         # the endpoint already carries the slug: a missing display name
         # reads "—" (as a missing score does), not the slug twice
@@ -332,8 +370,10 @@ def _cmd_models(args: argparse.Namespace) -> int:
     rows.sort(key=lambda row: (row[1].lower(), row[0]))
     counts = " + ".join(f"{len(tiers[t])} {t}" for t in sorted(tiers))
     print(origin)
-    print(f"{len(by_slug)} models · {counts}"
-          + (f" · {', '.join(unknown)} unknown" if unknown else ""))
+    print(
+        f"{len(by_slug)} models · {counts}"
+        + (f" · {', '.join(unknown)} unknown" if unknown else "")
+    )
     print(render(["ENDPOINT", "MODEL"], rows, aligns=("<", "<"), indent="  "))
     return 0
 
@@ -349,18 +389,21 @@ def _cmd_fetch(args: argparse.Namespace) -> int:
         try:
             live = fetch_live(_api_get(key))
         except (OSError, ValueError, KeyError) as exc:
-            print(f"warning: live config unreachable ({exc}) — "
-                  f"downloading the full catalog")
+            print(
+                f"warning: live config unreachable ({exc}) — "
+                f"downloading the full catalog"
+            )
         else:
             saved_live = save_live(data_dir, live)
-            print(f"saved {', '.join(saved_live)} to "
-                  f"{data_dir / 'available'}")
+            print(f"saved {', '.join(saved_live)} to {data_dir / 'available'}")
             only = set().union(*live.values()) or set()
     if only is None and not args.all_models:
         only = available_ids(data_dir)
     if only is not None:
-        print(f"{len(only)} models offered — downloading those "
-              f"(--all for the full catalog)")
+        print(
+            f"{len(only)} models offered — downloading those "
+            f"(--all for the full catalog)"
+        )
     print("fetch model records from opencode.ai/data ...")
     saved = refresh(data_dir, get=http_get, progress=_model_tick, only=only)
     print(f"saved {len(saved)} model files to {data_dir / 'opencode'}")
@@ -373,8 +416,10 @@ def _cmd_fetch(args: argparse.Namespace) -> int:
         if prices:
             print(f"saved {', '.join(prices)} to {data_dir / 'tier_prices'}")
         else:
-            print("warning: tier pricing docs parsed to nothing, "
-                  "keeping existing snapshots")
+            print(
+                "warning: tier pricing docs parsed to nothing, "
+                "keeping existing snapshots"
+            )
     print("fetch arena Elo from datasets-server.huggingface.co ...")
     try:
         elo = arena_mod.lookup_arena_elo(get=http_get)
@@ -383,41 +428,53 @@ def _cmd_fetch(args: argparse.Namespace) -> int:
     else:
         cache = ArenaCache(data_dir / "aiarena")
         cache.save(elo)
-        print(f"saved {len(elo)} arena Elo scores to "
-              f"{data_dir / 'aiarena' / arena_mod.CACHE_NAME}")
+        print(
+            f"saved {len(elo)} arena Elo scores to "
+            f"{data_dir / 'aiarena' / arena_mod.CACHE_NAME}"
+        )
     if not key:
-        print("free-tier nominals not refreshed (no OPENCODE_API_KEY) — "
-              "keeping the existing snapshot")
+        print(
+            "free-tier nominals not refreshed (no OPENCODE_API_KEY) — "
+            "keeping the existing snapshot"
+        )
     else:
         try:
-            free_slugs = {e["model_id"] for prices in
-                          load_prices(data_dir / "tier_prices").values()
-                          for e in prices if e.free and e.model_id}
+            free_slugs = {
+                e["model_id"]
+                for prices in load_prices(data_dir / "tier_prices").values()
+                for e in prices
+                if e.free and e.model_id
+            }
             print("fetch usage export from opencode.ai/console ...")
-            nominals = refresh_free_nominals(data_dir / "usage",
-                                             data_dir / "opencode",
-                                             _api_get(key), free_slugs)
+            nominals = refresh_free_nominals(
+                data_dir / "usage", data_dir / "opencode", _api_get(key), free_slugs
+            )
         except (OSError, ValueError) as exc:
             print(f"warning: free-tier nominals not refreshed ({exc})")
         else:
-            print(f"saved {len(nominals)} free-tier nominals to "
-                  f"{data_dir / 'usage' / FREE_TIER_SNAPSHOT_NAME}"
-                  if nominals is not None else
-                  "warning: free-tier nominals not refreshed "
-                  "(anchor model absent from the export)")
+            print(
+                f"saved {len(nominals)} free-tier nominals to "
+                f"{data_dir / 'usage' / FREE_TIER_SNAPSHOT_NAME}"
+                if nominals is not None
+                else "warning: free-tier nominals not refreshed "
+                "(anchor model absent from the export)"
+            )
     curated = load_curated(data_dir / "opencode", data_dir / "overrides")
     n = _print_conflicts(curated.conflicts, curated.orphans)
     if n:
-        print(f"{n} curated override(s) disagree with upstream — "
-              f"run `overrides` to review")
+        print(
+            f"{n} curated override(s) disagree with upstream — "
+            f"run `overrides` to review"
+        )
     boards = fetch_boards(
-        get=http_get,
-        progress=lambda done, total, desc: print(f"fetch {desc} ..."))
+        get=http_get, progress=lambda done, total, desc: print(f"fetch {desc} ...")
+    )
     saved = save_boards(data_dir / "boards", boards)
     rows = sum(len(v) for v in boards.values())
     if saved:
-        print(f"saved {rows} board rows from {', '.join(saved)} "
-              f"to {data_dir / 'boards'}")
+        print(
+            f"saved {rows} board rows from {', '.join(saved)} to {data_dir / 'boards'}"
+        )
     return 0
 
 
@@ -435,7 +492,7 @@ def _column_label(name: str) -> str:
         return "DeepSWE"
     for family, short in (("Terminal Bench", "TB"), ("SWE Bench", "SWE")):
         if name.startswith(family):
-            rest = name[len(family):]
+            rest = name[len(family) :]
             if short == "SWE":
                 # "SWE Verified" is the widest header in the scores table;
                 # "Vrfd" keeps the column parseable at a glance
@@ -463,8 +520,7 @@ def _score_columns(models, table: dict) -> list[tuple[str, str, str]]:
             continue
         # prefer the hyphenated spelling for the full name: it is how the
         # benchmark is written everywhere else, including in the README
-        name = sorted(spellings[folded],
-                      key=lambda n: (n.count("-") == 0, n))[0]
+        name = sorted(spellings[folded], key=lambda n: (n.count("-") == 0, n))[0]
         columns.append((folded, _column_label(folded), name))
     return columns
 
@@ -481,9 +537,10 @@ def _score_cells(model, table: dict, columns: list[tuple[str, str, str]]) -> lis
     derived = derived_scores(model, table)
     cells = []
     for key, _label, _name in columns:
-        parts = sorted(((name, derived[name]) for name in derived
-                        if canonical(name) == key),
-                       key=lambda part: (-part[1], part[0]))
+        parts = sorted(
+            ((name, derived[name]) for name in derived if canonical(name) == key),
+            key=lambda part: (-part[1], part[0]),
+        )
         cells.append(" ".join(f"{model.scores[n]:g}→{d:.0f}" for n, d in parts))
     return cells
 
@@ -502,10 +559,15 @@ def _cmd_scores(args: argparse.Namespace) -> int:
     models, _curated, _boards = _load(data_dir)
     table = scales(models)
     on_offer = available_ids(data_dir)
-    shown = (models if getattr(args, "all_models", False) or not on_offer
-             else [m for m in models if offered(m.model_id, on_offer)])
-    ranked = sorted((m for m in shown if m.scores),
-                    key=lambda m: -(combined(derived_scores(m, table)) or 0))
+    shown = (
+        models
+        if getattr(args, "all_models", False) or not on_offer
+        else [m for m in models if offered(m.model_id, on_offer)]
+    )
+    ranked = sorted(
+        (m for m in shown if m.scores),
+        key=lambda m: -(combined(derived_scores(m, table)) or 0),
+    )
     unscored = [m for m in shown if not m.scores]
     columns = _score_columns(models, table)
 
@@ -519,25 +581,30 @@ def _cmd_scores(args: argparse.Namespace) -> int:
     scored = [m for m in ranked if combined(derived_scores(m, table)) is not None]
     one = counts.get(1, [])
     zerod = [m for m in ranked if not derived_scores(m, table)]
-    print(f"{len(models)} models · {len(columns)} benchmarks scored on · "
-          f"{len(scored)} with scores · {len(one)} on one benchmark · "
-          f"{len(zerod)} with none scored · {len(unscored)} without any")
+    print(
+        f"{len(models)} models · {len(columns)} benchmarks scored on · "
+        f"{len(scored)} with scores · {len(one)} on one benchmark · "
+        f"{len(zerod)} with none scored · {len(unscored)} without any"
+    )
     print()
     cells = [_score_cells(m, table, columns) for m in ranked]
     # the same markers as `list`, over the models shown here: rank position
     # in this ordering, · where there is no score to rank
-    marks = {id(m): grade_for(combined(derived_scores(m, table)))
-             for m in ranked}
-    print("GRADE: ++ ≥90 · + ≥75 · o 60–75 · - 50–60 · -- <50 · "
-          "· unranked")
-    heads = ["MODEL", "GRADE", "SCORE"] + [label for _k, label, _n
-                                                 in columns]
+    marks = {id(m): grade_for(combined(derived_scores(m, table))) for m in ranked}
+    print("GRADE: ++ ≥90 · + ≥75 · o 60–75 · - 50–60 · -- <50 · · unranked")
+    heads = ["MODEL", "GRADE", "SCORE"] + [label for _k, label, _n in columns]
     grid = []
-    for model, row in zip(ranked, cells):
+    for model, row in zip(ranked, cells, strict=True):
         derived = derived_scores(model, table)
         score = combined(derived)
-        grid.append([model.name, marks.get(id(model), "·"),
-                     f"{score:.0f}" if score is not None else "—"] + row)
+        grid.append(
+            [
+                model.name,
+                marks.get(id(model), "·"),
+                f"{score:.0f}" if score is not None else "—",
+            ]
+            + row
+        )
     # measured, not fixed: MODEL fits the shown rows (not the whole
     # catalog) and the fixed columns fit their headers. The benchmark
     # columns keep double gaps — their labels hold single spaces
@@ -550,16 +617,16 @@ def _cmd_scores(args: argparse.Namespace) -> int:
         right = format_row(cells[3:], widths[3:], "<", gap="  ")
         lines.append(("  " + left + ("  " + right if right else "")).rstrip())
     print("\n".join(lines))
-    legend = [f"{label} = {name}" for _key, label, name in columns
-              if label != name]
+    legend = [f"{label} = {name}" for _key, label, name in columns if label != name]
     if legend:
         print()
         print("  " + " · ".join(legend))
     if unscored:
-        print(f"  {len(unscored)} with no benchmarks: "
-              + ", ".join(sorted(m.name for m in unscored)[:10]))
-    print("  how a score is derived: README, "
-          "\"How a model's score is computed\"")
+        print(
+            f"  {len(unscored)} with no benchmarks: "
+            + ", ".join(sorted(m.name for m in unscored)[:10])
+        )
+    print('  how a score is derived: README, "How a model\'s score is computed"')
     return 0
 
 
@@ -579,7 +646,7 @@ def _bench_tag(benchmark: str | None) -> str:
         return "-"
     folded = benchmark.lower().replace(" ", "-")
     if folded.startswith("terminal-bench-4"):
-        return "TB4"                     # harder scale, ranked on its own
+        return "TB4"  # harder scale, ranked on its own
     if folded.startswith("terminal-bench"):
         return "TB"
     if folded.startswith("swe-bench"):
@@ -603,8 +670,7 @@ def _cells(row, axis: bool = True) -> tuple[str, ...]:
     score = "-" if row.score is None else f"{round(row.score)}"
     if axis:
         return (score, price, _pick_value(row), row.provider)
-    return (score, _bench_tag(row.benchmark), price, _pick_value(row),
-            row.provider)
+    return (score, _bench_tag(row.benchmark), price, _pick_value(row), row.provider)
 
 
 def _widths(rows, axis: bool = True) -> tuple[int, ...]:
@@ -613,22 +679,25 @@ def _widths(rows, axis: bool = True) -> tuple[int, ...]:
     return tuple(column_widths(headings, [_cells(r, axis) for r in rows]))
 
 
-def _print_row(row, widths: tuple[int, ...], curated: set[str] = frozenset(),
-               axis: bool = True) -> None:
+def _print_row(
+    row, widths: tuple[int, ...], curated: set[str] = frozenset(), axis: bool = True
+) -> None:
     name = f"{row.name} *" if row.model.model_id in curated else row.name
-    print(f"{row.grade:>{GRADE_WIDTH - 1}} "
-          + _row_line(_cells(row, axis), widths) + f"  {name}")
+    print(
+        f"{row.grade:>{GRADE_WIDTH - 1}} "
+        + _row_line(_cells(row, axis), widths)
+        + f"  {name}"
+    )
 
 
-def _select(data_dir: Path, source: str | None,
-            price: str = "weighted"):
+def _select(data_dir: Path, source: str | None, price: str = "weighted"):
     """Which providers a view covers, or None if the name is not one.
 
     Providers are zen and go, plus ``-`` for catalog models in neither tier.
     """
     tiers = sources.available_sources()
     if source is None:
-        return list(tiers), "tiers"                   # both, merged
+        return list(tiers), "tiers"  # both, merged
     if source == "all":
         return list(tiers) + ["-"], "all"
     if source in tiers:
@@ -636,8 +705,10 @@ def _select(data_dir: Path, source: str | None,
     return None
 
 
-def _current_offered(data_dir: Path, bypass: bool = False,
-                     ) -> set[str] | None:
+def _current_offered(
+    data_dir: Path,
+    bypass: bool = False,
+) -> set[str] | None:
     """Model ids offered right now, or None for no restriction.
 
     With ``OPENCODE_API_KEY`` the live config API is the record — it is
@@ -652,25 +723,28 @@ def _current_offered(data_dir: Path, bypass: bool = False,
         try:
             live = fetch_live(_api_get(key))
         except (OSError, ValueError, KeyError) as exc:
-            print(f"warning: live config unreachable ({exc}) — "
-                  f"using the last snapshots")
+            print(
+                f"warning: live config unreachable ({exc}) — using the last snapshots"
+            )
         else:
             ids = set().union(*live.values())
             if not ids:
-                print("warning: live config lists no models — "
-                      f"using the last snapshots")
+                print("warning: live config lists no models — using the last snapshots")
             else:
                 save_live(data_dir, live)
                 return ids
     else:
-        print("no API token found — availability may be stale, some models "
-              "may be unavailable (`auth` for live data, `--all` for the "
-              "full catalog)")
+        print(
+            "no API token found — availability may be stale, some models "
+            "may be unavailable (`auth` for live data, `--all` for the "
+            "full catalog)"
+        )
     return available_ids(data_dir)
 
 
-def _rows_for(data_dir: Path, selected: list[str], price: str,
-              all_models: bool = False):
+def _rows_for(
+    data_dir: Path, selected: list[str], price: str, all_models: bool = False
+):
     """Build, merge and dedupe the rows for *selected* providers.
 
     Shared by `list` and `next` so a recommendation can never disagree with
@@ -687,8 +761,7 @@ def _rows_for(data_dir: Path, selected: list[str], price: str,
     # the fetched free-tier nominals win per model; the committed table is
     # only the offline fallback for whatever the snapshot does not cover
     snapshot = load_free_nominals(data_dir)
-    free_rates = ({**FREE_TIER_NOMINAL_RATES, **snapshot} if snapshot
-                  else None)
+    free_rates = {**FREE_TIER_NOMINAL_RATES, **snapshot} if snapshot else None
     # one scale for the whole catalog: per-tier scales would make the same
     # score mean two different things in the merged view
     table = scales(models)
@@ -707,9 +780,17 @@ def _rows_for(data_dir: Path, selected: list[str], price: str,
             counts[provider] = len(pool)
             covered |= {m.model_id for m in pool}
         listed += pool
-        groups.append(build_rows(pool, _entries_for(provider, data_dir),
-                                 free_ids, axis=price, provider=provider,
-                                 table=table, free_rates=free_rates))
+        groups.append(
+            build_rows(
+                pool,
+                _entries_for(provider, data_dir),
+                free_ids,
+                axis=price,
+                provider=provider,
+                table=table,
+                free_rates=free_rates,
+            )
+        )
     rows = dedupe_providers(merge_rows(*groups))
     return rows, listed, curated, counts, tier_slugs, models
 
@@ -722,53 +803,57 @@ def _cmd_list(args: argparse.Namespace) -> int:
     source = args.source
     chosen = _select(data_dir, source)
     if chosen is None:
-        return _fail(f"unknown source {source!r} — available: "
-                     f"{', '.join(sources.available_sources())}, all")
+        return _fail(
+            f"unknown source {source!r} — available: "
+            f"{', '.join(sources.available_sources())}, all"
+        )
     selected, scope = chosen
 
     rows, listed, curated, counts, tier_slugs, models = _rows_for(
-        data_dir, selected, args.price, getattr(args, "all_models", False))
+        data_dir, selected, args.price, getattr(args, "all_models", False)
+    )
     if not listed:
-        return _fail(f"no model of {source or 'zen+go'} is in {data_dir} "
-                     f"— run `fetch`")
+        return _fail(f"no model of {source or 'zen+go'} is in {data_dir} — run `fetch`")
     # one line per (model, variant, score, cost) before the culls see them
     if args.benchmark:
         wanted = args.benchmark
         if wanted not in dict(available(listed)):
-            listing = ", ".join(f"{n} ({c})"
-                                for n, c in list(available(listed))[:10])
+            listing = ", ".join(f"{n} ({c})" for n, c in list(available(listed))[:10])
             return _fail(f"unknown benchmark {wanted!r} — available: {listing}")
-        rows = [replace(r, score=r.model.scores[wanted], benchmark=wanted)
-                for r in rows if wanted in r.model.scores]
+        rows = [
+            replace(r, score=r.model.scores[wanted], benchmark=wanted)
+            for r in rows
+            if wanted in r.model.scores
+        ]
         rows.sort(key=lambda r: (-ratio(r.score, r.price), -r.score))
         order_note = f"benchmark {wanted} · sorted by score per $"
     else:
         rows = order_rows(rows)
-        order_note = ("ranked by score per $, best value first")
+        order_note = "ranked by score per $, best value first"
     # the marker reads the score itself, so a row in the cost or
     # worst-score table shows the same grade it earned in best value
     rows = grade_rows(rows)
     # the layout: every axis side by side, or the single ranked benchmark
     axis = not args.benchmark
     if not rows:
-        return _fail(f"no {source or 'zen+go'} model in {data_dir} "
-                     f"has benchmark scores")
+        return _fail(
+            f"no {source or 'zen+go'} model in {data_dir} has benchmark scores"
+        )
 
     if scope == "tiers":
-        head = (f"zen+go: {counts.get('zen', 0)} zen + "
-                f"{counts.get('go', 0)} go models")
+        head = f"zen+go: {counts.get('zen', 0)} zen + {counts.get('go', 0)} go models"
     elif scope == "tier":
-        head = (f"{source}: {counts[source]}/{len(tier_slugs[source])} "
-                f"models in catalog")
+        head = f"{source}: {counts[source]}/{len(tier_slugs[source])} models in catalog"
     else:
         head = f"all: {len(models)} models in catalog"
     print(f"{head} · {len(rows)} lines · {order_note} · {COST_NOTE}")
     if not getattr(args, "all_models", False):
         plans = "Go/Zen plans" if source in (None, "all") else f"{source} plan"
-        print(f"Only models available right now on the {plans} — "
-              f"full list with --all-models.")
-    print("GRADE: ++ ≥90 · + ≥75 · o 60–75 · - 50–60 · -- <50 · "
-          "· unranked")
+        print(
+            f"Only models available right now on the {plans} — "
+            f"full list with --all-models."
+        )
+    print("GRADE: ++ ≥90 · + ≥75 · o 60–75 · - 50–60 · -- <50 · · unranked")
 
     # the split always happens — the cull is what keeps the worst-scoring
     # and priciest models out of the view — only the reporting is optional
@@ -786,13 +871,11 @@ def _cmd_list(args: argparse.Namespace) -> int:
                 _print_row(row, widths, curated.curated, axis)
 
     if args.tables == "all":
-        _section(f"worst score (bottom 30%) · {len(worst)} lines", widths,
-                 axis)
+        _section(f"worst score (bottom 30%) · {len(worst)} lines", widths, axis)
         for row in worst:
             _print_row(row, widths, curated.curated, axis)
 
-        _section(f"highest cost (top 30%) · {len(pricey)} lines", widths,
-                 axis)
+        _section(f"highest cost (top 30%) · {len(pricey)} lines", widths, axis)
         for row in pricey:
             _print_row(row, widths, curated.curated, axis)
     return 0
@@ -802,8 +885,12 @@ def _cmd_list(args: argparse.Namespace) -> int:
 #: what an allowance costs, when a balance is drawn down, what "free" does
 #: not mean — are written down once in LIMITS.md rather than restated on
 #: every run.
-NEXT_BANDS = {"free": "free", "included": "included", "payg": "payg",
-              "catalog": "catalog"}
+NEXT_BANDS = {
+    "free": "free",
+    "included": "included",
+    "payg": "payg",
+    "catalog": "catalog",
+}
 
 
 def _pick_value(row) -> str:
@@ -841,8 +928,9 @@ def _next_band(row) -> str:
     # not equality with a single plan name
     if not {"zen", "go"} & plans_of(row):
         return NEXT_BANDS["catalog"]
-    return NEXT_BANDS["included" if row.band == "included"
-                      else ("free" if row.free else "payg")]
+    return NEXT_BANDS[
+        "included" if row.band == "included" else ("free" if row.free else "payg")
+    ]
 
 
 #: The `next` grid, declared: one text column per field, measured at
@@ -859,10 +947,25 @@ def _next_table(picks: list) -> str:
     rows = []
     for i, row in enumerate(picks, 1):
         _score, price, value, _prov = _cells(row)
-        rows.append([str(i), row.provider, f"{round(row.score)}", price,
-                     value, _endpoint(row), _next_band(row)])
-    return render(NEXT_HEADERS, rows, aligns=NEXT_ALIGNS,
-                  min_widths=NEXT_MIN_WIDTHS, indent="  ", gap=" ")
+        rows.append(
+            [
+                str(i),
+                row.provider,
+                f"{round(row.score)}",
+                price,
+                value,
+                _endpoint(row),
+                _next_band(row),
+            ]
+        )
+    return render(
+        NEXT_HEADERS,
+        rows,
+        aligns=NEXT_ALIGNS,
+        min_widths=NEXT_MIN_WIDTHS,
+        indent="  ",
+        gap=" ",
+    )
 
 
 def _cmd_next(args: argparse.Namespace) -> int:
@@ -872,23 +975,31 @@ def _cmd_next(args: argparse.Namespace) -> int:
         return _fail(f"no data directory at {data_dir} — run `fetch` first")
     chosen = _select(data_dir, args.source)
     if chosen is None:
-        return _fail(f"unknown source {args.source!r} — available: "
-                     f"{', '.join(sources.available_sources())}, all")
+        return _fail(
+            f"unknown source {args.source!r} — available: "
+            f"{', '.join(sources.available_sources())}, all"
+        )
     rows, listed, _curated, _counts, _slugs, _models = _rows_for(
-        data_dir, chosen[0], args.price,
-        getattr(args, "all_models", False))
+        data_dir, chosen[0], args.price, getattr(args, "all_models", False)
+    )
     if not listed:
-        return _fail(f"no model of {args.source or 'zen+go'} is in {data_dir} "
-                     f"— run `fetch` first")
+        return _fail(
+            f"no model of {args.source or 'zen+go'} is in {data_dir} "
+            f"— run `fetch` first"
+        )
     picks = next_up(grade_rows(order_rows(rows)), count=args.count)
     if not picks:
-        return _fail(f"no model of {args.source or 'zen+go'} scores on "
-                     f"{MIN_AXES}+ benchmarks in {data_dir} — nothing to "
-                     f"recommend yet")
+        return _fail(
+            f"no model of {args.source or 'zen+go'} scores on "
+            f"{MIN_AXES}+ benchmarks in {data_dir} — nothing to "
+            f"recommend yet"
+        )
 
-    print(f"Next {len(picks)} recommended models, "
-          f">{RECOMMEND_FLOOR:.0%} overall score, free and paid picks "
-          f"interleaved, alternating Zen/Go plans.")
+    print(
+        f"Next {len(picks)} recommended models, "
+        f">{RECOMMEND_FLOOR:.0%} overall score, free and paid picks "
+        f"interleaved, alternating Zen/Go plans."
+    )
     print()
     print(_next_table(picks))
     return 0
@@ -899,77 +1010,122 @@ def main(argv: list[str] | None = None) -> int:
         prog="opencode-rank",
         description="Price/score Pareto frontier of models from opencode.ai/data",
     )
-    parser.add_argument("--data", default=str(DEFAULT_DATA),
-                        help="data directory (default: %(default)s)")
+    parser.add_argument(
+        "--data",
+        default=str(DEFAULT_DATA),
+        help="data directory (default: %(default)s)",
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("fetch", help="refresh data from opencode.ai").add_argument(
-        "--all", dest="all_models", action="store_true",
+        "--all",
+        dest="all_models",
+        action="store_true",
         help="download the full model catalog, not just the models the "
-             "plans offer (kept records are never deleted either way)")
-    sub.add_parser("models", help="the models the plans offer right now, "
-                                  "as endpoints beside display names: live "
-                                  "from the Console config API with "
-                                  "OPENCODE_API_KEY, else the last fetch "
-                                  "snapshots")
-    sub.add_parser("auth", help="save the Console service-account key "
-                                "to an owner-only file (prompted, never "
-                                "echoed); verifies it live when it can")
-    sub.add_parser("overrides",
-                   help="every benchmark number more than one source "
-                        "reports, and which value the console keeps")
+        "plans offer (kept records are never deleted either way)",
+    )
+    sub.add_parser(
+        "models",
+        help="the models the plans offer right now, "
+        "as endpoints beside display names: live "
+        "from the Console config API with "
+        "OPENCODE_API_KEY, else the last fetch "
+        "snapshots",
+    )
+    sub.add_parser(
+        "auth",
+        help="save the Console service-account key "
+        "to an owner-only file (prompted, never "
+        "echoed); verifies it live when it can",
+    )
+    sub.add_parser(
+        "overrides",
+        help="every benchmark number more than one source "
+        "reports, and which value the console keeps",
+    )
 
     p_list = sub.add_parser(
-        "list", help="three tables of Console models across providers "
-                     "(zen/go): best value (free/included/pay-as-you-go), "
-                     "worst score, highest cost"
+        "list",
+        help="three tables of Console models across providers "
+        "(zen/go): best value (free/included/pay-as-you-go), "
+        "worst score, highest cost",
     )
-    p_list.add_argument("--source",
-                        help="provider to list: zen or go (default: both, "
-                             "merged) — 'all' adds the catalog models that "
-                             "are in neither tier")
-    p_list.add_argument("--price", choices=("weighted", "input", "output"),
-                        default="weighted",
-                        help="cost of a line (default: weighted 20%% in, "
-                             "60%% cached, 20%% out)")
-    p_list.add_argument("--tables", choices=("best", "all"), default="best",
-                        help="best: print only the best-value table. all: "
-                             "also print the worst-score and highest-cost "
-                             "tables. Either way the cull happens — those "
-                             "rows are out of best value (default: %(default)s)")
-    p_list.add_argument("--all-models", "--all", dest="all_models",
-                        action="store_true",
-                        help="include models the plans no longer offer; the "
-                             "default shows only what a plan currently lists")
-    p_list.add_argument("--benchmark",
-                        help="rank on one benchmark instead of combining "
-                             "Terminal-Bench 2.x (first) with SWE-Bench and "
-                             "Terminal-Bench 4.0")
+    p_list.add_argument(
+        "--source",
+        help="provider to list: zen or go (default: both, "
+        "merged) — 'all' adds the catalog models that "
+        "are in neither tier",
+    )
+    p_list.add_argument(
+        "--price",
+        choices=("weighted", "input", "output"),
+        default="weighted",
+        help="cost of a line (default: weighted 20%% in, 60%% cached, 20%% out)",
+    )
+    p_list.add_argument(
+        "--tables",
+        choices=("best", "all"),
+        default="best",
+        help="best: print only the best-value table. all: "
+        "also print the worst-score and highest-cost "
+        "tables. Either way the cull happens — those "
+        "rows are out of best value (default: %(default)s)",
+    )
+    p_list.add_argument(
+        "--all-models",
+        "--all",
+        dest="all_models",
+        action="store_true",
+        help="include models the plans no longer offer; the "
+        "default shows only what a plan currently lists",
+    )
+    p_list.add_argument(
+        "--benchmark",
+        help="rank on one benchmark instead of combining "
+        "Terminal-Bench 2.x (first) with SWE-Bench and "
+        "Terminal-Bench 4.0",
+    )
 
     p_next = sub.add_parser(
-        "next", help="the next few models to use, in order: free and paid "
-                     "picks interleaved, best score then best score per dollar"
+        "next",
+        help="the next few models to use, in order: free and paid "
+        "picks interleaved, best score then best score per dollar",
     )
-    p_next.add_argument("--count", type=int, default=6,
-                        help="how many to recommend (default: %(default)s)")
-    p_next.add_argument("--source", help="provider to draw from: zen or go "
-                                         "(default: both, merged)")
-    p_next.add_argument("--price", choices=("weighted", "input", "output"),
-                        default="weighted",
-                        help="cost of a line (default: weighted 20%% in, "
-                             "60%% cached, 20%% out)")
-    p_next.add_argument("--all-models", "--all", dest="all_models",
-                        action="store_true",
-                        help="include models the plans no longer offer; the "
-                             "default shows only what a plan currently lists")
+    p_next.add_argument(
+        "--count",
+        type=int,
+        default=6,
+        help="how many to recommend (default: %(default)s)",
+    )
+    p_next.add_argument(
+        "--source", help="provider to draw from: zen or go (default: both, merged)"
+    )
+    p_next.add_argument(
+        "--price",
+        choices=("weighted", "input", "output"),
+        default="weighted",
+        help="cost of a line (default: weighted 20%% in, 60%% cached, 20%% out)",
+    )
+    p_next.add_argument(
+        "--all-models",
+        "--all",
+        dest="all_models",
+        action="store_true",
+        help="include models the plans no longer offer; the "
+        "default shows only what a plan currently lists",
+    )
 
     p_scores = sub.add_parser(
         "scores", help="manage cached arena.ai Elo scores (offline unless --refresh)"
     )
-    p_scores.add_argument("--all-models", "--all", dest="all_models",
-                          action="store_true",
-                          help="include models the plans no longer offer; the "
-                               "default shows only what a plan currently lists")
+    p_scores.add_argument(
+        "--all-models",
+        "--all",
+        dest="all_models",
+        action="store_true",
+        help="include models the plans no longer offer; the "
+        "default shows only what a plan currently lists",
+    )
 
     args = parser.parse_args(argv)
     return {

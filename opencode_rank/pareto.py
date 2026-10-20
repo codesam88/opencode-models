@@ -25,7 +25,8 @@ def frontier(models: list[Model], benchmark: str) -> list[Model]:
     # is decided before any comparison happens.
     for m in sorted(competitors, key=lambda m: (m.price_input, -m.scores[benchmark])):
         if any(
-            k.price_input <= m.price_input and k.scores[benchmark] >= m.scores[benchmark]
+            k.price_input <= m.price_input
+            and k.scores[benchmark] >= m.scores[benchmark]
             for k in kept
         ):
             continue

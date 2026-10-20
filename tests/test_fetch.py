@@ -2,13 +2,12 @@
 in tests: HTTP access is an injected callable."""
 
 import io
+import tempfile
 import unittest
 import urllib.error
 from pathlib import Path
-import tempfile
 
 from opencode_rank.fetch import SITEMAP_URL, refresh, urls_from_sitemap
-
 
 SITEMAP_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -49,6 +48,7 @@ class RefreshTest(unittest.TestCase):
             if url not in responses:
                 raise KeyError(url)
             return responses[url]
+
         return get
 
     def test_saves_one_json_file_per_model(self):
@@ -101,6 +101,7 @@ class RefreshTest(unittest.TestCase):
             if "jamba" in url:
                 raise urllib.error.HTTPError(url, 404, "gone", {}, io.BytesIO())
             return "{}"
+
         with tempfile.TemporaryDirectory() as tmp:
             saved = refresh(Path(tmp), get)
         self.assertEqual(saved, ["deepseek__deepseek-v4-pro.json"])
@@ -112,6 +113,7 @@ class RefreshTest(unittest.TestCase):
             if "jamba" in url:
                 return ""
             return "{}"
+
         with tempfile.TemporaryDirectory() as tmp:
             saved = refresh(Path(tmp), get)
         self.assertEqual(saved, ["deepseek__deepseek-v4-pro.json"])
@@ -126,10 +128,14 @@ class RefreshTest(unittest.TestCase):
                     "https://opencode.ai/data/deepseek/deepseek-v4-pro.json": "{}",
                 }
             )
-            refresh(Path(tmp), get,
-                    progress=lambda d, t, n: calls.append((d, t, n)))
-        self.assertEqual(calls, [(1, 2, "ai21__jamba-large.json"),
-                                 (2, 2, "deepseek__deepseek-v4-pro.json")])
+            refresh(Path(tmp), get, progress=lambda d, t, n: calls.append((d, t, n)))
+        self.assertEqual(
+            calls,
+            [
+                (1, 2, "ai21__jamba-large.json"),
+                (2, 2, "deepseek__deepseek-v4-pro.json"),
+            ],
+        )
 
 
 if __name__ == "__main__":
@@ -142,6 +148,7 @@ class OnlyFilterTest(unittest.TestCase):
             if url not in responses:
                 raise KeyError(url)
             return responses[url]
+
         return get
 
     def test_only_downloads_the_offered_models(self):

@@ -10,7 +10,6 @@ from opencode_rank.overrides import (
     TIER_INDEPENDENT,
     TIER_OFFICIAL,
     TIER_SELF_REPORTED,
-    Conflict,
     apply,
     load_curated,
     load_overrides,
@@ -20,10 +19,16 @@ from opencode_rank.overrides import (
 
 
 def _m(model_id, scores=None, sources=None):
-    return Model(model_id=model_id, name=model_id.split("/")[-1].upper(),
-                 lab=model_id.split("/")[0], price_input=1.0, price_output=1.0,
-                 price_cached_input=1.0, scores=scores or {},
-                 sources=sources or {})
+    return Model(
+        model_id=model_id,
+        name=model_id.split("/")[-1].upper(),
+        lab=model_id.split("/")[0],
+        price_input=1.0,
+        price_output=1.0,
+        price_cached_input=1.0,
+        scores=scores or {},
+        sources=sources or {},
+    )
 
 
 def _write(d: Path, name: str, model: dict) -> None:
@@ -32,15 +37,16 @@ def _write(d: Path, name: str, model: dict) -> None:
 
 class SourceTierTest(unittest.TestCase):
     def test_independent_evaluators_rank_above_official_boards(self):
-        self.assertEqual(source_tier("https://artificialanalysis.ai/x"),
-                         TIER_INDEPENDENT)
-        self.assertEqual(source_tier("https://www.tbench.ai/leaderboard/4.0"),
-                         TIER_OFFICIAL)
+        self.assertEqual(
+            source_tier("https://artificialanalysis.ai/x"), TIER_INDEPENDENT
+        )
+        self.assertEqual(
+            source_tier("https://www.tbench.ai/leaderboard/4.0"), TIER_OFFICIAL
+        )
         self.assertLess(TIER_INDEPENDENT, TIER_OFFICIAL)
 
     def test_vendor_pages_and_unattributed_scores_rank_last(self):
-        self.assertEqual(source_tier("https://x.ai/news/grok-4-7"),
-                         TIER_SELF_REPORTED)
+        self.assertEqual(source_tier("https://x.ai/news/grok-4-7"), TIER_SELF_REPORTED)
         self.assertEqual(source_tier(None), TIER_SELF_REPORTED)
 
 
@@ -49,8 +55,7 @@ class LoadOverridesTest(unittest.TestCase):
         import tempfile
 
         with tempfile.TemporaryDirectory() as tmp:
-            _write(Path(tmp), "x__grok.json",
-                   {"id": "x/grok", "benchmarks": []})
+            _write(Path(tmp), "x__grok.json", {"id": "x/grok", "benchmarks": []})
             self.assertEqual(set(load_overrides(Path(tmp))), {"x/grok"})
 
     def test_unusable_files_are_skipped_not_trusted(self):
@@ -67,53 +72,96 @@ class ApplyTest(unittest.TestCase):
     def test_an_override_can_add_a_score_upstream_lacks(self):
         # Grok 4.6: AA measured Terminal-Bench 2.1 at 88.4 but the registry
         # carries only the 4.0-scale scores — the overlay supplies it
-        override = {"model": {"id": "xai/grok-4.6", "benchmarks": [
-            {"name": "Terminal-Bench", "version": "2.1", "score": 88.4,
-             "source": "https://artificialanalysis.ai/models/grok-4-6"}]}}
+        override = {
+            "model": {
+                "id": "xai/grok-4.6",
+                "benchmarks": [
+                    {
+                        "name": "Terminal-Bench",
+                        "version": "2.1",
+                        "score": 88.4,
+                        "source": "https://artificialanalysis.ai/models/grok-4-6",
+                    }
+                ],
+            }
+        }
         doc = override["model"]
         model, conflicts = apply(
-            _m("xai/grok-4.6", {"Terminal-Bench 4.0": 20.3},
-               {"Terminal-Bench 4.0": "https://x.ai/news/grok-4-7"}), doc)
+            _m(
+                "xai/grok-4.6",
+                {"Terminal-Bench 4.0": 20.3},
+                {"Terminal-Bench 4.0": "https://x.ai/news/grok-4-7"},
+            ),
+            doc,
+        )
         self.assertEqual(model.scores["Terminal-Bench 2.1"], 88.4)
         self.assertEqual(conflicts, [])
 
     def test_an_independent_override_beats_a_vendor_number(self):
         # Grok 4.7: the vendor's own 4.0 chart says 37.6, AA measured 33
         # with its own harness — the independent run wins the axis
-        override = {"benchmarks": [
-            {"name": "Terminal-Bench", "version": "4.0", "score": 33.0,
-             "source": "https://artificialanalysis.ai/models/grok-4-7"}]}
+        override = {
+            "benchmarks": [
+                {
+                    "name": "Terminal-Bench",
+                    "version": "4.0",
+                    "score": 33.0,
+                    "source": "https://artificialanalysis.ai/models/grok-4-7",
+                }
+            ]
+        }
         model, conflicts = apply(
-            _m("xai/grok-4.7", {"Terminal-Bench 4.0": 37.6},
-               {"Terminal-Bench 4.0": "https://x.ai/news/grok-4-7"}), override)
+            _m(
+                "xai/grok-4.7",
+                {"Terminal-Bench 4.0": 37.6},
+                {"Terminal-Bench 4.0": "https://x.ai/news/grok-4-7"},
+            ),
+            override,
+        )
         self.assertEqual(model.scores["Terminal-Bench 4.0"], 33.0)
         self.assertEqual(len(conflicts), 1)
         self.assertTrue(conflicts[0].override_wins)
 
     def test_a_weaker_sourced_override_is_reported_but_not_applied(self):
-        override = {"benchmarks": [
-            {"name": "SWE-Bench", "version": "Verified", "score": 99.0,
-             "source": "https://random-blog.example/post"}]}
+        override = {
+            "benchmarks": [
+                {
+                    "name": "SWE-Bench",
+                    "version": "Verified",
+                    "score": 99.0,
+                    "source": "https://random-blog.example/post",
+                }
+            ]
+        }
         model, conflicts = apply(
-            _m("a/m", {"SWE-Bench Verified": 74.0},
-               {"SWE-Bench Verified":
-                "https://artificialanalysis.ai/models/m"}), override)
+            _m(
+                "a/m",
+                {"SWE-Bench Verified": 74.0},
+                {"SWE-Bench Verified": "https://artificialanalysis.ai/models/m"},
+            ),
+            override,
+        )
         self.assertEqual(model.scores["SWE-Bench Verified"], 74.0)
         self.assertFalse(conflicts[0].override_wins)
 
     def test_agreeing_values_conflict_about_nothing(self):
-        override = {"benchmarks": [
-            {"name": "Terminal-Bench", "version": "2.1", "score": 88.4,
-             "source": "https://artificialanalysis.ai/models/grok-4-6"}]}
-        model, conflicts = apply(_m("x/grok", {"Terminal-Bench 2.1": 88.4}),
-                                 override)
+        override = {
+            "benchmarks": [
+                {
+                    "name": "Terminal-Bench",
+                    "version": "2.1",
+                    "score": 88.4,
+                    "source": "https://artificialanalysis.ai/models/grok-4-6",
+                }
+            ]
+        }
+        model, conflicts = apply(_m("x/grok", {"Terminal-Bench 2.1": 88.4}), override)
         self.assertEqual(conflicts, [])
         self.assertEqual(model.scores["Terminal-Bench 2.1"], 88.4)
 
     def test_entries_without_a_score_are_not_applied(self):
         override = {"benchmarks": [{"name": "Terminal-Bench", "note": "x"}]}
-        model, conflicts = apply(_m("x/grok", {"Terminal-Bench 2.1": 1.0}),
-                                 override)
+        model, conflicts = apply(_m("x/grok", {"Terminal-Bench 2.1": 1.0}), override)
         self.assertEqual(model.scores, {"Terminal-Bench 2.1": 1.0})
         self.assertEqual(conflicts, [])
 
@@ -127,20 +175,43 @@ class LoadCuratedTest(unittest.TestCase):
             up, over = d / "opencode", d / "overrides"
             up.mkdir()
             over.mkdir()
-            _write(up, "a__m.json", {
-                "id": "a/m", "name": "M",
-                "benchmarks": [{"name": "SWE-Bench", "version": "Verified",
-                                "score": 74.0, "source":
-                                "https://artificialanalysis.ai/m"}]})
+            _write(
+                up,
+                "a__m.json",
+                {
+                    "id": "a/m",
+                    "name": "M",
+                    "benchmarks": [
+                        {
+                            "name": "SWE-Bench",
+                            "version": "Verified",
+                            "score": 74.0,
+                            "source": "https://artificialanalysis.ai/m",
+                        }
+                    ],
+                },
+            )
             _write(up, "a__n.json", {"id": "a/n", "name": "N", "benchmarks": []})
-            _write(over, "a__m.json", {"id": "a/m", "benchmarks": [
-                {"name": "SWE-Bench", "version": "Verified", "score": 74.5,
-                 "source": "https://artificialanalysis.ai/m2"}]})
+            _write(
+                over,
+                "a__m.json",
+                {
+                    "id": "a/m",
+                    "benchmarks": [
+                        {
+                            "name": "SWE-Bench",
+                            "version": "Verified",
+                            "score": 74.5,
+                            "source": "https://artificialanalysis.ai/m2",
+                        }
+                    ],
+                },
+            )
             _write(over, "a__ghost.json", {"id": "a/ghost"})
             out = load_curated(up, over)
             by_id = {m.model_id: m for m in out.models}
             self.assertEqual(by_id["a/m"].scores["SWE-Bench Verified"], 74.5)
-            self.assertEqual(by_id["a/n"].scores, {})   # untouched
+            self.assertEqual(by_id["a/n"].scores, {})  # untouched
             self.assertEqual(out.curated, {"a/m"})
             self.assertEqual(out.orphans, {"a/ghost"})
             self.assertEqual([c.model_id for c in out.conflicts], ["a/m"])
@@ -149,10 +220,8 @@ class LoadCuratedTest(unittest.TestCase):
 class OffBandTest(unittest.TestCase):
     def test_pairs_far_off_the_band_are_listed_worst_first(self):
         models = [
-            _m("x/gemini", {"Terminal-Bench 2.1": 89.4,
-                            "Terminal-Bench 4.0": 19.1}),
-            _m("x/mimo", {"Terminal-Bench 2.1": 89.9,
-                          "Terminal-Bench 4.0": 34.9}),
+            _m("x/gemini", {"Terminal-Bench 2.1": 89.4, "Terminal-Bench 4.0": 19.1}),
+            _m("x/mimo", {"Terminal-Bench 2.1": 89.9, "Terminal-Bench 4.0": 34.9}),
             _m("x/solo21", {"Terminal-Bench 2.1": 80.0}),
         ]
         out = off_band_models(models)
@@ -183,10 +252,12 @@ class CommittedOverridesTest(unittest.TestCase):
             payload = json.loads(path.read_text())["model"]
             for entry in payload["benchmarks"]:
                 with self.subTest(override=path.name, benchmark=entry.get("name")):
-                    self.assertTrue(entry.get("source"),
-                                    f"{path.name}: {entry.get('name')} "
-                                    f"{entry.get('version')} has no source — "
-                                    "an uncited value cannot be tiered")
+                    self.assertTrue(
+                        entry.get("source"),
+                        f"{path.name}: {entry.get('name')} "
+                        f"{entry.get('version')} has no source — "
+                        "an uncited value cannot be tiered",
+                    )
 
     def test_every_model_id_names_its_lab(self):
         for path in self._files():
@@ -206,21 +277,22 @@ class StepFiveOverrideTest(unittest.TestCase):
 
     def _entries(self):
         root = Path(__file__).resolve().parent.parent / "data" / "overrides"
-        payload = json.loads(
-            (root / "stepfun__step-5-preview.json").read_text())["model"]
+        payload = json.loads((root / "stepfun__step-5-preview.json").read_text())[
+            "model"
+        ]
         return payload["benchmarks"]
 
     def test_it_covers_exactly_the_three_scored_axes(self):
         keys = {(e["name"], e["version"]) for e in self._entries()}
-        self.assertEqual(keys, {("Terminal-Bench", "2.1"),
-                                ("Terminal-Bench", "4.0"),
-                                ("DeepSWE", "1.1")})
+        self.assertEqual(
+            keys,
+            {("Terminal-Bench", "2.1"), ("Terminal-Bench", "4.0"), ("DeepSWE", "1.1")},
+        )
 
     def test_every_entry_names_the_page_and_the_effort(self):
         for entry in self._entries():
             with self.subTest(benchmark=(entry["name"], entry["version"])):
-                self.assertIn("stepfun.com/step-5-preview",
-                              entry.get("source", ""))
+                self.assertIn("stepfun.com/step-5-preview", entry.get("source", ""))
                 self.assertIn("High", entry.get("note", ""))
 
 
@@ -232,11 +304,9 @@ class StepFiveOverrideTest(unittest.TestCase):
 FILE_KEYS = {
     # StepFun's Step-5-Preview page: only cells upstream lacks at
     # equal-or-better tier
-    "moonshotai__kimi-k3.json": {("Terminal-Bench", "4.0"),
-                                 ("Terminal-Bench", "2.1")},
+    "moonshotai__kimi-k3.json": {("Terminal-Bench", "4.0"), ("Terminal-Bench", "2.1")},
     "openai__gpt-6-astra.json": {("Terminal-Bench", "2.1")},
-    "anthropic__claude-fable-5-1.json": {("DeepSWE", "1.1"),
-                                         ("Terminal-Bench", "2.1")},
+    "anthropic__claude-fable-5-1.json": {("DeepSWE", "1.1"), ("Terminal-Bench", "2.1")},
     "anthropic__claude-opus-5.json": {("Terminal-Bench", "2.1")},
     # AA's TB 2.1 chart: missing cells with a run slug behind the bar, plus
     # Kimi's 85.0, which StepFun's bundle states identically
@@ -250,8 +320,7 @@ FILE_KEYS = {
 #: adopted only with a run slug tying bar to model - nine TB 4.0 cells were
 #: reverted for lacking exactly that.
 FILE_HOSTS = {
-    "moonshotai__kimi-k3.json": {"stepfun.com/step-5-preview",
-                                 "artificialanalysis.ai"},
+    "moonshotai__kimi-k3.json": {"stepfun.com/step-5-preview", "artificialanalysis.ai"},
     "openai__gpt-6-astra.json": {"stepfun.com/step-5-preview"},
     "anthropic__claude-fable-5-1.json": {"stepfun.com/step-5-preview"},
     "anthropic__claude-opus-5.json": {"stepfun.com/step-5-preview"},
@@ -272,21 +341,23 @@ class CompetitorOverrideTest(unittest.TestCase):
     def test_each_file_holds_exactly_the_missing_cells(self):
         for filename, keys in FILE_KEYS.items():
             with self.subTest(override=filename):
-                got = {(e["name"], e["version"])
-                       for e in self._payload(filename)["benchmarks"]}
+                got = {
+                    (e["name"], e["version"])
+                    for e in self._payload(filename)["benchmarks"]
+                }
                 self.assertEqual(got, keys)
 
     def test_each_cell_names_its_source_and_effort(self):
         for filename, hosts in FILE_HOSTS.items():
             for entry in self._payload(filename)["benchmarks"]:
-                with self.subTest(override=filename,
-                                  benchmark=(entry["name"],
-                                             entry["version"])):
+                with self.subTest(
+                    override=filename, benchmark=(entry["name"], entry["version"])
+                ):
                     self.assertTrue(
                         any(h in entry.get("source", "") for h in hosts),
-                        f"{filename}: {entry.get('source')}")
-                    self.assertRegex(entry.get("note", ""),
-                                     r"Max|max|effort")
+                        f"{filename}: {entry.get('source')}",
+                    )
+                    self.assertRegex(entry.get("note", ""), r"Max|max|effort")
 
 
 class OverrideRulesTest(unittest.TestCase):
@@ -298,13 +369,19 @@ class OverrideRulesTest(unittest.TestCase):
     """
 
     def _write(self, tmp: Path, *entries, name="vendor/model-x"):
-        (tmp / "vendor__model-x.json").write_text(json.dumps({"model": {
-            "id": name, "benchmarks": list(entries)}}))
+        (tmp / "vendor__model-x.json").write_text(
+            json.dumps({"model": {"id": name, "benchmarks": list(entries)}})
+        )
         return load_overrides(tmp)
 
     def _entry(self, **over):
-        return {"name": "Terminal-Bench", "version": "2.1", "score": 80.0,
-                "source": "https://example.org/run", **over}
+        return {
+            "name": "Terminal-Bench",
+            "version": "2.1",
+            "score": 80.0,
+            "source": "https://example.org/run",
+            **over,
+        }
 
     def test_a_sourced_entry_loads(self):
         with tempfile.TemporaryDirectory() as d:
@@ -329,9 +406,9 @@ class OverrideRulesTest(unittest.TestCase):
 
     def test_a_sourced_entry_survives_alongside_an_unsourced_one(self):
         with tempfile.TemporaryDirectory() as d:
-            found = self._write(Path(d),
-                                self._entry(source=None),
-                                self._entry(name="SciCode"))
+            found = self._write(
+                Path(d), self._entry(source=None), self._entry(name="SciCode")
+            )
             kept = [e["name"] for e in found["vendor/model-x"]["benchmarks"]]
             self.assertEqual(kept, ["SciCode"])
 
@@ -341,6 +418,7 @@ class OverrideRulesTest(unittest.TestCase):
 
     def test_an_entry_lands_under_its_own_key(self):
         from opencode_rank.overrides import benchmark_key
+
         with tempfile.TemporaryDirectory() as d:
             found = self._write(Path(d), self._entry(score=88.4))
             doc = found["vendor/model-x"]
@@ -352,6 +430,7 @@ class OverrideRulesTest(unittest.TestCase):
     def test_an_entry_with_a_non_numeric_score_lands_nothing(self):
         # a half-filled entry is inert rather than wrong
         from opencode_rank.overrides import benchmark_key
+
         with tempfile.TemporaryDirectory() as d:
             found = self._write(Path(d), self._entry(score="88.4"))
             doc = found["vendor/model-x"]

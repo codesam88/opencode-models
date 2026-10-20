@@ -73,8 +73,12 @@ def offered(model_id: str, ids: set[str]) -> bool:
     the list view.
     """
     slug = model_id.split("/")[-1]
-    return (slug in ids or model_id in ids
-            or f"{slug}-free" in ids or f"{model_id}-free" in ids)
+    return (
+        slug in ids
+        or model_id in ids
+        or f"{slug}-free" in ids
+        or f"{model_id}-free" in ids
+    )
 
 
 def unlisted(data_dir: Path) -> dict[str, set[str]]:
@@ -87,7 +91,7 @@ def unlisted(data_dir: Path) -> dict[str, set[str]]:
     dropped: dict[str, set[str]] = {}
     for tier, ids in load_available(data_dir).items():
         if ids is None:
-            continue                      # no snapshot: nothing was dropped
+            continue  # no snapshot: nothing was dropped
         missing = sources.load_source(tier) - ids
         if missing:
             dropped[tier] = missing

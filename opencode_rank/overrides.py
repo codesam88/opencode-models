@@ -44,8 +44,7 @@ TIER_LABELS = {
 #: Hosts whose runs are independent (they evaluate, not publish).
 INDEPENDENT_HOSTS = ("artificialanalysis.ai",)
 #: Hosts that run the official benchmark submission boards.
-OFFICIAL_HOSTS = ("tbench.ai", "www.tbench.ai", "www.swebench.com",
-                  "swebench.com")
+OFFICIAL_HOSTS = ("tbench.ai", "www.tbench.ai", "www.swebench.com", "swebench.com")
 
 OVERRIDES_DIR = "overrides"
 
@@ -118,8 +117,7 @@ class Conflict:
         over it: a vendor's own number stays put against a random blog,
         but an independent rerun beats the vendor.
         """
-        return (source_tier(self.override_source)
-                <= source_tier(self.upstream_source))
+        return source_tier(self.override_source) <= source_tier(self.upstream_source)
 
 
 def load_overrides(overrides_dir: Path) -> dict[str, dict]:
@@ -140,8 +138,14 @@ def load_overrides(overrides_dir: Path) -> dict[str, dict]:
             model_id = doc["id"]
         except (json.JSONDecodeError, KeyError, TypeError):
             continue
-        doc = {**doc, "benchmarks": [e for e in (doc.get("benchmarks") or [])
-                                     if isinstance(e, dict) and e.get("source")]}
+        doc = {
+            **doc,
+            "benchmarks": [
+                e
+                for e in (doc.get("benchmarks") or [])
+                if isinstance(e, dict) and e.get("source")
+            ],
+        }
         found[model_id] = doc
     return found
 
@@ -175,8 +179,7 @@ def apply(model: Model, override: dict) -> tuple[Model, list[Conflict]]:
                 override_source=entry.get("source"),
                 reason=entry.get("note") or note,
             )
-            conflicts.append(replace(conflict,
-                                     applied=conflict.override_wins))
+            conflicts.append(replace(conflict, applied=conflict.override_wins))
             if not conflict.override_wins:
                 continue
         scores[key] = value
@@ -217,8 +220,9 @@ def load_curated(upstream_dir: Path, overrides_dir: Path) -> Curated:
             curated.add(model.model_id)
         models.append(model)
     conflicts.sort(key=lambda c: (c.model_id, c.benchmark))
-    return Curated(models=models, conflicts=conflicts,
-                   curated=curated, orphans=set(overrides))
+    return Curated(
+        models=models, conflicts=conflicts, curated=curated, orphans=set(overrides)
+    )
 
 
 def curated_ids(overrides_dir: Path) -> set[str]:

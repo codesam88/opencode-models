@@ -19,6 +19,11 @@ install:
 test:
     uv run --no-sync python -m unittest discover -s tests
 
+# Lint, format check and complexity gate (ruff from the locked dev group)
+lint:
+    uv run --no-sync ruff check opencode_rank tests
+    uv run --no-sync ruff format --check opencode_rank tests
+
 # Full check: tests + the entry point resolving + a wheel build
 check: test
     uv run --no-sync opencode-rank --help >/dev/null

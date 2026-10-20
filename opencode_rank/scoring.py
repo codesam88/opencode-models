@@ -97,8 +97,13 @@ MIN_AXES = 2
 #:
 #: The order is also the order the benchmarks are shown in: the axis the
 #: console ranks on first, then the axes that fill in.
-_TRACKED = ("Terminal-Bench 2.1", "Terminal-Bench 4.0",
-            "SWE-Bench Verified", "SWE-Bench Pro", "DeepSWE 1.1")
+_TRACKED = (
+    "Terminal-Bench 2.1",
+    "Terminal-Bench 4.0",
+    "SWE-Bench Verified",
+    "SWE-Bench Pro",
+    "DeepSWE 1.1",
+)
 
 
 def _folded(name: str) -> str:
@@ -163,11 +168,15 @@ def scales(models: list[Model]) -> dict[str, tuple[float, float]]:
             all_values.setdefault(key, []).append(float(value))
             if source_tier(model.sources.get(name)) <= TIER_OFFICIAL:
                 checkable.setdefault(key, []).append(float(value))
-    tight = {key: (min(values), max(values))
-             for key, values in checkable.items()
-             if len(values) >= CHECKABLE_SHARE * len(all_values[key])}
-    bounds = {key: tight.get(key) or (min(values), max(values))
-              for key, values in all_values.items()}
+    tight = {
+        key: (min(values), max(values))
+        for key, values in checkable.items()
+        if len(values) >= CHECKABLE_SHARE * len(all_values[key])
+    }
+    bounds = {
+        key: tight.get(key) or (min(values), max(values))
+        for key, values in all_values.items()
+    }
     return {name: bounds[canonical(name)] for name in sorted(names)}
 
 
@@ -185,8 +194,9 @@ def normalise(score: float, bounds: tuple[float, float]) -> float:
     return min(100.0, max(0.0, pct))
 
 
-def derived_scores(model: Model,
-                   table: dict[str, tuple[float, float]]) -> dict[str, float]:
+def derived_scores(
+    model: Model, table: dict[str, tuple[float, float]]
+) -> dict[str, float]:
     """Each benchmark we score on that this model carries, on its 0–100 scale.
 
     Benchmarks outside the shortlist never appear: they are not in *table*,
@@ -195,10 +205,13 @@ def derived_scores(model: Model,
     the model, and counting it at the midpoint would pull a real median
     toward the middle for no reason.
     """
-    return {name: normalise(value, bounds)
-            for name, value in model.scores.items()
-            if name in table and isinstance(value, (int, float))
-            and (bounds := table[name])[1] > bounds[0]}
+    return {
+        name: normalise(value, bounds)
+        for name, value in model.scores.items()
+        if name in table
+        and isinstance(value, (int, float))
+        and (bounds := table[name])[1] > bounds[0]
+    }
 
 
 def combined(derived: dict[str, float]) -> float | None:
@@ -212,7 +225,6 @@ def combined(derived: dict[str, float]) -> float | None:
     return median(derived.values())
 
 
-def score_of(model: Model,
-             table: dict[str, tuple[float, float]]) -> float | None:
+def score_of(model: Model, table: dict[str, tuple[float, float]]) -> float | None:
     """:func:`combined` of :func:`derived_scores`, in one call."""
     return combined(derived_scores(model, table))

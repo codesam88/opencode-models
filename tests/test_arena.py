@@ -49,17 +49,20 @@ class LookupTest(unittest.TestCase):
     def test_parses_rows_and_follows_next_page(self):
         def get(url):
             if "offset=0" in url:
-                return ('{"rows": [{"row": {"chatbot_name": "a", '
-                        '"elo_score": 1500.0}}], '
-                        '"next_page_url": "https://next.example.com"}')
+                return (
+                    '{"rows": [{"row": {"chatbot_name": "a", '
+                    '"elo_score": 1500.0}}], '
+                    '"next_page_url": "https://next.example.com"}'
+                )
             return '{"rows": [{"row": {"chatbot_name": "b", "elo_score": 1600.0}}]}'
 
         self.assertEqual(lookup_arena_elo(get), {"a": 1500.0, "b": 1600.0})
 
     def test_skips_rows_without_elo(self):
         def get(url):
-            return ('{"rows": [{"row": {"chatbot_name": "a"}}, '
-                    '{"row": {"elo_score": 5}}]}')
+            return (
+                '{"rows": [{"row": {"chatbot_name": "a"}}, {"row": {"elo_score": 5}}]}'
+            )
 
         self.assertEqual(lookup_arena_elo(get), {})
 

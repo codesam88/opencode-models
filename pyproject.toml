@@ -33,3 +33,32 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["opencode_rank"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.5",
+]
+
+[tool.ruff]
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E4", "E7", "E9",  # errors, minus line-length (the formatter owns that)
+    "F",               # pyflakes: unused imports/names, undefined names
+    "W",               # trailing whitespace and friends
+    "B",               # bugbear: likely bugs and design smells
+    "UP",              # pyupgrade for the 3.10 floor
+    "I",               # import sorting
+    "C901",            # complexity ratchet (see max-complexity below)
+]
+
+[tool.ruff.lint.mccabe]
+# Today's ceiling, not an aspiration: fail on anything more complex
+# than the most complex function we already ship. Lower it when a
+# refactor earns it, never raise it to silence the gate.
+max-complexity = 20
+
+[tool.ruff.lint.per-file-ignores]
+# One-letter loop vars are test-idiom, not production API shape.
+"tests/*" = ["E741"]

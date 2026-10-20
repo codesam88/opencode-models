@@ -2,9 +2,9 @@
 
 import unittest
 
+from opencode_rank.data import Model
 from opencode_rank.ranking import by_score_per_price
 from opencode_rank.sources import available_sources, load_source, members
-from opencode_rank.data import Model
 
 
 def _m(model_id, price, score, output=None):
@@ -35,13 +35,13 @@ class SourcesTest(unittest.TestCase):
 
 class MembershipTest(unittest.TestCase):
     def test_free_variant_slug_reaches_the_base_model_and_flags_it_free(self):
-        models = [_m("xiaomi/mimo-v2.6-flash", 0.16, 50.0),
-                  _m("lab/other", 1.0, 40.0)]
+        models = [_m("xiaomi/mimo-v2.6-flash", 0.16, 50.0), _m("lab/other", 1.0, 40.0)]
         got, free = members(models, {"mimo-v2.6-flash-free", "other"})
         # the tier page offers MiMo-V2.6-Flash Free; the catalog knows one
         # model under the base slug — it must not vanish from the list
-        self.assertEqual(sorted(m.model_id for m in got),
-                         ["lab/other", "xiaomi/mimo-v2.6-flash"])
+        self.assertEqual(
+            sorted(m.model_id for m in got), ["lab/other", "xiaomi/mimo-v2.6-flash"]
+        )
         self.assertEqual(free, {"xiaomi/mimo-v2.6-flash"})
 
     def test_plain_slug_member_is_not_free(self):
@@ -72,8 +72,7 @@ class RankingTest(unittest.TestCase):
 
     def test_free_models_rank_by_score(self):
         out = by_score_per_price(
-            [_m("paid", 1.0, 50.0), _m("free", 0.0, 30.0),
-             _m("free2", 0.0, 60.0)],
+            [_m("paid", 1.0, 50.0), _m("free", 0.0, 30.0), _m("free2", 0.0, 60.0)],
             self.BENCH,
         )
         # infinite ratio first, highest-scoring free model leads
@@ -95,8 +94,9 @@ class RankingTest(unittest.TestCase):
 
     def test_unknown_price_field_raises(self):
         with self.assertRaises(ValueError):
-            by_score_per_price([_m("a", 1.0, 50.0)], self.BENCH,
-                               price_field="price_cache_write")
+            by_score_per_price(
+                [_m("a", 1.0, 50.0)], self.BENCH, price_field="price_cache_write"
+            )
 
 
 if __name__ == "__main__":

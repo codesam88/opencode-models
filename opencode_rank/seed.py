@@ -25,8 +25,15 @@ from pathlib import Path
 
 #: Data subdirectories worth seeding. Everything fetched belongs here;
 #: nothing curated is ever written by `fetch`, so seeding it is safe.
-SEED_SUBDIRS = ("opencode", "tier_prices", "boards", "aiarena", "usage",
-                "available", "overrides")
+SEED_SUBDIRS = (
+    "opencode",
+    "tier_prices",
+    "boards",
+    "aiarena",
+    "usage",
+    "available",
+    "overrides",
+)
 
 BRANCH = "local-data"
 PREFIX = "data/"
@@ -55,8 +62,7 @@ def copy_missing(src: Path, dst: Path) -> tuple[int, int]:
     return (copied, skipped)
 
 
-def read_branch_files(repo: Path, branch: str,
-                      prefix: str) -> dict[str, str]:
+def read_branch_files(repo: Path, branch: str, prefix: str) -> dict[str, str]:
     """``{path: text}`` for files under *prefix* on *branch*, undecoded raw.
 
     A missing branch (or a directory that is not a repo at all) reads as
@@ -65,7 +71,11 @@ def read_branch_files(repo: Path, branch: str,
     try:
         names = subprocess.run(
             ["git", "ls-tree", "-r", "--name-only", branch, "--", prefix],
-            cwd=repo, capture_output=True, text=True, check=True).stdout
+            cwd=repo,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
     except (subprocess.CalledProcessError, OSError):
         return {}
     files: dict[str, str] = {}
@@ -76,7 +86,10 @@ def read_branch_files(repo: Path, branch: str,
         try:
             text = subprocess.run(
                 ["git", "show", f"{branch}:{name}"],
-                cwd=repo, capture_output=True, check=True).stdout
+                cwd=repo,
+                capture_output=True,
+                check=True,
+            ).stdout
         except (subprocess.CalledProcessError, OSError):
             continue
         files[name] = text.decode("utf-8", errors="replace")
@@ -120,14 +133,13 @@ def seed(target: Path, repo: Path) -> dict[str, int]:
         c, s = copy_missing(repo / "data" / sub, target / sub)
         copied += c
         skipped += s
-    provided = sync_tracked(repo / "data" / "overrides",
-                              target / "overrides")
+    provided = sync_tracked(repo / "data" / "overrides", target / "overrides")
     synced += len(provided)
     for key, text in sorted(read_branch_files(repo, BRANCH, PREFIX).items()):
-        rel = key[len(PREFIX):] if key.startswith(PREFIX) else key
+        rel = key[len(PREFIX) :] if key.startswith(PREFIX) else key
         dest = target / rel
         if rel.startswith("overrides/"):
-            if rel[len("overrides/"):] in provided:
+            if rel[len("overrides/") :] in provided:
                 continue  # the working tree already deployed this pin
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(text.encode("utf-8"))
@@ -144,8 +156,12 @@ def seed(target: Path, repo: Path) -> dict[str, int]:
 def _repo_root() -> Path:
     """The repo this seed runs from: git toplevel, else the cwd."""
     try:
-        out = subprocess.run(["git", "rev-parse", "--show-toplevel"],
-                             capture_output=True, text=True, check=True).stdout
+        out = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
     except (subprocess.CalledProcessError, OSError):
         return Path.cwd()
     return Path(out.strip() or ".")
@@ -153,11 +169,14 @@ def _repo_root() -> Path:
 
 def main() -> int:
     from .cli import default_data_dir
+
     target = default_data_dir()
     result = seed(target, _repo_root())
-    print(f"seeded {result['copied']} file(s) and deployed "
-          f"{result['synced']} override(s) into {target} "
-          f"({result['skipped']} already present)")
+    print(
+        f"seeded {result['copied']} file(s) and deployed "
+        f"{result['synced']} override(s) into {target} "
+        f"({result['skipped']} already present)"
+    )
     return 0
 
 

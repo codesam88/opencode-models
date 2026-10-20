@@ -32,9 +32,7 @@ class AvailableTest(unittest.TestCase):
             _m("b", {"TB": 1.0}),
             _m("c", {"TB": 1.0}),
         ]
-        self.assertEqual(
-            available(models), [("TB", 3), ("Z-Bench", 1)]
-        )
+        self.assertEqual(available(models), [("TB", 3), ("Z-Bench", 1)])
 
     def test_equal_coverage_breaks_tie_by_name(self):
         models = [_m("a", {"Z-Bench": 1.0, "Alpha": 1.0})]

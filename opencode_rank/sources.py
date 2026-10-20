@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from .data import Model
+
 _DIR = Path(__file__).resolve().parent / "sources"
 
 
@@ -25,8 +27,9 @@ def load_source(name: str) -> set[str]:
     return {line.strip() for line in path.read_text().splitlines() if line.strip()}
 
 
-def members(models: list[Model], slugs: set[str] | None
-            ) -> tuple[list[Model], set[str]]:
+def members(
+    models: list[Model], slugs: set[str] | None
+) -> tuple[list[Model], set[str]]:
     """Tier membership: the models in a tier, plus which of them are free.
 
     The tier pages list free variants under their own slug
@@ -35,8 +38,7 @@ def members(models: list[Model], slugs: set[str] | None
     A member reached through a ``-free`` slug — or priced at zero — is free.
     """
     if slugs is None:  # `--source all`: no tier filter
-        return (list(models),
-                {m.model_id for m in models if m.price_input == 0})
+        return (list(models), {m.model_id for m in models if m.price_input == 0})
     included: list[Model] = []
     free: set[str] = set()
     for m in models:

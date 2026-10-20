@@ -53,8 +53,9 @@ class PriceEntry:
     free: bool = False
 
 
-def weighted_cost(input_: float | None, output: float | None,
-                  cached_read: float | None) -> float | None:
+def weighted_cost(
+    input_: float | None, output: float | None, cached_read: float | None
+) -> float | None:
     """Representative $/1M across token classes (20/60/20).
 
     ``None`` input means we know nothing about this model. An absent cached
@@ -110,8 +111,11 @@ def nominal_free_rate(model_id: str, rates=None) -> float:
     """
     table = rates if rates is not None else FREE_TIER_NOMINAL_RATES
     slug = model_id.split("/")[-1]
-    for key in (slug, f"{slug}-free",
-                slug[:-len("-free")] if slug.endswith("-free") else slug):
+    for key in (
+        slug,
+        f"{slug}-free",
+        slug[: -len("-free")] if slug.endswith("-free") else slug,
+    ):
         if key in table:
             return table[key]
     return table.get("__default__", FREE_TIER_DEFAULT_RATE)
@@ -148,16 +152,20 @@ def _catalog_rates(catalog_dir: Path) -> dict[str, tuple[float, float, float]]:
         try:
             model = json.loads(path.read_text())["model"]
             price = model.get("priceUsdPer1M") or {}
-            rates[model["id"]] = (price.get("input"), price.get("output"),
-                                  price.get("cachedInput"))
+            rates[model["id"]] = (
+                price.get("input"),
+                price.get("output"),
+                price.get("cachedInput"),
+            )
             rates[model["id"].split("/")[-1]] = rates[model["id"]]
         except (json.JSONDecodeError, KeyError, TypeError):
             continue
     return rates
 
 
-def refresh_free_nominals(usage_dir: Path, catalog_dir: Path, get,
-                          free_slugs: set[str]) -> dict[str, float] | None:
+def refresh_free_nominals(
+    usage_dir: Path, catalog_dir: Path, get, free_slugs: set[str]
+) -> dict[str, float] | None:
     """Derive free-tier nominal rates from the fetched usage export.
 
     Aggregates trailing-30d requests and token volumes per free model, prices
@@ -173,15 +181,22 @@ def refresh_free_nominals(usage_dir: Path, catalog_dir: Path, get,
     import csv
     import io as _io
     from datetime import datetime, timezone
+
     traffic: dict[str, list[float]] = {}
     for row in csv.DictReader(_io.StringIO(get(USAGE_EXPORT_URL))):
         slug = (row.get("model") or "").strip()
         if slug not in free_slugs:
             continue
         try:
-            values = [float(row.get(k) or 0)
-                      for k in ("requests", "input_tokens", "output_tokens",
-                                "cache_read_tokens")]
+            values = [
+                float(row.get(k) or 0)
+                for k in (
+                    "requests",
+                    "input_tokens",
+                    "output_tokens",
+                    "cache_read_tokens",
+                )
+            ]
         except ValueError:
             continue
         acc = traffic.setdefault(slug, [0.0, 0.0, 0.0, 0.0])
@@ -193,18 +208,16 @@ def refresh_free_nominals(usage_dir: Path, catalog_dir: Path, get,
         n, inp, out, cached = totals
         if n < MIN_PROFILE_REQUESTS:
             return None
-        base = slug[:-len("-free")] if slug.endswith("-free") else slug
+        base = slug[: -len("-free")] if slug.endswith("-free") else slug
         rates = catalog.get(base) or catalog.get(slug) or PROXY_RATES
         rin, rout, rcache = (r if r is not None else 0.0 for r in rates)
         if rcache == 0.0 and rates[2] is None:
             rcache = rin  # no cache discount: reads bill at the input rate
-        return ((inp / n) * rin + (out / n) * rout
-                + (cached / n) * rcache) / 1e6
+        return ((inp / n) * rin + (out / n) * rout + (cached / n) * rcache) / 1e6
 
     if FREE_TIER_ANCHOR_MODEL not in traffic:
         return None
-    anchor = cost_per_request(FREE_TIER_ANCHOR_MODEL,
-                              traffic[FREE_TIER_ANCHOR_MODEL])
+    anchor = cost_per_request(FREE_TIER_ANCHOR_MODEL, traffic[FREE_TIER_ANCHOR_MODEL])
     if not anchor:
         return None
     unit = FREE_TIER_BUDGET_USD_PER_DAY / FREE_TIER_ANCHOR_REQUESTS_PER_DAY
@@ -218,17 +231,24 @@ def refresh_free_nominals(usage_dir: Path, catalog_dir: Path, get,
         rates[slug] = unit * (each / anchor) / (rep_tokens / 1e6)
     usage_dir = Path(usage_dir)
     usage_dir.mkdir(parents=True, exist_ok=True)
-    (usage_dir / FREE_TIER_SNAPSHOT_NAME).write_text(json.dumps({
-        "meta": {
-            "window": "trailing 30d usage export",
-            "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            "anchor_model": FREE_TIER_ANCHOR_MODEL,
-            "anchor_requests_per_day": FREE_TIER_ANCHOR_REQUESTS_PER_DAY,
-            "budget_usd_per_day": FREE_TIER_BUDGET_USD_PER_DAY,
-            "min_profile_requests": MIN_PROFILE_REQUESTS,
-        },
-        "rates": rates,
-    }, indent=2))
+    (usage_dir / FREE_TIER_SNAPSHOT_NAME).write_text(
+        json.dumps(
+            {
+                "meta": {
+                    "window": "trailing 30d usage export",
+                    "fetched_at": datetime.now(timezone.utc).isoformat(
+                        timespec="seconds"
+                    ),
+                    "anchor_model": FREE_TIER_ANCHOR_MODEL,
+                    "anchor_requests_per_day": FREE_TIER_ANCHOR_REQUESTS_PER_DAY,
+                    "budget_usd_per_day": FREE_TIER_BUDGET_USD_PER_DAY,
+                    "min_profile_requests": MIN_PROFILE_REQUESTS,
+                },
+                "rates": rates,
+            },
+            indent=2,
+        )
+    )
     return rates
 
 
@@ -265,8 +285,9 @@ def _tables(doc: str):
     for table in re.findall(r"<table[\s\S]*?</table>", doc):
         rows = []
         for tr in re.findall(r"<tr[\s\S]*?</tr>", table):
-            cells = [_cell_text(c) for c in
-                     re.findall(r"<t[hd][^>]*>([\s\S]*?)</t[hd]>", tr)]
+            cells = [
+                _cell_text(c) for c in re.findall(r"<t[hd][^>]*>([\s\S]*?)</t[hd]>", tr)
+            ]
             if cells:
                 rows.append(cells)
         if rows:
@@ -321,10 +342,16 @@ def parse_pricing(doc: str, tier: str) -> list[PriceEntry]:
             inp, out = _money(row[i_in]), _money(row[i_out])
             if inp is None or out is None:
                 continue
-            cached = (_money(row[i_cached])
-                      if i_cached is not None and len(row) > i_cached else None)
-            limit = (_limit(row[i_limit])
-                     if i_limit is not None and len(row) > i_limit else None)
+            cached = (
+                _money(row[i_cached])
+                if i_cached is not None and len(row) > i_cached
+                else None
+            )
+            limit = (
+                _limit(row[i_limit])
+                if i_limit is not None and len(row) > i_limit
+                else None
+            )
             model_id = ids.get(name) or ids.get(_VARIANT_SUFFIX.sub("", name))
             fingerprint = (name, inp, out, cached)
             if fingerprint in by_fingerprint:
@@ -336,10 +363,18 @@ def parse_pricing(doc: str, tier: str) -> list[PriceEntry]:
                     entries[by_fingerprint[fingerprint]] = replace(old, limit=limit)
                 continue
             by_fingerprint[fingerprint] = len(entries)
-            entries.append(PriceEntry(
-                tier=tier, model_id=model_id, name=name, input=inp, output=out,
-                cached_read=cached, limit=limit, free=inp == 0.0,
-            ))
+            entries.append(
+                PriceEntry(
+                    tier=tier,
+                    model_id=model_id,
+                    name=name,
+                    input=inp,
+                    output=out,
+                    cached_read=cached,
+                    limit=limit,
+                    free=inp == 0.0,
+                )
+            )
     return entries
 
 

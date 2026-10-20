@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from opencode_rank.data import Model, load_models, load_model
+from opencode_rank.data import Model, load_model, load_models
 
 SAMPLE = {
     "page": "https://opencode.ai/data/deepseek/deepseek-v4-pro",
@@ -25,10 +25,18 @@ SAMPLE = {
             "cacheWrite": None,
         },
         "benchmarks": [
-            {"name": "SWE-Bench Verified", "score": 80.6, "metric": "resolved",
-             "source": "https://example.com"},
-            {"name": "Terminal-Bench", "score": 55.0, "metric": "accuracy",
-             "source": "https://example.com"},
+            {
+                "name": "SWE-Bench Verified",
+                "score": 80.6,
+                "metric": "resolved",
+                "source": "https://example.com",
+            },
+            {
+                "name": "Terminal-Bench",
+                "score": 55.0,
+                "metric": "accuracy",
+                "source": "https://example.com",
+            },
         ],
     },
     "usage": None,
@@ -77,8 +85,13 @@ class LoadModelTest(unittest.TestCase):
         """Terminal-Bench 2.1 (Fable 5, 88) must not mix with 4.0 (Fable 5.1, 55.8)."""
         sample = json.loads(json.dumps(SAMPLE))
         sample["model"]["benchmarks"] = [
-            {"name": "Terminal-Bench", "version": "2.1", "score": 88.0,
-             "metric": "success rate", "source": ""},
+            {
+                "name": "Terminal-Bench",
+                "version": "2.1",
+                "score": 88.0,
+                "metric": "success rate",
+                "source": "",
+            },
         ]
         m = self._model(sample)
         self.assertEqual(m.scores, {"Terminal-Bench 2.1": 88.0})
@@ -86,8 +99,7 @@ class LoadModelTest(unittest.TestCase):
     def test_benchmark_without_version_keeps_bare_name(self):
         sample = json.loads(json.dumps(SAMPLE))
         sample["model"]["benchmarks"] = [
-            {"name": "Terminal-Bench", "score": 55.8, "metric": "score",
-             "source": ""},
+            {"name": "Terminal-Bench", "score": 55.8, "metric": "score", "source": ""},
         ]
         m = self._model(sample)
         self.assertEqual(m.scores, {"Terminal-Bench": 55.8})

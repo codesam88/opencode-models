@@ -16,9 +16,11 @@ from .data import Model
 
 CACHE_NAME = "scores.json"
 ARENA_BENCHMARK = "LMArena Elo"
-ROWS_URL = ("https://datasets-server.huggingface.co/rows?dataset="
-            "openaccess-ai-collective/chatbot-arena-elo-scores&config=default"
-            "&split=train&offset=0&length=100")
+ROWS_URL = (
+    "https://datasets-server.huggingface.co/rows?dataset="
+    "openaccess-ai-collective/chatbot-arena-elo-scores&config=default"
+    "&split=train&offset=0&length=100"
+)
 
 
 class ArenaCache:
@@ -62,8 +64,7 @@ def _match_key(m: Model) -> str:
     return m.model_id.rsplit("/", 1)[-1]
 
 
-def merge_arena_scores(models: list[Model],
-                       arena: dict[str, float]) -> list[Model]:
+def merge_arena_scores(models: list[Model], arena: dict[str, float]) -> list[Model]:
     """Attach LMArena Elo to models whose bare model id matches an arena
     entry.
 

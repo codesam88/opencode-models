@@ -131,8 +131,11 @@ class SnapshotTest(unittest.TestCase):
             self.assertEqual(sorted(saved), ["go_prices.json", "zen_prices.json"])
             loaded = load_prices(Path(tmp))
         self.assertEqual(sorted(loaded), ["go", "zen"])
-        entry = [e for e in loaded["go"] if e.model_id == "deepseek-v4-pro"
-                 and "Off-Peak" in e.name][0]
+        entry = [
+            e
+            for e in loaded["go"]
+            if e.model_id == "deepseek-v4-pro" and "Off-Peak" in e.name
+        ][0]
         self.assertEqual(entry.input, 0.66)
         self.assertEqual(entry.limit, 15.0)
         self.assertEqual(entry.tier, "go")
@@ -143,7 +146,7 @@ class SnapshotTest(unittest.TestCase):
             refresh_prices(directory, get=lambda url: ENDPOINTS + PRICING)
             before = (directory / "go_prices.json").read_text()
             written = refresh_prices(directory, get=lambda url: "<html>moved</html>")
-            self.assertEqual(written, [])                       # nothing new
+            self.assertEqual(written, [])  # nothing new
             self.assertEqual((directory / "go_prices.json").read_text(), before)
 
     def test_missing_snapshot_is_not_an_error(self):
@@ -170,28 +173,33 @@ class FreeTierNominalTest(unittest.TestCase):
 
     def test_the_most_expensive_free_model_costs_most(self):
         from opencode_rank.pricing import nominal_free_rate
-        self.assertGreater(nominal_free_rate("stepfun/step-5-preview"),
-                           nominal_free_rate("meta/muse-spark-1.3-contributor"))
+
+        self.assertGreater(
+            nominal_free_rate("stepfun/step-5-preview"),
+            nominal_free_rate("meta/muse-spark-1.3-contributor"),
+        )
 
     def test_a_free_suffix_reaches_the_same_model(self):
         from opencode_rank.pricing import nominal_free_rate
-        self.assertEqual(nominal_free_rate("step-5-preview-free"),
-                         nominal_free_rate("stepfun/step-5-preview"))
+
+        self.assertEqual(
+            nominal_free_rate("step-5-preview-free"),
+            nominal_free_rate("stepfun/step-5-preview"),
+        )
 
     def test_every_nominal_rate_stays_below_the_cheapest_paid_rate(self):
         # free must stay cheaper than paid on average, or the list view
         # stops preferring it: cheapest paid is zen jev-1.13 at $0.034/1M
-        from opencode_rank.pricing import (FREE_TIER_NOMINAL_RATES,
-                                           nominal_free_rate)
+        from opencode_rank.pricing import FREE_TIER_NOMINAL_RATES, nominal_free_rate
+
         for slug in list(FREE_TIER_NOMINAL_RATES) + ["something-new-free"]:
             with self.subTest(slug=slug):
                 self.assertLess(nominal_free_rate(slug), 0.034)
 
     def test_an_unknown_free_model_gets_the_anchor_rate(self):
-        from opencode_rank.pricing import (FREE_TIER_DEFAULT_RATE,
-                                           nominal_free_rate)
-        self.assertEqual(nominal_free_rate("lab/mystery-free"),
-                         FREE_TIER_DEFAULT_RATE)
+        from opencode_rank.pricing import FREE_TIER_DEFAULT_RATE, nominal_free_rate
+
+        self.assertEqual(nominal_free_rate("lab/mystery-free"), FREE_TIER_DEFAULT_RATE)
 
 
 FREE_EXPORT = """day,user_type,user_id,user_name,provider,model,requests,input_tokens,output_tokens,cache_read_tokens,cache_write_5m_tokens,cache_write_1h_tokens,cost_micro_cents
@@ -204,14 +212,24 @@ FREE_EXPORT = """day,user_type,user_id,user_name,provider,model,requests,input_t
 
 
 def _catalog(tmp, prices):
-    import json
     out = Path(tmp) / "opencode"
     out.mkdir(parents=True, exist_ok=True)
     for slug, (inp, outp, cached) in prices.items():
-        (out / f"l__{slug}.json").write_text(json.dumps({"model": {
-            "id": f"l/{slug}", "name": slug,
-            "priceUsdPer1M": {"input": inp, "output": outp,
-                              "cachedInput": cached}}}))
+        (out / f"l__{slug}.json").write_text(
+            json.dumps(
+                {
+                    "model": {
+                        "id": f"l/{slug}",
+                        "name": slug,
+                        "priceUsdPer1M": {
+                            "input": inp,
+                            "output": outp,
+                            "cachedInput": cached,
+                        },
+                    }
+                }
+            )
+        )
     return out
 
 
@@ -225,19 +243,31 @@ class RefreshFreeNominalsTest(unittest.TestCase):
 
     def test_it_derives_nominals_from_the_export_and_the_catalog(self):
         from opencode_rank.pricing import refresh_free_nominals
+
         with tempfile.TemporaryDirectory() as tmp:
-            catalog = _catalog(tmp, {
-                "step-5-preview": (0.959, 2.741, 0.048),
-                "muse-spark-1.3-contributor": (0.1, 0.2, 0.002),
-            })
+            catalog = _catalog(
+                tmp,
+                {
+                    "step-5-preview": (0.959, 2.741, 0.048),
+                    "muse-spark-1.3-contributor": (0.1, 0.2, 0.002),
+                },
+            )
             out = Path(tmp) / "usage"
             rates = refresh_free_nominals(
-                out, catalog, get=lambda url: FREE_EXPORT,
-                free_slugs={"space-bunny-free", "step-5-preview-free",
-                            "muse-spark-1.3-contributor-free", "quiet-free"})
+                out,
+                catalog,
+                get=lambda url: FREE_EXPORT,
+                free_slugs={
+                    "space-bunny-free",
+                    "step-5-preview-free",
+                    "muse-spark-1.3-contributor-free",
+                    "quiet-free",
+                },
+            )
         # step-5 burns far more per request, so its nominal is far higher
-        self.assertGreater(rates["step-5-preview-free"],
-                           rates["muse-spark-1.3-contributor-free"])
+        self.assertGreater(
+            rates["step-5-preview-free"], rates["muse-spark-1.3-contributor-free"]
+        )
         self.assertGreater(rates["muse-spark-1.3-contributor-free"], 0)
         # the anchor normalisation: budget $0.10 over 662 anchor requests,
         # converted at the anchor's own traffic profile (~85.7k rep tokens)
@@ -245,65 +275,81 @@ class RefreshFreeNominalsTest(unittest.TestCase):
 
     def test_a_model_with_almost_no_traffic_is_left_out(self):
         from opencode_rank.pricing import refresh_free_nominals
+
         with tempfile.TemporaryDirectory() as tmp:
             catalog = _catalog(tmp, {})
             out = Path(tmp) / "usage"
             rates = refresh_free_nominals(
-                out, catalog, get=lambda url: FREE_EXPORT,
-                free_slugs={"quiet-free", "space-bunny-free"})
-        self.assertNotIn("quiet-free", rates)   # 3 requests: noise, not a profile
+                out,
+                catalog,
+                get=lambda url: FREE_EXPORT,
+                free_slugs={"quiet-free", "space-bunny-free"},
+            )
+        self.assertNotIn("quiet-free", rates)  # 3 requests: noise, not a profile
         self.assertIn("space-bunny-free", rates)
 
     def test_paid_models_never_get_a_nominal(self):
         from opencode_rank.pricing import refresh_free_nominals
+
         with tempfile.TemporaryDirectory() as tmp:
             catalog = _catalog(tmp, {})
             out = Path(tmp) / "usage"
             rates = refresh_free_nominals(
-                out, catalog, get=lambda url: FREE_EXPORT,
-                free_slugs={"space-bunny-free"})
+                out,
+                catalog,
+                get=lambda url: FREE_EXPORT,
+                free_slugs={"space-bunny-free"},
+            )
         self.assertNotIn("muse-spark-1.3-contributor", rates)
 
     def test_no_user_columns_survive_into_the_snapshot(self):
-        import json
         from opencode_rank.pricing import refresh_free_nominals
+
         with tempfile.TemporaryDirectory() as tmp:
             catalog = _catalog(tmp, {})
             out = Path(tmp) / "usage"
             refresh_free_nominals(
-                out, catalog, get=lambda url: FREE_EXPORT,
-                free_slugs={"space-bunny-free"})
+                out,
+                catalog,
+                get=lambda url: FREE_EXPORT,
+                free_slugs={"space-bunny-free"},
+            )
             stored = (out / "free_tier_nominals.json").read_text()
         for leaked in ("svc1", "Someone", "user_id", "user_name"):
             self.assertNotIn(leaked, stored)
         # and the shape leaves nowhere else to hide: meta plus numbers
         doc = json.loads(stored)
         self.assertEqual(sorted(doc), ["meta", "rates"])
-        for slug, rate in doc["rates"].items():
+        for _slug, rate in doc["rates"].items():
             self.assertIsInstance(rate, float)
 
     def test_without_the_anchor_there_is_nothing_to_normalise_against(self):
         from opencode_rank.pricing import refresh_free_nominals
+
         with tempfile.TemporaryDirectory() as tmp:
             catalog = _catalog(tmp, {})
             out = Path(tmp) / "usage"
             rates = refresh_free_nominals(
-                out, catalog,
-                get=lambda url: FREE_EXPORT.replace("space-bunny-free",
-                                                    "other-free"),
-                free_slugs={"other-free"})
+                out,
+                catalog,
+                get=lambda url: FREE_EXPORT.replace("space-bunny-free", "other-free"),
+                free_slugs={"other-free"},
+            )
         self.assertIsNone(rates)
         self.assertFalse((out / "free_tier_nominals.json").exists())
 
     def test_load_reads_back_what_refresh_wrote(self):
-        from opencode_rank.pricing import (load_free_nominals,
-                                           refresh_free_nominals)
+        from opencode_rank.pricing import load_free_nominals, refresh_free_nominals
+
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
             catalog = _catalog(tmp, {})
             refresh_free_nominals(
-                d / "usage", catalog, get=lambda url: FREE_EXPORT,
-                free_slugs={"space-bunny-free", "step-5-preview-free"})
+                d / "usage",
+                catalog,
+                get=lambda url: FREE_EXPORT,
+                free_slugs={"space-bunny-free", "step-5-preview-free"},
+            )
             loaded = load_free_nominals(d)
         self.assertIsNotNone(loaded)
         self.assertIn("step-5-preview-free", loaded)
@@ -311,5 +357,6 @@ class RefreshFreeNominalsTest(unittest.TestCase):
 
     def test_load_without_a_snapshot_is_unknown_not_empty(self):
         from opencode_rank.pricing import load_free_nominals
+
         with tempfile.TemporaryDirectory() as tmp:
             self.assertIsNone(load_free_nominals(Path(tmp)))

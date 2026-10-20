@@ -52,6 +52,23 @@ jobs:
           uv tool install --force dist/*.whl
           opencode-rank --help >/dev/null
 
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+      - name: sync (with the pinned lockfile, dev tools included)
+        run: uv sync --python "3.12"
+      # same commands as `just lint`; ruff itself comes from the locked
+      # dev group, never from the network at CI time beyond the lockfile
+      - name: lint, format check and complexity gate
+        run: |
+          uv run --no-sync ruff check opencode_rank tests
+          uv run --no-sync ruff format --check opencode_rank tests
+
   zizmor:
     runs-on: ubuntu-latest
     timeout-minutes: 10

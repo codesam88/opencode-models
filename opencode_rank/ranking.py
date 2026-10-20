@@ -9,8 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 
 from .data import Model
-from .scoring import combined, derived_scores, scales, tracked
 from .pricing import nominal_free_rate, variant_of, weighted_cost
+from .scoring import combined, derived_scores, scales, tracked
 
 _PRICE_FIELDS = ("price_input", "price_output")
 
@@ -21,21 +21,24 @@ def _price_of(m: Model, field: str) -> float | None:
     return getattr(m, field)
 
 
-def by_score_per_price(models: list[Model], benchmark: str,
-                       price_field: str = "price_input") -> list[Model]:
+def by_score_per_price(
+    models: list[Model], benchmark: str, price_field: str = "price_input"
+) -> list[Model]:
     """Best value first. Ties on ratio break toward the higher score.
 
     *price_field* selects the cost axis: ``price_input`` (default) or
     ``price_output``.
     """
     ranked = [
-        m for m in models
+        m
+        for m in models
         if _price_of(m, price_field) is not None and benchmark in m.scores
     ]
     return sorted(
         ranked,
         key=lambda m: (
-            -float("inf") if _price_of(m, price_field) == 0
+            -float("inf")
+            if _price_of(m, price_field) == 0
             else -m.scores[benchmark] / _price_of(m, price_field),
             -m.scores[benchmark],
         ),
@@ -86,20 +89,23 @@ class Row:
     """One printable line of the console list."""
 
     model: Model
-    name: str                    # display label: variant and [free] applied
-    price: float                 # representative cost, $/1M (nominal if free)
+    name: str  # display label: variant and [free] applied
+    price: float  # representative cost, $/1M (nominal if free)
     free: bool
     band: str
-    score: float | None          # primary family score, else secondary
-    benchmark: str | None        # the key `score` came from
-    grade: str = "o"             # rank marker: ++ / + / o / -- / ·
-    provider: str = "-"          # zen / go, "-" when in neither tier
+    score: float | None  # primary family score, else secondary
+    benchmark: str | None  # the key `score` came from
+    grade: str = "o"  # rank marker: ++ / + / o / -- / ·
+    provider: str = "-"  # zen / go, "-" when in neither tier
     entry: object | None = None  # pricing.PriceEntry when doc-priced
 
 
-def _best(scores: dict[str, float], family: str,
-          skip: str | None = None,
-          versioned: bool = False) -> tuple[str, float] | None:
+def _best(
+    scores: dict[str, float],
+    family: str,
+    skip: str | None = None,
+    versioned: bool = False,
+) -> tuple[str, float] | None:
     """Highest score under *family*, as ``(key, value)``.
 
     Families are matched with spaces folded to dashes so ``Terminal Bench
@@ -121,7 +127,7 @@ def _best(scores: dict[str, float], family: str,
         folded = key.lower().replace(" ", "-")
         if not folded.startswith(folded_family):
             continue
-        if versioned and not _version_run(folded[len(folded_family):]):
+        if versioned and not _version_run(folded[len(folded_family) :]):
             continue
         if folded_skip and folded.startswith(folded_skip):
             continue
@@ -144,10 +150,15 @@ def ratio(score: float, price: float) -> float:
     return float("inf") if price == 0 else score / price
 
 
-def build_rows(models: list[Model], entries=(), free_ids=frozenset(),
-               axis: str = "weighted", provider: str = "-",
-               table: dict | None = None,
-               free_rates: dict[str, float] | None = None) -> list[Row]:
+def build_rows(
+    models: list[Model],
+    entries=(),
+    free_ids=frozenset(),
+    axis: str = "weighted",
+    provider: str = "-",
+    table: dict | None = None,
+    free_rates: dict[str, float] | None = None,
+) -> list[Row]:
     """Price every line of the console list.
 
     A documented line replaces the catalog price (the catalog has no notion
@@ -174,36 +185,44 @@ def build_rows(models: list[Model], entries=(), free_ids=frozenset(),
             return entry.output if entry else model.price_output
         if entry:
             return weighted_cost(entry.input, entry.output, entry.cached_read)
-        return weighted_cost(model.price_input, model.price_output,
-                             model.price_cached_input)
+        return weighted_cost(
+            model.price_input, model.price_output, model.price_cached_input
+        )
 
     staged = []  # (model, entry, display name, cost, free, monthly limit)
     for m in models:
         slug = m.model_id.split("/")[-1]
-        documented = (by_model.get(slug, [])
-                      + by_model.get(f"{slug}-free", []))
+        documented = by_model.get(slug, []) + by_model.get(f"{slug}-free", [])
         cost = cost_of(m, None)
         if not documented:
             if cost is None:
                 continue  # no price at all — nothing to rank it on
-            staged.append((m, None, m.name, cost,
-                           m.model_id in free_ids or cost == 0, None))
+            staged.append(
+                (m, None, m.name, cost, m.model_id in free_ids or cost == 0, None)
+            )
             continue
         variants = set()
-        for entry in documented:   # first tier in *entries* owns a variant
+        for entry in documented:  # first tier in *entries* owns a variant
             suffix = variant_of(entry.name)
             if suffix in variants:
                 continue
             variants.add(suffix)
             label = f"{m.name} {suffix}" if suffix else m.name
-            staged.append((m, entry, label, cost_of(m, entry),
-                           entry.free or m.model_id in free_ids, entry.limit))
+            staged.append(
+                (
+                    m,
+                    entry,
+                    label,
+                    cost_of(m, entry),
+                    entry.free or m.model_id in free_ids,
+                    entry.limit,
+                )
+            )
 
     rows = []
     for model, entry, name, cost, free, limit in staged:
         if free:
-            price, band = nominal_free_rate(model.model_id,
-                                                free_rates), BAND_FREE
+            price, band = nominal_free_rate(model.model_id, free_rates), BAND_FREE
             if "free" not in name.lower():
                 name = f"{name} [free]"
         else:
@@ -216,9 +235,19 @@ def build_rows(models: list[Model], entries=(), free_ids=frozenset(),
         derived = derived_scores(model, table or scales(models))
         score = combined(derived)
         strongest = max(derived, key=lambda k: derived[k]) if derived else None
-        rows.append(Row(model=model, name=name, price=price, free=free,
-                        band=band, score=score, benchmark=strongest,
-                        provider=provider, entry=entry))
+        rows.append(
+            Row(
+                model=model,
+                name=name,
+                price=price,
+                free=free,
+                band=band,
+                score=score,
+                benchmark=strongest,
+                provider=provider,
+                entry=entry,
+            )
+        )
     return rows
 
 
@@ -256,8 +285,9 @@ def dedupe_providers(rows: list[Row]) -> list[Row]:
             continue
         current = merged[key]
         keep = current if _BAND_RANK[current.band] <= _BAND_RANK[row.band] else row
-        providers = sorted({p for side in (current.provider, row.provider)
-                            for p in side.split(",")})
+        providers = sorted(
+            {p for side in (current.provider, row.provider) for p in side.split(",")}
+        )
         merged[key] = replace(keep, provider=",".join(providers))
     return [merged[key] for key in keys]
 
@@ -275,12 +305,16 @@ def order_rows(rows: list[Row]) -> list[Row]:
     means seeing them), paid ones follow behind, and rows nothing reaches
     and nobody sells free drop out.
     """
-    scored = sorted((r for r in rows if r.score is not None),
-                    key=lambda r: (-ratio(r.score, r.price), -r.score))
+    scored = sorted(
+        (r for r in rows if r.score is not None),
+        key=lambda r: (-ratio(r.score, r.price), -r.score),
+    )
     listed = {id(r) for r in scored}
-    tail = [r for r in rows
-            if r.score is None and id(r) not in listed
-            and (r.free or _measured(r))]
+    tail = [
+        r
+        for r in rows
+        if r.score is None and id(r) not in listed and (r.free or _measured(r))
+    ]
     free = [r for r in tail if r.free]
     paid = [r for r in tail if not r.free]
     return scored + free + paid
@@ -299,9 +333,12 @@ def axis_scores(model: Model) -> dict[str, float | None]:
     """
     out: dict[str, float | None] = {}
     for key, _label, family, versioned in AXES:
-        best = _best(model.scores, family,
-                     skip=TB4_FAMILY if key == "tb2" else None,
-                     versioned=versioned)
+        best = _best(
+            model.scores,
+            family,
+            skip=TB4_FAMILY if key == "tb2" else None,
+            versioned=versioned,
+        )
         out[key] = best[1] if best else None
     return out
 
@@ -346,8 +383,12 @@ def grade_rows(rows: list[Row]) -> list[Row]:
 RECOMMEND_FLOOR = 0.75
 
 
-def next_up(rows: list[Row], count: int = 4, grade: str | None = None,
-            floor: float = RECOMMEND_FLOOR) -> list[Row]:
+def next_up(
+    rows: list[Row],
+    count: int = 4,
+    grade: str | None = None,
+    floor: float = RECOMMEND_FLOOR,
+) -> list[Row]:
     """The next *count* models to use, in order.
 
     Candidates alternate between the free and paid bands slot by slot —
@@ -378,10 +419,11 @@ def next_up(rows: list[Row], count: int = 4, grade: str | None = None,
     eligible = [r for r in scored if r.score >= best * floor]
     if grade:
         eligible = [r for r in eligible if r.grade == grade]
-    free = sorted((r for r in eligible if r.free),
-                  key=lambda r: (-r.score, r.name))
-    paid = sorted((r for r in eligible if not r.free),
-                  key=lambda r: (-ratio(r.score, r.price), -r.score, r.name))
+    free = sorted((r for r in eligible if r.free), key=lambda r: (-r.score, r.name))
+    paid = sorted(
+        (r for r in eligible if not r.free),
+        key=lambda r: (-ratio(r.score, r.price), -r.score, r.name),
+    )
     # Band alternation is the slot order; the plan alternation inside each
     # slot prefers a plan the previous pick did not touch.
     return _take_banded(free, paid, count)
@@ -419,9 +461,12 @@ def _take_banded(free: list[Row], paid: list[Row], want: int) -> list[Row]:
     previous: set[str] = set()
     for slot in range(want):
         first, second = pools if slot % 2 == 0 else pools[::-1]
-        row = (_off_plan(first, seen, previous) or _first_unseen(first, seen)
-               or _off_plan(second, seen, previous)
-               or _first_unseen(second, seen))
+        row = (
+            _off_plan(first, seen, previous)
+            or _first_unseen(first, seen)
+            or _off_plan(second, seen, previous)
+            or _first_unseen(second, seen)
+        )
         if row is None:
             break
         taken.append(row)
@@ -438,16 +483,14 @@ def _first_unseen(pool: list[Row], seen: set[str]) -> Row | None:
     return None
 
 
-def _off_plan(pool: list[Row], seen: set[str],
-              previous: set[str]) -> Row | None:
+def _off_plan(pool: list[Row], seen: set[str], previous: set[str]) -> Row | None:
     """The strongest unseen row in *pool* on a fresh plan.
 
     Nothing is fresh before the first pick, so the lead always falls
     through to the strongest row outright.
     """
     for row in pool:
-        if row.model.model_id not in seen \
-                and not plans_of(row) & previous:
+        if row.model.model_id not in seen and not plans_of(row) & previous:
             return row
     return None
 
@@ -473,10 +516,11 @@ def _take(ordered: list[Row], want: int) -> list[Row]:
         seen.add(row.model.model_id)
         unique.append(row)
     remaining = unique
-    plans = sorted({p for row in remaining for p in plans_of(row)},
-                   key=lambda p: max((r.score for r in remaining
-                                      if p in plans_of(r)), default=0),
-                   reverse=True)
+    plans = sorted(
+        {p for row in remaining for p in plans_of(row)},
+        key=lambda p: max((r.score for r in remaining if p in plans_of(r)), default=0),
+        reverse=True,
+    )
     taken: list[Row] = []
     while len(taken) < want and remaining:
         progressed = False
@@ -494,8 +538,9 @@ def _take(ordered: list[Row], want: int) -> list[Row]:
     return taken
 
 
-def partition_rows(rows: list[Row], fraction: float = CULL_FRACTION
-                   ) -> tuple[list[Row], list[Row], list[Row]]:
+def partition_rows(
+    rows: list[Row], fraction: float = CULL_FRACTION
+) -> tuple[list[Row], list[Row], list[Row]]:
     """Split into (best value, worst score, highest cost).
 
     The split always happens: the worst-scoring and priciest models are
@@ -511,17 +556,23 @@ def partition_rows(rows: list[Row], fraction: float = CULL_FRACTION
     count = len(rows)
     take = 0 if count <= 1 else max(1, round(fraction * count))
 
-    expensive = sorted(range(count), key=lambda i: (
-        -rows[i].price,
-        rows[i].score if rows[i].score is not None else float("inf"),
-    ))[:take]
+    expensive = sorted(
+        range(count),
+        key=lambda i: (
+            -rows[i].price,
+            rows[i].score if rows[i].score is not None else float("inf"),
+        ),
+    )[:take]
     claimed = set(expensive)
 
     rest = [i for i in range(count) if i not in claimed]
-    weakest = sorted(rest, key=lambda i: (
-        rows[i].score if rows[i].score is not None else float("inf"),
-        -rows[i].price,
-    ))[:take]
+    weakest = sorted(
+        rest,
+        key=lambda i: (
+            rows[i].score if rows[i].score is not None else float("inf"),
+            -rows[i].price,
+        ),
+    )[:take]
     weakest_set = set(weakest)
 
     main = [rows[i] for i in rest if i not in weakest_set]

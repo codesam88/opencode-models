@@ -27,7 +27,8 @@ timeout — and it is never written to fetched data, logs, or output.
 No cookies or telemetry are involved, and nothing the tool computes
 ever leaves the machine. There is no dependency tree to supply-chain:
 the package is stdlib-only, so `uv tool install .` resolves nothing at
-runtime.
+runtime. Developer tooling (the ruff linter/formatter) lives in the locked
+`dev` dependency group and never ships in the installed tool.
 
 ## Scraper etiquette
 

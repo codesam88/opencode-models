@@ -66,7 +66,7 @@ LABEL_MAPS: dict[str, dict[str, str]] = {
 UNRESOLVED: dict[str, dict[str, str]] = {
     "www.swebench.com": {
         "Gemini 3 Flash": "fits 3-flash-preview, 3.5, 3.6 and 3.7 alike; "
-                          "the board does not say which",
+        "the board does not say which",
         "Kimi K2": "fits k2-instruct, k2-thinking, k2.5 and k2.6 alike",
     },
 }

@@ -18,10 +18,23 @@ from opencode_rank.availability import available_ids, load_available, unlisted
 def _snapshot(data_dir: Path, tier: str, model_ids: list[str]) -> None:
     out = data_dir / "tier_prices"
     out.mkdir(parents=True, exist_ok=True)
-    (out / f"{tier}_prices.json").write_text(json.dumps(
-        [{"tier": tier, "model_id": mid, "name": mid, "input": 1.0,
-          "output": 1.0, "cached_read": None, "limit": None, "free": False}
-         for mid in model_ids]))
+    (out / f"{tier}_prices.json").write_text(
+        json.dumps(
+            [
+                {
+                    "tier": tier,
+                    "model_id": mid,
+                    "name": mid,
+                    "input": 1.0,
+                    "output": 1.0,
+                    "cached_read": None,
+                    "limit": None,
+                    "free": False,
+                }
+                for mid in model_ids
+            ]
+        )
+    )
 
 
 class AvailabilityTest(unittest.TestCase):
@@ -30,8 +43,7 @@ class AvailabilityTest(unittest.TestCase):
             d = Path(tmp)
             _snapshot(d, "zen", ["m1", "m2"])
             _snapshot(d, "go", ["m3"])
-            self.assertEqual(load_available(d),
-                             {"zen": {"m1", "m2"}, "go": {"m3"}})
+            self.assertEqual(load_available(d), {"zen": {"m1", "m2"}, "go": {"m3"}})
 
     def test_any_plan_counts_as_available(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -61,13 +73,19 @@ class AvailabilityTest(unittest.TestCase):
             d = Path(tmp)
             out = d / "tier_prices"
             out.mkdir(parents=True, exist_ok=True)
-            (out / "zen_prices.json").write_text(json.dumps(
-                [{"tier": "zen", "model_id": None, "name": "Mystery"},
-                 {"tier": "zen", "model_id": "m1", "name": "M1"}]))
+            (out / "zen_prices.json").write_text(
+                json.dumps(
+                    [
+                        {"tier": "zen", "model_id": None, "name": "Mystery"},
+                        {"tier": "zen", "model_id": "m1", "name": "M1"},
+                    ]
+                )
+            )
             self.assertEqual(load_available(d)["zen"], {"m1"})
 
     def test_it_reports_what_the_provider_has_dropped(self):
         from opencode_rank import sources
+
         real = sources.load_source
         sources.load_source = lambda tier: {"m1", "m2"}
         try:
@@ -81,7 +99,6 @@ class AvailabilityTest(unittest.TestCase):
         self.assertEqual(dropped["go"], {"m2"})
 
     def test_nothing_is_reported_dropped_without_a_snapshot(self):
-        from opencode_rank import sources
         with tempfile.TemporaryDirectory() as tmp:
             self.assertEqual(unlisted(Path(tmp)), {})
 
@@ -92,6 +109,7 @@ class AvailabilityTest(unittest.TestCase):
         # model from the pool entirely, which is how every free row vanished
         # from the list view
         from opencode_rank.availability import offered
+
         ids = {"step-5-preview-free", "m1"}
         self.assertTrue(offered("stepfun/step-5-preview", ids))
         self.assertTrue(offered("a/m1", ids))
@@ -102,10 +120,10 @@ if __name__ == "__main__":
     unittest.main()
 
 
-
 class LivePrecedenceTest(unittest.TestCase):
     def test_the_live_snapshot_wins_over_the_docs_snapshot(self):
         from opencode_rank.live import save_live
+
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
             _snapshot(d, "zen", ["stale-model"])

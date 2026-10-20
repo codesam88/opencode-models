@@ -31,8 +31,8 @@ from __future__ import annotations
 import json
 import re
 from collections import Counter
-from pathlib import Path
 from dataclasses import asdict, dataclass, replace
+from pathlib import Path
 
 from .fetch import http_get
 from .labelmap import mapped_id
@@ -79,8 +79,10 @@ def _island_json(html: str, marker: str) -> list:
 
 def _cells(row_html: str) -> list[str]:
     """The text of a table row's cells, blanks dropped."""
-    cells = [re.sub(r"<[^>]+>", "", c).strip()
-             for c in re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", row_html, re.S)]
+    cells = [
+        re.sub(r"<[^>]+>", "", c).strip()
+        for c in re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", row_html, re.S)
+    ]
     return [c for c in cells if c]
 
 
@@ -132,7 +134,7 @@ def _first_object(text: str, start: int) -> str:
         elif text[i] == "}":
             depth -= 1
             if depth == 0:
-                return text[start:i + 1]
+                return text[start : i + 1]
     return ""
 
 
@@ -242,17 +244,19 @@ def swebench_rows(html: str) -> list[BoardRow]:
             notes = []
             if entry.get("os_model") or entry.get("os_system"):
                 notes.append("os-model/system run")
-            rows.append(BoardRow(
-                benchmark=f"SWE-Bench {name}",
-                model_name=entry.get("model_display") or "",
-                score=float(score),
-                source=SWE_URL,
-                tier=TIER_BOARD,
-                model_org=entry.get("model_org"),
-                agent=entry.get("agent"),
-                date=entry.get("date"),
-                note=", ".join(notes) or None,
-            ))
+            rows.append(
+                BoardRow(
+                    benchmark=f"SWE-Bench {name}",
+                    model_name=entry.get("model_display") or "",
+                    score=float(score),
+                    source=SWE_URL,
+                    tier=TIER_BOARD,
+                    model_org=entry.get("model_org"),
+                    agent=entry.get("agent"),
+                    date=entry.get("date"),
+                    note=", ".join(notes) or None,
+                )
+            )
     return rows
 
 
@@ -285,7 +289,7 @@ def _name_tokens(model) -> Counter:
     return normalize(LATEST.sub(" ", model.name))
 
 
-def match_models(row: "BoardRow", models) -> list[str]:
+def match_models(row: BoardRow, models) -> list[str]:
     """Every catalog row the board row is about.
 
     Boards and the catalog name the same models differently, so this is a
@@ -327,7 +331,7 @@ def match_models(row: "BoardRow", models) -> list[str]:
     scored: list[tuple[int, int, object]] = []
     for model in models:
         tokens = _id_tokens(model.model_id) | _name_tokens(model)
-        if want - tokens:            # a token (or count) the model lacks
+        if want - tokens:  # a token (or count) the model lacks
             continue
         lab_miss = 0 if org and (org - normalize(model.lab)) == Counter() else 1
         scored.append((len(tokens - want), lab_miss, model))
@@ -335,8 +339,7 @@ def match_models(row: "BoardRow", models) -> list[str]:
         return []
     scored.sort(key=lambda t: (t[0], t[1]))
     best = scored[0][:2]
-    return _one_model([m for extra, lab, m in scored
-                       if (extra, lab) == best])
+    return _one_model([m for extra, lab, m in scored if (extra, lab) == best])
 
 
 def _all_rows_of(model: list) -> list[str]:
@@ -348,10 +351,15 @@ def _all_rows_of(model: list) -> list[str]:
     if not model:
         return []
     target = model[0]
-    same = [m for m in _CATALOG[0]
-            if m.lab == target.lab and _name_tokens(m) == _name_tokens(target)]
-    return sorted((m.model_id for m in same or model),
-                  key=lambda c: (0 if LATEST.search(c) else 1, c))
+    same = [
+        m
+        for m in _CATALOG[0]
+        if m.lab == target.lab and _name_tokens(m) == _name_tokens(target)
+    ]
+    return sorted(
+        (m.model_id for m in same or model),
+        key=lambda c: (0 if LATEST.search(c) else 1, c),
+    )
 
 
 #: the catalog currently being matched against, so _all_rows_of can find the
@@ -372,11 +380,13 @@ def _one_model(candidates: list) -> list[str]:
     # Counter is unhashable, so compare the token sets as sorted items
     if len({tuple(sorted(_name_tokens(c).items())) for c in candidates}) > 1:
         return []
-    return sorted((c.model_id for c in candidates),
-                  key=lambda c: (0 if LATEST.search(c) else 1, c))
+    return sorted(
+        (c.model_id for c in candidates),
+        key=lambda c: (0 if LATEST.search(c) else 1, c),
+    )
 
 
-def match_model(row: "BoardRow", models) -> str | None:
+def match_model(row: BoardRow, models) -> str | None:
     """The one catalog model a board row is about, or None when ambiguous.
 
     See :func:`match_models`, which returns every row when the catalog holds
@@ -421,21 +431,29 @@ def merge_boards(models, rows: list[BoardRow]):
             # a board row applies only when its source is strictly better
             # tiered than what the model carries — the board never
             # displaces an independent run, and never a same-tier number
-            better = (key not in scores
-                      or source_tier(row.source)
-                      < source_tier(sources.get(key)))
+            better = key not in scores or source_tier(row.source) < source_tier(
+                sources.get(key)
+            )
             if key in scores and scores[key] != row.score:
-                conflicts.append(replace(Conflict(
-                    model_id=model.model_id,
-                    benchmark=key,
-                    upstream=scores[key],
-                    override=row.score,
-                    upstream_source=sources.get(key),
-                    override_source=row.source,
-                    reason=(f"official board ({row.agent or 'board'}"
-                            + (f", {row.effort}" if row.effort else "")
-                            + (f", {row.note}" if row.note else "") + ")"),
-                ), applied=better))
+                conflicts.append(
+                    replace(
+                        Conflict(
+                            model_id=model.model_id,
+                            benchmark=key,
+                            upstream=scores[key],
+                            override=row.score,
+                            upstream_source=sources.get(key),
+                            override_source=row.source,
+                            reason=(
+                                f"official board ({row.agent or 'board'}"
+                                + (f", {row.effort}" if row.effort else "")
+                                + (f", {row.note}" if row.note else "")
+                                + ")"
+                            ),
+                        ),
+                        applied=better,
+                    )
+                )
                 if not better:
                     continue
             scores[key] = row.score

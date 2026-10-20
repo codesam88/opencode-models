@@ -37,8 +37,10 @@ def fetch_live(get) -> dict[str, set[str]]:
     """
     payload = json.loads(get(LIVE_CONFIG_URL))
     providers = payload.get("providers") or {}
-    return {tier: set((providers.get(name) or {}).get("models") or {})
-            for name, tier in LIVE_TIERS.items()}
+    return {
+        tier: set((providers.get(name) or {}).get("models") or {})
+        for name, tier in LIVE_TIERS.items()
+    }
 
 
 def save_live(data_dir: Path, live: dict[str, set[str]]) -> list[str]:
@@ -48,14 +50,20 @@ def save_live(data_dir: Path, live: dict[str, set[str]]) -> list[str]:
         directory = Path(data_dir) / SNAPSHOT_DIR
         directory.mkdir(parents=True, exist_ok=True)
         path = directory / f"{tier}.json"
-        path.write_text(json.dumps({
-            "meta": {
-                "source": LIVE_CONFIG_URL,
-                "fetched_at": datetime.now(timezone.utc).isoformat(
-                    timespec="seconds"),
-            },
-            "models": sorted(slugs),
-        }, indent=1))
+        path.write_text(
+            json.dumps(
+                {
+                    "meta": {
+                        "source": LIVE_CONFIG_URL,
+                        "fetched_at": datetime.now(timezone.utc).isoformat(
+                            timespec="seconds"
+                        ),
+                    },
+                    "models": sorted(slugs),
+                },
+                indent=1,
+            )
+        )
         saved.append(path.name)
     return saved
 

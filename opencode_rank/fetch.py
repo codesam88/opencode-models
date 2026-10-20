@@ -42,12 +42,13 @@ def urls_from_sitemap(xml: str) -> list[str]:
 
 def _filename_for(url: str) -> str:
     """``https://opencode.ai/data/<lab>/<model>`` → ``<lab>__<model>.json``."""
-    lab, model = url[len(_BASE):].rsplit("/", 1)
+    lab, model = url[len(_BASE) :].rsplit("/", 1)
     return f"{lab}__{model}.json"
 
 
-def refresh(data_dir: Path, get=http_get, progress=None,
-            only: set[str] | None = None) -> list[str]:
+def refresh(
+    data_dir: Path, get=http_get, progress=None, only: set[str] | None = None
+) -> list[str]:
     """Download every model's JSON into *data_dir*/opencode; return names.
 
     The upstream layer is verbatim: ``fetch`` writes only here, and the
@@ -70,7 +71,7 @@ def refresh(data_dir: Path, get=http_get, progress=None,
     saved: list[str] = []
     urls = urls_from_sitemap(get(SITEMAP_URL))
     if only is not None:
-        urls = [u for u in urls if offered(u[len(_BASE):], only)]
+        urls = [u for u in urls if offered(u[len(_BASE) :], only)]
     total = len(urls)
     for done, url in enumerate(urls, 1):
         try:

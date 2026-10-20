@@ -44,6 +44,7 @@ from .ranking import (
 from . import arena as arena_mod
 from .availability import available_ids, load_available, offered
 from .auth import key_file, load_key, save_key
+from .tables import column_widths, format_row, render
 from .live import LIVE_CONFIG_URL, fetch_live, save_live
 from . import sources
 
@@ -96,12 +97,12 @@ def _style(text: str) -> str:
 
 
 def _row_line(cells: tuple[str, ...], widths: tuple[int, ...]) -> str:
-    return "  ".join(cell.rjust(width) for cell, width in zip(cells, widths))
+    return format_row(cells, widths)
 
 
 def _header(widths: tuple[int, ...], axis: bool = True) -> str:
     headings = AXIS_HEADERS if axis else SINGLE_HEADERS
-    return _style(_row_line(headings, widths) + "  MODEL")
+    return _style(format_row(headings, widths) + "  MODEL")
 
 
 def _section(title: str, widths: tuple[int, ...],
@@ -175,10 +176,7 @@ def _print_conflicts(conflicts, orphans=()) -> int:
     if not rows:
         return 0
     headings = ("MODEL", "BENCHMARK", "CATALOG", "REPORTED", "USED", "NOTE")
-    widths = [max(len(h), *(len(r[i]) for r in rows)) for i, h in enumerate(headings)]
-    print("  " + "  ".join(h.ljust(w) for h, w in zip(headings, widths)).rstrip())
-    for row in rows:
-        print("  " + "  ".join(c.ljust(w) for c, w in zip(row, widths)).rstrip())
+    print(render(headings, rows, aligns="<", indent="  "))
     return len(conflicts) + len(orphans)
 
 
@@ -258,6 +256,32 @@ def _cmd_auth(args: argparse.Namespace) -> int:
     return 0
 
 
+def _display_names(data_dir: Path) -> dict[str, str]:
+    """Display names by slug or id, from the catalog records on disk.
+
+    Absent catalog, absent names: callers fall back to the slug itself.
+    """
+    names = {}
+    for model in load_models(Path(data_dir) / "opencode"):
+        names[model.model_id] = model.name
+        names[model.model_id.split("/")[-1]] = model.name
+    return names
+
+
+def _model_name(names: dict[str, str], slug: str) -> str:
+    """The catalog's display name for a tier slug, or the slug itself.
+
+    Tier pages list free variants under their own slug
+    (``step-5-preview-free``) while the catalog carries the base model,
+    so the ``-free`` suffix reaches back to it.
+    """
+    if slug in names:
+        return names[slug]
+    if slug.endswith("-free") and slug[:-len("-free")] in names:
+        return names[slug[:-len("-free")]]
+    return slug
+
+
 def _cmd_models(args: argparse.Namespace) -> int:
     """The models the plans offer right now, per tier.
 
@@ -268,35 +292,49 @@ def _cmd_models(args: argparse.Namespace) -> int:
     """
     data_dir = Path(args.data)
     key = load_key()
+    tiers: dict[str, set[str]] | None = None
     if key:
         try:
-            live = fetch_live(_api_get(key))
+            tiers = fetch_live(_api_get(key))
         except (OSError, ValueError, KeyError) as exc:
             print(f"warning: live config unreachable ({exc}) — "
                   f"showing the last snapshots")
+            tiers = None
         else:
-            save_live(data_dir, live)
-            print(f"live from {LIVE_CONFIG_URL} "
-                  f"(recorded to {data_dir / 'available'})")
-            for tier in sorted(live):
-                slugs = sorted(live[tier])
-                print(f"{tier} · {len(slugs)} models")
-                for slug in slugs:
-                    print(f"  {slug}")
-            return 0
-    known = load_available(data_dir)
-    if all(ids is None for ids in known.values()):
-        return _fail(f"no availability known in {data_dir} — run `fetch` "
-                     f"first (with OPENCODE_API_KEY for the live set)")
-    print(f"snapshots in {data_dir} (run `fetch` to refresh)")
-    for tier in sorted(known):
-        ids = known[tier]
-        if ids is None:
-            print(f"{tier} · unknown")
-            continue
-        print(f"{tier} · {len(ids)} models")
-        for slug in sorted(ids):
-            print(f"  {slug}")
+            save_live(data_dir, tiers)
+            origin = (f"live from {LIVE_CONFIG_URL} "
+                      f"(recorded to {data_dir / 'available'})")
+    if tiers is None:
+        known = load_available(data_dir)
+        if all(ids is None for ids in known.values()):
+            return _fail(f"no availability known in {data_dir} — run `fetch` "
+                         f"first (with OPENCODE_API_KEY for the live set)")
+        tiers = {t: ids for t, ids in known.items() if ids is not None}
+        origin = (f"snapshots in {data_dir} "
+                  f"(run `fetch` to refresh)")
+        unknown = sorted(t for t, ids in known.items() if ids is None)
+    else:
+        unknown = []
+    names = _display_names(data_dir)
+    by_slug: dict[str, str] = {}
+    for tier in sorted(tiers):
+        for slug in sorted(tiers[tier]):
+            if slug not in by_slug or tier == "go":
+                by_slug[slug] = tier
+    rows = []
+    for slug, tier in by_slug.items():
+        endpoint = (f"opencode-go/{slug}" if tier == "go"
+                    else f"opencode/{slug}")
+        name = _model_name(names, slug)
+        # the endpoint already carries the slug: a missing display name
+        # reads "—" (as a missing score does), not the slug twice
+        rows.append((endpoint, name if name != slug else "—"))
+    rows.sort(key=lambda row: (row[1].lower(), row[0]))
+    counts = " + ".join(f"{len(tiers[t])} {t}" for t in sorted(tiers))
+    print(origin)
+    print(f"{len(by_slug)} models · {counts}"
+          + (f" · {', '.join(unknown)} unknown" if unknown else ""))
+    print(render(["ENDPOINT", "MODEL"], rows, aligns=("<", "<"), indent="  "))
     return 0
 
 
@@ -391,9 +429,18 @@ def _column_label(name: str) -> str:
     """
     if name == "LMArena Elo":
         return "ARENA"
+    if name == "DeepSWE 1.1":
+        # the version lives in the legend ("DeepSWE = DeepSWE 1.1"):
+        # exact match, so a future revision keeps its number until renamed
+        return "DeepSWE"
     for family, short in (("Terminal Bench", "TB"), ("SWE Bench", "SWE")):
         if name.startswith(family):
-            return short + name[len(family):]
+            rest = name[len(family):]
+            if short == "SWE":
+                # "SWE Verified" is the widest header in the scores table;
+                # "Vrfd" keeps the column parseable at a glance
+                rest = rest.replace("Verified", "Vrfd")
+            return short + rest
     return name
 
 
@@ -476,29 +523,33 @@ def _cmd_scores(args: argparse.Namespace) -> int:
           f"{len(scored)} with scores · {len(one)} on one benchmark · "
           f"{len(zerod)} with none scored · {len(unscored)} without any")
     print()
-    width = max([len(m.name) for m in models] or [4])
     cells = [_score_cells(m, table, columns) for m in ranked]
     # the same markers as `list`, over the models shown here: rank position
     # in this ordering, · where there is no score to rank
     marks = {id(m): grade_for(combined(derived_scores(m, table)))
              for m in ranked}
-    widths = [max([len(label)] + [len(row[i]) for row in cells if row[i]] or [0])
-              for i, (_key, label, _n) in enumerate(columns)]
     print("GRADE: ++ ≥90 · + ≥75 · o 60–75 · - 50–60 · -- <50 · "
           "· unranked")
-    print((f"  {'MODEL':<{width}} {'GRADE':>{GRADE_WIDTH}} {'SCORE':>6} "
-           f"{'AXES':>5}  "
-           + "  ".join(f"{label:<{w}}" for (_k, label, _n), w
-                       in zip(columns, widths))).rstrip())
+    heads = ["MODEL", "GRADE", "SCORE"] + [label for _k, label, _n
+                                                 in columns]
+    grid = []
     for model, row in zip(ranked, cells):
         derived = derived_scores(model, table)
         score = combined(derived)
-        print((f"  {model.name:<{width}} "
-               f"{marks.get(id(model), '·'):>{GRADE_WIDTH}} "
-               f"{(f'{score:.0f}' if score is not None else '—'):>6} "
-               f"{len(derived):>5}  "
-               + "  ".join(f"{cell:<{w}}" for cell, w in zip(row, widths))
-               ).rstrip())
+        grid.append([model.name, marks.get(id(model), "·"),
+                     f"{score:.0f}" if score is not None else "—"] + row)
+    # measured, not fixed: MODEL fits the shown rows (not the whole
+    # catalog) and the fixed columns fit their headers. The benchmark
+    # columns keep double gaps — their labels hold single spaces
+    # ("SWE Vrfd"), so the gap is what delimits them.
+    fixed_aligns = ["<", ">", ">"]
+    widths = column_widths(heads, grid)
+    lines = []
+    for cells in [heads] + grid:
+        left = format_row(cells[:3], widths[:3], fixed_aligns, gap=" ")
+        right = format_row(cells[3:], widths[3:], "<", gap="  ")
+        lines.append(("  " + left + ("  " + right if right else "")).rstrip())
+    print("\n".join(lines))
     legend = [f"{label} = {name}" for _key, label, name in columns
               if label != name]
     if legend:
@@ -559,11 +610,7 @@ def _cells(row, axis: bool = True) -> tuple[str, ...]:
 def _widths(rows, axis: bool = True) -> tuple[int, ...]:
     """Widest cell per column across the whole view, header included."""
     headings = AXIS_HEADERS if axis else SINGLE_HEADERS
-    return tuple(
-        max([len(heading)] + [len(cells[i])
-                              for cells in (_cells(r, axis) for r in rows)])
-        for i, heading in enumerate(headings)
-    )
+    return tuple(column_widths(headings, [_cells(r, axis) for r in rows]))
 
 
 def _print_row(row, widths: tuple[int, ...], curated: set[str] = frozenset(),
@@ -798,6 +845,26 @@ def _next_band(row) -> str:
                       else ("free" if row.free else "payg")]
 
 
+#: The `next` grid, declared: one text column per field, measured at
+#: print time so a wide provider (`go,zen`) or a long score widens its
+#: column instead of shifting the rest of the row.
+NEXT_HEADERS = ("#", "PLAN", "SCORE", "¢/1M", "SCORE/$", "ENDPOINT", "BAND")
+NEXT_ALIGNS = ("<", "<", ">", ">", ">", "<", "<")
+NEXT_MIN_WIDTHS = (2, 5, 6, 5, 7, 0, 0)
+
+
+def _next_table(picks: list) -> str:
+    """The picks as an aligned grid: position, plan, score, cost, value,
+    endpoint, band."""
+    rows = []
+    for i, row in enumerate(picks, 1):
+        _score, price, value, _prov = _cells(row)
+        rows.append([str(i), row.provider, f"{round(row.score)}", price,
+                     value, _endpoint(row), _next_band(row)])
+    return render(NEXT_HEADERS, rows, aligns=NEXT_ALIGNS,
+                  min_widths=NEXT_MIN_WIDTHS, indent="  ", gap=" ")
+
+
 def _cmd_next(args: argparse.Namespace) -> int:
     """A short ordered sequence: free and paid picks interleaved band by band."""
     data_dir = Path(args.data)
@@ -819,17 +886,11 @@ def _cmd_next(args: argparse.Namespace) -> int:
                      f"{MIN_AXES}+ benchmarks in {data_dir} — nothing to "
                      f"recommend yet")
 
-    width = max(len(_endpoint(r)) for r in picks)
     print(f"Next {len(picks)} recommended models, "
           f">{RECOMMEND_FLOOR:.0%} overall score, free and paid picks "
           f"interleaved, alternating Zen/Go plans.")
     print()
-    print(f"  {'#':<2} {'PLAN':<5} {'SCORE':>6} {'¢/1M':>5} {'SCORE/$':>7}  "
-          f"{'ENDPOINT':<{width}}  BAND")
-    for i, row in enumerate(picks, 1):
-        _score, price, value, _prov = _cells(row)
-        print(f"  {i:<2} {row.provider:<5} {row.score:>6g} {price:>5} "
-              f"{value:>7}  {_endpoint(row):<{width}}  {_next_band(row)}")
+    print(_next_table(picks))
     return 0
 
 
@@ -847,9 +908,10 @@ def main(argv: list[str] | None = None) -> int:
         help="download the full model catalog, not just the models the "
              "plans offer (kept records are never deleted either way)")
     sub.add_parser("models", help="the models the plans offer right now, "
-                                  "per tier: live from the Console config "
-                                  "API with OPENCODE_API_KEY, else the last "
-                                  "fetch snapshots")
+                                  "as endpoints beside display names: live "
+                                  "from the Console config API with "
+                                  "OPENCODE_API_KEY, else the last fetch "
+                                  "snapshots")
     sub.add_parser("auth", help="save the Console service-account key "
                                 "to an owner-only file (prompted, never "
                                 "echoed); verifies it live when it can")

@@ -1707,13 +1707,12 @@ class ScoresCommandTest(unittest.TestCase):
     def _columns(self, out):
         """The header labels of the scores table, in order.
 
-        Columns are separated by two spaces and their labels contain single
-        ones, so the gap is what delimits them.
+        Benchmark columns are separated by two spaces and their labels
+        contain single ones ("SWE Vrfd"), so the gap is what delimits
+        them; MODEL/GRADE/SCORE are single-spaced and come first.
         """
-        head = next(l for l in out.splitlines() if "SCORE" in l and "TB 2.1" in l)
-        # everything from AXES on is column-separated; MODEL/GRADE/SCORE
-        # are single-spaced and cannot be split the same way
-        return re.split(r"\s{2,}", head.split("AXES", 1)[1].strip())
+        head = next(l for l in out.splitlines() if "SCORE" in l and "TB" in l)
+        return re.split(r"\s{2,}", head.strip())[1:]
 
     def _row(self, out, name):
         # the grade marker leads the line, so the name is a token in it,
@@ -1726,7 +1725,7 @@ class ScoresCommandTest(unittest.TestCase):
             self._grid(tmp)
             code, out = self._run("--data", tmp, "scores")
         self.assertEqual(code, 0)
-        self.assertEqual(self._columns(out), ["TB 2.1", "SWE Verified"])
+        self.assertEqual(self._columns(out), ["TB 2.1", "SWE Vrfd"])
 
     def test_a_column_shows_the_raw_and_the_derived_number(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1764,7 +1763,7 @@ class ScoresCommandTest(unittest.TestCase):
             code, out = self._run("--data", tmp, "scores")
         self.assertEqual(code, 0)
         self.assertEqual(self._columns(out),
-                         ["TB 2.1", "SWE Verified", "SWE Pro"])
+                         ["TB 2.1", "SWE Vrfd", "SWE Pro"])
 
     def test_a_benchmark_nobody_carries_gets_no_column(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1793,8 +1792,8 @@ class ScoresCommandTest(unittest.TestCase):
         self.assertNotIn("TB 2.0", out)
         # M5 measured on nothing we score on: no score, no axes
         self.assertIn("M5", self._row(out, "M5"))
-        self.assertEqual(self._row(out, "M5").split()[:4],
-                         ["M5", "·", "—", "0"])
+        self.assertEqual(self._row(out, "M5").split()[:3],
+                         ["M5", "·", "—"])
 
     def test_both_spellings_of_a_benchmark_share_one_column(self):
         import json
@@ -1822,7 +1821,7 @@ class ScoresCommandTest(unittest.TestCase):
             self._grid(tmp)
             _code, out = self._run("--data", tmp, "scores")
         self.assertIn("TB 2.1 = Terminal-Bench 2.1", out)
-        self.assertIn("SWE Verified = SWE-Bench Verified", out)
+        self.assertIn("SWE Vrfd = SWE-Bench Verified", out)
 
     def test_a_column_is_blank_where_the_model_was_not_measured(self):
         import json
@@ -1879,7 +1878,7 @@ class ScoresCommandTest(unittest.TestCase):
         self.assertNotIn("4 with scores", head)
 
     def test_the_grade_sits_between_the_name_and_the_score(self):
-        # MODEL GRADE SCORE AXES: the same markers as `list`, as a column
+        # MODEL GRADE SCORE: the same markers as `list`, as a column
         # rather than a prefix
         with tempfile.TemporaryDirectory() as tmp:
             self._grid(tmp)
@@ -2251,3 +2250,108 @@ class NoKeyNoticeTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertTrue(out.splitlines()[0].startswith("Next "),
                         out.splitlines()[0])
+
+
+class ModelsWidthTest(unittest.TestCase):
+    def test_lines_fit_a_narrow_terminal(self):
+        import json
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "tier_prices"
+            out.mkdir(parents=True, exist_ok=True)
+            slugs = ["m1", "s" * 60]
+            (out / "zen_prices.json").write_text(json.dumps(
+                [{"tier": "zen", "model_id": s, "name": s, "input": 1.0,
+                  "output": 1.0, "cached_read": None, "limit": None,
+                  "free": False} for s in slugs]))
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                code = main(["--data", tmp, "models"])
+        self.assertEqual(code, 0)
+        lines = [l for l in buf.getvalue().splitlines() if l.strip()]
+        self.assertLessEqual(max(map(len, lines)), 100)
+
+
+class ModelsTableTest(unittest.TestCase):
+    def _run(self, *argv):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = main(list(argv))
+        return code, out.getvalue()
+
+    def _snapshot(self, data_dir, tier, model_ids):
+        import json
+        out = Path(data_dir) / "tier_prices"
+        out.mkdir(parents=True, exist_ok=True)
+        (out / f"{tier}_prices.json").write_text(json.dumps(
+            [{"tier": tier, "model_id": mid, "name": mid, "input": 1.0,
+              "output": 1.0, "cached_read": None, "limit": None,
+              "free": False} for mid in model_ids]))
+
+    def _catalog(self, tmp, names):
+        import json
+        out = Path(tmp) / "opencode"
+        out.mkdir(parents=True, exist_ok=True)
+        for mid, name in names.items():
+            (out / f"{mid.replace('/', '__')}.json").write_text(
+                json.dumps({"model": {"id": mid, "name": name}}))
+
+    def test_models_is_one_sorted_table_of_endpoints_and_names(self):
+        import re
+        with tempfile.TemporaryDirectory() as tmp:
+            self._snapshot(tmp, "zen", ["m-bravo", "m-alpha"])
+            self._snapshot(tmp, "go", ["m-bravo"])
+            self._catalog(tmp, {"l/m-alpha": "Alpha", "l/m-bravo": "Bravo"})
+            code, out = self._run("--data", tmp, "models")
+        self.assertEqual(code, 0)
+        self.assertIn("ENDPOINT", out)
+        self.assertIn("MODEL", out)
+        # no per-tier headlines: one sorted list instead
+        self.assertIsNone(re.search(r"(?m)^(zen|go) · ", out))
+        self.assertLess(out.index("Alpha"), out.index("Bravo"))
+        # the endpoint reads as next shows it, preferring go where shared
+        self.assertIn("opencode/m-alpha", out)
+        self.assertIn("opencode-go/m-bravo", out)
+        self.assertNotIn("opencode/m-bravo", out)
+
+    def test_models_marks_a_missing_display_name(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._snapshot(tmp, "zen", ["m-ghost"])
+            code, out = self._run("--data", tmp, "models")
+        self.assertEqual(code, 0)
+        # the endpoint carries the slug; the name column reads "—",
+        # not the slug twice
+        row = next(l for l in out.splitlines() if "m-ghost" in l)
+        self.assertIn("opencode/m-ghost", row)
+        self.assertTrue(row.rstrip().endswith("—"), row)
+
+
+class ColumnLabelTest(unittest.TestCase):
+    def test_deepswe_drops_its_version_in_the_header(self):
+        from opencode_rank.cli import _column_label
+        self.assertEqual(_column_label("DeepSWE 1.1"), "DeepSWE")
+
+    def test_deepswe_version_survives_in_the_legend(self):
+        import json
+        with tempfile.TemporaryDirectory() as tmp:
+            for mid, tb, ds in (("a/m1", 90.0, 80.0), ("a/m2", 10.0, 20.0)):
+                (_models(Path(tmp)) / f"{mid.replace('/', '__')}.json").write_text(
+                    json.dumps({
+                        "model": {"id": mid, "name": mid.split("/")[1].upper(),
+                                  "lab": "a",
+                                  "priceUsdPer1M": {"input": 1.0, "output": None,
+                                                    "cachedInput": None},
+                                  "benchmarks": [
+                                      {"name": "Terminal-Bench", "version": "2.1",
+                                       "score": tb, "metric": "acc", "source": ""},
+                                      {"name": "DeepSWE", "version": "1.1",
+                                       "score": ds, "metric": "acc",
+                                       "source": ""}]}}))
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                code = main(["--data", tmp, "scores"])
+            text = out.getvalue()
+        self.assertEqual(code, 0)
+        head = next(l for l in text.splitlines() if "SCORE" in l)
+        self.assertIn("DeepSWE", head.split())
+        self.assertNotIn("DeepSWE 1.1", head)
+        self.assertIn("DeepSWE = DeepSWE 1.1", text)

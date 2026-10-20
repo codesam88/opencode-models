@@ -98,6 +98,43 @@ class ListViewContract(unittest.TestCase):
         tokens = _header(out).split()
         self.assertEqual(tokens, self.COLUMNS)
 
+    def test_rows_fit_a_narrow_terminal(self):
+        # a 40-char shown name plus a 60-char unshown one: rows fit 100
+        # because the grid measures what it prints, not the catalog
+        import json
+        with tempfile.TemporaryDirectory() as tmp:
+            _grid(tmp)
+            out_dir = Path(tmp) / "opencode"
+            benches = lambda score: [
+                {"name": "Terminal-Bench", "version": "2.1",
+                 "score": score, "metric": "acc", "source": ""},
+                {"name": "SWE-Bench", "version": "Verified",
+                 "score": score, "metric": "acc", "source": ""}]
+            (out_dir / f"{'a_' + 'm' * 40}.json").write_text(
+                json.dumps({"model": {"id": "a/" + "m" * 40,
+                                      "name": "M" * 40, "lab": "a",
+                                      "priceUsdPer1M": {"input": 1.0,
+                                                        "output": None,
+                                                        "cachedInput": None},
+                                      "benchmarks": benches(90.0)}}))
+            (out_dir / "a___u64.json").write_text(
+                json.dumps({"model": {"id": "a/" + "u" * 60,
+                                      "name": "U" * 60, "lab": "a",
+                                      "priceUsdPer1M": {"input": 1.0,
+                                                        "output": None,
+                                                        "cachedInput": None},
+                                      "benchmarks": []}}))
+            code, out = _run("--data", tmp, "list", "--source", "all",
+                             "--tables", "all")
+        self.assertEqual(code, 0)
+        self.assertIn("M" * 40, out)
+        self.assertNotIn("U" * 60, out)
+        raw = [l for l in out.splitlines()
+               if l.split() and l.split()[0] in
+               ("++", "+", "o", "--", "·", "-")]
+        self.assertTrue(raw)
+        self.assertLessEqual(max(map(len, raw)), 100)
+
     def test_best_value_runs_by_score_per_dollar(self):
         with tempfile.TemporaryDirectory() as tmp:
             _grid(tmp)
@@ -153,9 +190,9 @@ class ScoresViewContract(unittest.TestCase):
         self.assertEqual(code, 0)
         head = next(l for l in out.splitlines()
                     if "SCORE" in l and "TB 2.1" in l)
-        tokens = head.split("AXES", 1)[0].split()
+        tokens = head.strip().split("  ")[0].split()
         self.assertEqual(tokens, ["MODEL", "GRADE", "SCORE"])
-        self.assertIn("AXES", head)
+        self.assertNotIn("AXES", head)
         self.assertIn("TB 2.1", head)
         for name, grade in (("M3", "++"), ("M2", "-"), ("M1", "--")):
             row = next(l for l in out.splitlines()
@@ -176,6 +213,31 @@ class ScoresViewContract(unittest.TestCase):
         grades = [l.split()[1] for l in body]
         self.assertEqual(names, ["M3", "M4", "M2", "M1"])
         self.assertEqual(grades, ["++", "+", "-", "--"])
+
+    def test_model_column_fits_shown_names_only(self):
+        # an unscored model is counted, never rowed: its long name must
+        # not widen the MODEL column for the models that are
+        import json
+        long_name = "VERY-LONG-UNSCORED-MODEL-NAME-XXXXXX"
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_models(Path(tmp),
+                          ("a/m1", 1.0, [("Terminal-Bench", "2.1", 90.0),
+                                         ("SWE-Bench", "Verified", 90.0)]))
+            (Path(tmp) / "opencode" / "a__long.json").write_text(
+                json.dumps({"model": {"id": "a/long", "name": long_name,
+                                      "lab": "a",
+                                      "priceUsdPer1M": {"input": 1.0,
+                                                       "output": None,
+                                                       "cachedInput": None},
+                                      "benchmarks": []}}))
+            code, out = _run("--data", tmp, "scores")
+        self.assertEqual(code, 0)
+        rows = [l for l in out.splitlines()
+                if len(l.split()) >= 3 and l.split()[1] in
+                ("++", "+", "o", "--", "·", "-")
+                and not l.strip().startswith("GRADE:")]
+        self.assertEqual([l.split()[0] for l in rows], ["M1"])
+        self.assertLess(max(map(len, rows)), len(long_name))
 
 
 class NextViewContract(unittest.TestCase):
@@ -242,3 +304,61 @@ class OverridesViewContract(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NextTableContract(unittest.TestCase):
+    COLUMNS = ["#", "PLAN", "SCORE", "¢/1M", "SCORE/$", "ENDPOINT", "BAND"]
+
+    def _row(self, name, provider, score, price, free=False):
+        from opencode_rank.data import Model
+        from opencode_rank.ranking import Row
+        model = Model(model_id=f"l/{name}", name=name, lab="l",
+                      price_input=price, price_output=price,
+                      price_cached_input=price, scores={})
+        return Row(model=model, name=name, price=price, free=free,
+                   band="free" if free else "included", score=score,
+                   benchmark="Terminal-Bench 2.1", provider=provider,
+                   grade="o", entry=None)
+
+    def _table(self, picks):
+        from opencode_rank.cli import _next_table
+        return _next_table(picks)
+
+    def test_rows_fit_a_narrow_terminal(self):
+        # 60-char endpoints: every line fits 120 because each column is
+        # measured, never truncated and never blown out by padding
+        picks = [self._row("a" * 60, "go,zen", 95.0, 0.0013, free=True),
+                 self._row("b" * 60, "zen", 81.0, 15.0)]
+        lines = self._table(picks).splitlines()
+        self.assertLessEqual(max(map(len, lines)), 120)
+
+    def test_columns_line_up_behind_a_wide_plan(self):
+        # "go,zen" is six chars in a five-wide PLAN world: later columns
+        # must not shift beside it
+        picks = [self._row("aaa", "go,zen", 95.0545, 0.0013, free=True),
+                 self._row("bb", "zen", 81.5, 15.0)]
+        lines = self._table(picks).splitlines()
+        head, first, second = lines[0], lines[1], lines[2]
+        self.assertEqual(head.split(), self.COLUMNS)
+        self.assertEqual(first.index("go,zen"), head.index("PLAN"))
+        self.assertEqual(second.index("zen"), head.index("PLAN"))
+        self.assertEqual(first.index("opencode-go/aaa"),
+                         head.index("ENDPOINT"))
+        self.assertEqual(second.index("opencode/bb"),
+                         head.index("ENDPOINT"))
+        self.assertEqual(first.index("free"), head.index("BAND"))
+        self.assertEqual(second.index("included"), head.index("BAND"))
+
+    def test_right_aligned_values_share_a_right_edge(self):
+        picks = [self._row("aaa", "go,zen", 95.0545, 0.0013, free=True),
+                 self._row("bb", "zen", 81.5, 15.0)]
+        lines = self._table(picks).splitlines()
+        head, first, second = lines[0], lines[1], lines[2]
+        for header, value, other in (("SCORE/$", "73119", "5"),
+                                     ("¢/1M", "0", "1500"),
+                                     ("SCORE", "95", "82")):
+            edge = head.index(header) + len(header)
+            first_end = first.rindex(value) + len(value)
+            second_end = second.rindex(other) + len(other)
+            self.assertEqual(first_end, second_end)
+            self.assertEqual(first_end, edge)

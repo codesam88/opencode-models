@@ -215,9 +215,9 @@ number beside where it lands, so the arithmetic is checkable:
 ```
 476 models · 5 benchmarks scored on · 45 with scores · 21 on one benchmark · 12 without any
 
-  MODEL                     SCORE  AXES  TB 2.1    TB 4.0     SWE Verified  SWE Pro   DeepSWE 1.1
-  Muse Spark 1.3 Contributor     99     2  88.8→98                                      75.4→100
-  Claude Fable 5                 99     4  88→97     44.55→62   95→100        80.3→100
+  MODEL                     SCORE  TB 2.1    TB 4.0     SWE Vrfd  SWE Pro   DeepSWE
+  Muse Spark 1.3 Contributor     99  88.8→98                                      75.4→100
+  Claude Fable 5                 99  88→97     44.55→62   95→100        80.3→100
 ```
 
 Two more rules decide what counts as evidence.
@@ -227,8 +227,8 @@ is that number, so a model measured on a single benchmark it happens to lead
 reads as a top model on the strength of one result — in the live catalog 26
 of 63 scored models were in that position, and 6 of the top 9 rows were,
 including the one leading the whole catalog on a lone Terminal-Bench 4.0 run.
-Those models are unranked, not ranked last, and the `AXES` column shows how
-many benchmarks each score actually rests on.
+Those models are unranked, not ranked last, and the counts line above the
+table says how many rest on one benchmark.
 
 **The ends of a scale are set by numbers someone else can check** — an
 official board or an independent evaluator, not a vendor's own figure. Min-max
@@ -250,7 +250,7 @@ still scores near 100.
 
 The console prints what it measured and points here for the arithmetic;
 `scoring.py` carries the reasoning next to the functions that do it. The
-column headers are short (`TB 2.1`, `SWE Verified`) and the legend under the
+column headers are short (`TB 2.1`, `SWE Vrfd`) and the legend under the
 table spells out which benchmark each one is.
 
 Each row shows the model's **calculated score**, its cost, and which plan
@@ -331,9 +331,12 @@ ones the pages do not. So availability now comes from the Console config
 API (`/api/v2/config`, the workspace's live model set), snapshotted to
 `data/available/` on every keyed `fetch` (`opencode_rank/live.py`). The
 docs snapshot stays the offline fallback, and `opencode-rank models`
-prints whichever record is in force, per tier — live from the API with
-`OPENCODE_API_KEY` (recorded to `data/available/` on the way, so the next
-`list` unlists the dropped models immediately), else the last snapshots.
+prints whichever record is in force as one sorted table: the endpoint
+(as `next` shows it, preferring Go where both plans list the model)
+beside the display name (as `list` shows it, `—` where the catalog has
+none) — live from the API with `OPENCODE_API_KEY` (recorded to
+`data/available/` on the way, so the next `list` unlists the dropped
+models immediately), else the last snapshots.
 
 `fetch` downloads only the models the plans offer (use `--all` for the
 full catalog). Records already on disk are never deleted, so a dropped

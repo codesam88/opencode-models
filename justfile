@@ -60,7 +60,7 @@ next:
 auth:
     uv run --no-sync opencode-rank auth
 
-# Models the plans offer right now, per tier (live with OPENCODE_API_KEY)
+# Models the plans offer, as endpoints beside display names
 models:
     uv run --no-sync opencode-rank --data data models
 

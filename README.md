@@ -41,7 +41,7 @@ Data lives in `$OPENCODE_RANK_DATA`, else the XDG user data dir
 the committed dataset with `--data data` (or `OPENCODE_RANK_DATA=data`).
 
 For development, `uv sync` creates the repo virtualenv; `just test`, `just
-list` and `just check` wrap `uv run` so the console and the tests run without
+run list` and `just check` wrap `uv run` so the console and the tests run without
 installing anything.
 
 ## Usage
@@ -384,7 +384,7 @@ board *is* static HTML but was dropped as stale and redundant: its newest
 entry is GPT-5-era (Aug 2025), and diff-editing is already covered by
 SWE-bench and Terminal-Bench.
 
-Working from a checkout: `just fetch` (or `opencode-rank fetch`) once, then the
+Working from a checkout: `just run fetch` (or `opencode-rank fetch`) once, then the
 `--data data` recipes work. If you want the dataset committed rather than
 fetched, use the `local-data` branch — it is intentionally never pushed.
 

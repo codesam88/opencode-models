@@ -33,42 +33,7 @@ check: test
 audit:
     @grep -rniE 'BEGIN (RSA |OPENSSH |EC )?PRIVATE KEY|aws_secret_access_key|ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9]{22}' --exclude-dir=.venv --exclude-dir=.git --exclude-dir=__pycache__ . || echo "no tracked secret patterns"
 
-# Console smoke test — needs the dataset on disk (fetch, or the local-data branch)
-smoke:
-    uv run --no-sync opencode-rank --data data list --source zen
-
-# Refresh model data from opencode.ai
-fetch:
-    uv run --no-sync opencode-rank --data data fetch
-
-# Curated overrides that disagree with upstream
-conflicts:
-    uv run --no-sync opencode-rank --data data conflicts
-
-# Text table: both providers merged, best value first
-list:
-    uv run --no-sync opencode-rank --data data list
-
-# Text table: zen provider only
-list-zen:
-    uv run --no-sync opencode-rank --data data list --source zen
-
-# Text table: go provider only
-list-go:
-    uv run --no-sync opencode-rank --data data list --source go
-
-# Next models to use, free and paid picks interleaved
-next:
-    uv run --no-sync opencode-rank --data data next
-
-# Save the Console key to an owner-only file (prompted, never echoed)
-auth:
-    uv run --no-sync opencode-rank auth
-
-# Models the plans offer, as endpoints beside display names
-models:
-    uv run --no-sync opencode-rank --data data models
-
-# Text table: full catalog, incl. models in neither provider
-list-all:
-    uv run --no-sync opencode-rank --data data list --source all
+# Run the console against the checkout dataset, passing everything through:
+# just run <command> [args...]  — e.g. just run next, just run list --source zen
+run *args:
+    uv run --no-sync opencode-rank --data data {{args}}

@@ -233,21 +233,5 @@ class OverridesViewContract(unittest.TestCase):
         self.assertRegex(row, r"\b60\s+\S.*$")
 
 
-class BenchmarksViewContract(unittest.TestCase):
-    def test_scored_benchmarks_are_marked(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            _write_models(
-                Path(tmp),
-                ("a/m1", 1.0, [("Terminal-Bench", "2.1", 50.0),
-                               ("SEC-Bench", "Pro", 10.0)]),
-                ("a/m2", 1.0, [("Terminal-Bench", "2.1", 90.0)]))
-            code, out = _run("--data", tmp, "benchmarks")
-        self.assertEqual(code, 0)
-        tb = next(l for l in out.splitlines() if "Terminal-Bench 2.1" in l)
-        sec = next(l for l in out.splitlines() if "SEC-Bench Pro" in l)
-        self.assertIn("scored", tb)
-        self.assertNotIn("scored", sec)
-
-
 if __name__ == "__main__":
     unittest.main()

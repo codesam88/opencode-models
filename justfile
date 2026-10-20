@@ -40,14 +40,6 @@ fetch:
 conflicts:
     uv run --no-sync opencode-rank --data data conflicts
 
-# List benchmarks with coverage
-benchmarks:
-    uv run --no-sync opencode-rank --data data benchmarks
-
-# Render Pareto HTML report
-render:
-    uv run --no-sync opencode-rank --data data render
-
 # Text table: both providers merged, best value first
 list:
     uv run --no-sync opencode-rank --data data list

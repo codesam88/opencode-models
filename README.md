@@ -51,9 +51,6 @@ opencode-rank fetch                     # refresh the data from opencode.ai
 opencode-rank fetch --all                 # also re-download unoffered models
 opencode-rank models                   # the models the plans offer, per tier
 opencode-rank overrides                 # every number more than one source reports
-opencode-rank benchmarks                # list benchmarks + coverage
-opencode-rank render                    # pareto.html, best-covered benchmark
-opencode-rank render --benchmark "SWE-Bench Verified" --out swe.html
 opencode-rank list                      # both providers merged, best value
 opencode-rank list --tables all         # also worst-score and highest-cost
 opencode-rank list --source zen         # one provider only
@@ -64,10 +61,6 @@ opencode-rank next                      # the next 4 models to use, in order
 opencode-rank next --count 6 --source go
 opencode-rank scores                    # offered models, one column per benchmark
 ```
-
-`render` defaults to the benchmark covering the most models. The output is one
-self-contained HTML file (inline SVG, no external assets) — open it from disk
-or serve the directory.
 
 `next` answers the narrower question "what should I reach for next?". It
 draws from the same pipeline `list` uses, so it can never disagree with the
@@ -199,8 +192,7 @@ equation without adding a model that could not otherwise be scored:
   completion, and no model in the catalog carries it.
 
 Adding one is a deliberate change to what a score means, so it wants a
-reason: benchmark coverage in the live data is the test, and
-`opencode-rank benchmarks` prints it.
+reason: benchmark coverage in the live data is the test.
 
 ### How a model's score is computed
 

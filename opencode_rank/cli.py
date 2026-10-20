@@ -3,8 +3,6 @@
 Usage::
 
     python3 -m opencode_rank fetch            # refresh data/ from opencode.ai
-    python3 -m opencode_rank benchmarks       # list benchmarks and coverage
-    python3 -m opencode_rank render [...]     # write the Pareto HTML report
 
 Exit codes: 0 success, 1 usage or data error (message on stdout).
 """
@@ -30,7 +28,7 @@ from .pricing import (FREE_TIER_NOMINAL_RATES, FREE_TIER_SNAPSHOT_NAME,
                      refresh_prices)
 from .ranking import RECOMMEND_FLOOR, grade_for, next_up, plans_of
 from .scoring import (MIN_AXES, _TRACKED, _folded, canonical,
-                     combined, derived_scores, scales, tracked)
+                     combined, derived_scores, scales)
 from .ranking import (
     BAND_FREE,
     BAND_INCLUDED,
@@ -43,7 +41,6 @@ from .ranking import (
     partition_rows,
     ratio,
 )
-from .render import render_html
 from . import arena as arena_mod
 from .availability import available_ids, load_available, offered
 from .live import LIVE_CONFIG_URL, fetch_live, save_live
@@ -66,7 +63,6 @@ def default_data_dir() -> Path:
 
 
 DEFAULT_DATA = default_data_dir()
-DEFAULT_OUT = Path(__file__).resolve().parent.parent / "pareto.html"
 
 #: Representative cost: 20% input, 60% cached read, 20% output.
 COST_NOTE = "cost 20% in / 60% cached / 20% out"
@@ -131,38 +127,6 @@ def _load(data_dir: Path):
     models = merge_from_file(curated.models, data_dir / "aiarena")
     models, board_conflicts = merge_boards(models, load_boards(data_dir / "boards"))
     return models, curated, board_conflicts
-
-
-def _cmd_benchmarks(args: argparse.Namespace) -> int:
-    data_dir = Path(args.data)
-    if not data_dir.is_dir():
-        return _fail(f"no data directory at {data_dir} — run `fetch` first")
-    models, _, _ = _load(data_dir)
-    # marked, because this listing is where a new benchmark's case is argued
-    # from: coverage is what earns a place in the scoring equation
-    for name, count in available(models):
-        print(f"{count:4d}  {'scored' if tracked(name) else '      '}  {name}")
-    return 0
-
-
-def _cmd_render(args: argparse.Namespace) -> int:
-    data_dir = Path(args.data)
-    if not data_dir.is_dir():
-        return _fail(f"no data directory at {data_dir} — run `fetch` first")
-    models, _, _ = _load(data_dir)
-    choices = available(models)
-    if not choices:
-        return _fail(f"no benchmark scores found in {data_dir} — run `fetch`")
-    benchmark = args.benchmark or choices[0][0]
-    if benchmark not in dict(choices):
-        listing = ", ".join(f"{n} ({c})" for n, c in choices[:10])
-        return _fail(
-            f"unknown benchmark {benchmark!r} — available: {listing}"
-        )
-    out = Path(args.out)
-    out.write_text(render_html(models, benchmark))
-    print(f"wrote {out} ({benchmark}, {len(models)} models scanned)")
-    return 0
 
 
 #: How much of a board row's provenance the NOTE column carries.
@@ -817,14 +781,6 @@ def main(argv: list[str] | None = None) -> int:
                    help="every benchmark number more than one source "
                         "reports, and which value the console keeps")
 
-    sub.add_parser("benchmarks", help="list benchmarks with model coverage")
-
-    p_render = sub.add_parser("render", help="write the HTML report")
-    p_render.add_argument("--benchmark",
-                          help="benchmark to plot (default: best coverage)")
-    p_render.add_argument("--out", default=str(DEFAULT_OUT),
-                          help="output HTML path (default: %(default)s)")
-
     p_list = sub.add_parser(
         "list", help="three tables of Console models across providers "
                      "(zen/go): best value (free/included/pay-as-you-go), "
@@ -878,8 +834,6 @@ def main(argv: list[str] | None = None) -> int:
         "fetch": _cmd_fetch,
         "models": _cmd_models,
         "overrides": _cmd_conflicts,
-        "benchmarks": _cmd_benchmarks,
-        "render": _cmd_render,
         "list": _cmd_list,
         "next": _cmd_next,
         "scores": _cmd_scores,

@@ -1,4 +1,4 @@
-"""CLI: fetch data, list benchmarks, render the frontier HTML."""
+"""CLI: fetch data, rank models."""
 
 import contextlib
 import io
@@ -80,46 +80,6 @@ class CliTest(unittest.TestCase):
             code = main(list(argv))
         return code, out.getvalue()
 
-    def test_benchmarks_lists_names_and_counts(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            _write_sample(Path(tmp))
-            code, out = self._run("--data", tmp, "benchmarks")
-        self.assertEqual(code, 0)
-        self.assertIn("TB", out)
-        self.assertIn("3", out)
-
-    def test_render_writes_html_file(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            _write_sample(Path(tmp))
-            out_path = Path(tmp) / "report.html"
-            code, _ = self._run(
-                "--data", tmp, "render", "--benchmark", "TB",
-                "--out", str(out_path),
-            )
-            html = out_path.read_text()
-        self.assertEqual(code, 0)
-        self.assertIn("Pareto", html)
-        self.assertIn("M2", html)  # frontier winner renders its name
-
-    def test_render_rejects_unknown_benchmark_and_lists_alternatives(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            _write_sample(Path(tmp))
-            code, out = self._run(
-                "--data", tmp, "render", "--benchmark", "Nope",
-                "--out", str(Path(tmp) / "x.html"),
-            )
-        self.assertEqual(code, 1)
-        self.assertIn("TB", out)  # suggests what is available
-
-    def test_render_defaults_to_best_covered_benchmark(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            _write_sample(Path(tmp))
-            out_path = Path(tmp) / "report.html"
-            code, _ = self._run("--data", tmp, "render", "--out", str(out_path))
-            html = out_path.read_text()
-        self.assertEqual(code, 0)
-        self.assertIn("TB", html)
-
     def test_fetch_uses_injected_fetcher_for_tests(self):
         calls = []
 
@@ -196,7 +156,7 @@ class CliTest(unittest.TestCase):
                              / "opencode-rank")
 
     def test_missing_data_dir_is_a_clear_error(self):
-        code, out = self._run("--data", "/nonexistent/xyz", "benchmarks")
+        code, out = self._run("--data", "/nonexistent/xyz", "list")
         self.assertEqual(code, 1)
         self.assertIn("no data", out.lower())
 
@@ -329,17 +289,6 @@ class CliTest(unittest.TestCase):
         self.assertEqual(code, 0)
 
 
-
-    def test_list_merged_benchmark_list_includes_arena_axis(self):
-        import json
-        from opencode_rank.arena import ArenaCache
-
-        with tempfile.TemporaryDirectory() as tmp:
-            _write_sample(Path(tmp))
-            ArenaCache(Path(tmp) / "aiarena").save({"m1": 1500.0})
-            code, out = self._run("--data", tmp, "benchmarks")
-        self.assertEqual(code, 0)
-        self.assertIn("LMArena Elo", out)
 
     def test_list_source_sorted_by_score_per_price(self):
         import opencode_rank.sources as sources
@@ -1155,49 +1104,6 @@ class CliTest(unittest.TestCase):
 
     if __name__ == "__main__":
         unittest.main()
-
-
-    class BenchmarksCommandTest(unittest.TestCase):
-        """`benchmarks` is where a new benchmark's case is argued from."""
-    def _run(self, *argv):
-        out = io.StringIO()
-        with contextlib.redirect_stdout(out):
-            code = main(list(argv))
-        return code, out.getvalue()
-
-    def _grid(self, tmp):
-        import json
-        for mid, score in [("a/m1", 90.0), ("a/m2", 50.0), ("a/m3", 10.0)]:
-            (_models(Path(tmp)) / f"{mid.replace('/', '__')}.json").write_text(
-                json.dumps({"model": {
-                    "id": mid, "name": mid.split("/")[1].upper(), "lab": "a",
-                    "priceUsdPer1M": {"input": 1.0, "output": None,
-                                      "cachedInput": None},
-                    "benchmarks": [
-                        {"name": "Terminal-Bench", "version": "2.1",
-                         "score": score, "metric": "acc", "source": ""},
-                        {"name": "SWE-Bench", "version": "Pro",
-                         "score": score / 2, "metric": "acc", "source": ""},
-                        {"name": "SEC-Bench", "version": "Pro",
-                         "score": 1.0, "metric": "acc", "source": ""}]}}))
-
-    def test_it_marks_the_benchmarks_we_score_on(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            self._grid(tmp)
-            code, out = self._run("--data", tmp, "benchmarks")
-        self.assertEqual(code, 0)
-        scored = [l for l in out.splitlines() if "scored" in l]
-        self.assertEqual(len(scored), 2)
-        self.assertTrue(any("Terminal-Bench 2.1" in l for l in scored))
-        self.assertTrue(any("SWE-Bench Pro" in l for l in scored))
-
-    def test_a_benchmark_we_ignore_is_not_marked(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            self._grid(tmp)
-            code, out = self._run("--data", tmp, "benchmarks")
-        self.assertEqual(code, 0)
-        self.assertNotIn("scored", next(l for l in out.splitlines()
-                                        if "SEC-Bench Pro" in l))
 
 
 class OverridesCommandTest(unittest.TestCase):

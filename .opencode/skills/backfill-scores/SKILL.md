@@ -57,10 +57,11 @@ release, and anything the provider is about to retire will not change a
 recommendation. Chase the new frontier and the opencode-exclusive ones first;
 those are where a second axis moves a row.
 
-Coverage per benchmark, for a wider view:
+Coverage per benchmark, for a wider view — the `scores` command prints one
+column per benchmark with model counts:
 
 ```sh
-uv run opencode-rank --data data benchmarks
+uv run opencode-rank --data data scores
 ```
 
 Filter that list down before spending time on it: an unreleased model or a

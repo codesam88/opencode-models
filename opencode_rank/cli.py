@@ -614,6 +614,10 @@ def _current_offered(data_dir: Path, bypass: bool = False,
             else:
                 save_live(data_dir, live)
                 return ids
+    else:
+        print("no API token found — availability may be stale, some models "
+              "may be unavailable (`auth` for live data, `--all` for the "
+              "full catalog)")
     return available_ids(data_dir)
 
 

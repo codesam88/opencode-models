@@ -12,10 +12,13 @@ from unittest import mock
 
 from opencode_rank.cli import main
 
-#: Fixture tests must be hermetic: a key in the environment would send
-#: `list`/`next` to the live config API and filter the fixtures away.
-#: Tests that need keyed behaviour set it explicitly via patch.dict.
+#: Fixture tests must be hermetic: a key in the environment — or in the
+#: user config file — would send `list`/`next` to the live config API and
+#: filter the fixtures away. Tests that need keyed behaviour set it
+#: explicitly via patch.dict.
 os.environ.pop("OPENCODE_API_KEY", None)
+os.environ["XDG_CONFIG_HOME"] = tempfile.mkdtemp(
+    prefix="opencode-rank-test-home-")
 
 
 def _write_sample(data_dir: Path):
@@ -446,9 +449,11 @@ class CliTest(unittest.TestCase):
             code, out = self._run("--data", tmp, "next", "--count", "3",
                                   "--source", "all")
         self.assertEqual(code, 0)
-        self.assertRegex(out, r"^Next \d+ recommended models, >75% overall "
-                               r"score, free and paid picks interleaved, "
-                               r"alternating Zen/Go plans\.")
+        import re as _re
+        self.assertRegex(out, _re.compile(
+            r"^Next \d+ recommended models, >75% overall "
+            r"score, free and paid picks interleaved, "
+            r"alternating Zen/Go plans\.", _re.MULTILINE))
         self.assertNotIn("LIMITS.md", out)
         self.assertIn("ENDPOINT", out)
         self.assertIn("BAND", out)
@@ -534,7 +539,8 @@ class CliTest(unittest.TestCase):
             code, out = self._run("--data", tmp, "next", "--source", "all")
         self.assertEqual(code, 0)
         self.assertNotIn("LIMITS.md", out.splitlines()[-1])
-        self.assertIn("Zen/Go", out.splitlines()[0])
+        head = next(l for l in out.splitlines() if l.startswith("Next "))
+        self.assertIn("Zen/Go", head)
 
     def test_next_shows_free_for_free_lines_and_the_ratio_for_paid(self):
         from opencode_rank.cli import _pick_value
@@ -2192,3 +2198,52 @@ class AuthCommandTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertTrue(live.called)
         self.assertIn("m-live", out)
+
+
+class NoKeyNoticeTest(unittest.TestCase):
+    def _run(self, *argv):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = main(list(argv))
+        return code, out.getvalue()
+
+    def test_list_without_a_key_warns_first(self):
+        import os
+        import opencode_rank.sources as sources
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_sample(Path(tmp))
+            os.environ.pop("OPENCODE_API_KEY", None)
+            orig = sources.load_source
+            sources.load_source = lambda name: {"m1", "m2", "m3"}
+            try:
+                code, out = self._run("--data", tmp, "list", "--source", "zen",
+                                      "--benchmark", "TB")
+            finally:
+                sources.load_source = orig
+        self.assertEqual(code, 0)
+        self.assertTrue(out.splitlines()[0].startswith("no API token found"),
+                        out.splitlines()[0])
+
+    def test_next_with_a_key_has_no_warning(self):
+        import os
+        import opencode_rank.sources as sources
+        import opencode_rank.cli as cli_mod
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_grid(Path(tmp))
+            orig = sources.load_source
+            sources.load_source = lambda name: {f"m{i:02d}"
+                                                for i in range(1, 11)}
+            try:
+                with mock.patch.dict(os.environ,
+                                     {"OPENCODE_API_KEY": "oc_sk_test"}):
+                    live = {t: {f"m{i:02d}" for i in range(1, 11)}
+                            for t in ("zen", "go")}
+                    with mock.patch.object(cli_mod, "fetch_live",
+                                           return_value=live):
+                        code, out = self._run("--data", tmp, "next",
+                                              "--source", "zen")
+            finally:
+                sources.load_source = orig
+        self.assertEqual(code, 0)
+        self.assertTrue(out.splitlines()[0].startswith("Next "),
+                        out.splitlines()[0])

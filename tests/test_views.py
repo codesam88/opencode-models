@@ -10,11 +10,18 @@ restored, and pinned here so it cannot go quietly again.)
 import contextlib
 import io
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
 
 from opencode_rank.cli import main
+
+#: Hermetic fixtures: keep a saved user key (or env key) from sending
+#: `list`/`next` to the live API and filtering the fixtures away.
+os.environ.pop("OPENCODE_API_KEY", None)
+os.environ["XDG_CONFIG_HOME"] = tempfile.mkdtemp(
+    prefix="opencode-rank-test-home-")
 
 
 def _doc(mid, price, benches):

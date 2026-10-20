@@ -253,8 +253,12 @@ def _api_get(key: str):
                 "User-Agent": "opencode-rank/0.1",
             },
         )
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            return resp.read().decode("utf-8", errors="replace")
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                return resp.read().decode("utf-8", errors="replace")
+        except urllib.error.HTTPError as exc:
+            exc.close()  # see http_get: callers never read error bodies
+            raise
 
     return get
 

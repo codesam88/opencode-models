@@ -290,15 +290,20 @@ class CliTest(unittest.TestCase):
             d = Path(tmp)
             _write_sample(d)
             orig_get, orig_fn = cli.http_get, cli.refresh_free_nominals
+            orig_live = cli.fetch_live
             orig_key = os.environ.get("OPENCODE_API_KEY")
             os.environ["OPENCODE_API_KEY"] = "oc_sk_test"
             cli.http_get = _offline_get
             cli.refresh_free_nominals = fake_refresh
+            # live config is a separate keyed call: stub it so this unit
+            # test performs no real network I/O at all
+            cli.fetch_live = lambda get: {"zen": {"m1"}, "go": set()}
             try:
                 code, out = self._run("--data", str(d), "fetch")
             finally:
                 cli.http_get = orig_get
                 cli.refresh_free_nominals = orig_fn
+                cli.fetch_live = orig_live
                 if orig_key is None:
                     del os.environ["OPENCODE_API_KEY"]
                 else:
@@ -3556,3 +3561,35 @@ class ColumnLabelTest(unittest.TestCase):
         self.assertIn("DeepSWE", head.split())
         self.assertNotIn("DeepSWE 1.1", head)
         self.assertIn("DeepSWE = DeepSWE 1.1", text)
+
+
+class TransportHygieneTest(unittest.TestCase):
+    def test_api_get_closes_failed_responses(self):
+        import gc
+        import urllib.error
+        import urllib.request
+        import warnings
+
+        from opencode_rank.cli import _api_get
+
+        def boom(req, timeout=None):
+            raise urllib.error.HTTPError(
+                req.full_url, 401, "Unauthorized", {}, io.BytesIO()
+            )
+
+        err = None
+        get = _api_get("oc_sk_test")
+        with mock.patch.object(urllib.request, "urlopen", boom):
+            try:
+                get("https://example.invalid/console/api/v2/config")
+            except urllib.error.HTTPError as caught:
+                err = caught
+            else:
+                self.fail("expected HTTPError")
+        self.assertIsNotNone(err)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            del err
+            gc.collect()
+        leaked = [w for w in caught if issubclass(w.category, ResourceWarning)]
+        self.assertEqual(leaked, [])

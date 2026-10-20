@@ -21,10 +21,19 @@ _SITEMAP_NS = "{http://www.sitemaps.org/schemas/sitemap/0.9}"
 
 
 def http_get(url: str) -> str:
-    """Real transport: plain GET with a browser-ish user agent."""
+    """Real transport: plain GET with a browser-ish user agent.
+
+    Failed responses are closed before the error propagates: urlopen
+    leaves the error response open, and dropping it unclosed warns at
+    GC time. No caller reads error bodies, so nothing is lost.
+    """
     req = urllib.request.Request(url, headers={"User-Agent": "opencode-rank/0.1"})
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return resp.read().decode("utf-8", errors="replace")
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return resp.read().decode("utf-8", errors="replace")
+    except urllib.error.HTTPError as exc:
+        exc.close()
+        raise
 
 
 def urls_from_sitemap(xml: str) -> list[str]:

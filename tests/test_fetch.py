@@ -99,7 +99,11 @@ class RefreshTest(unittest.TestCase):
             if url == SITEMAP_URL:
                 return SITEMAP_XML
             if "jamba" in url:
-                raise urllib.error.HTTPError(url, 404, "gone", {}, io.BytesIO())
+                # a raised HTTPError the transport never closed would warn
+                # at GC time, mirroring the real-transport contract
+                err = urllib.error.HTTPError(url, 404, "gone", {}, io.BytesIO())
+                err.close()
+                raise err
             return "{}"
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -189,3 +193,34 @@ class OnlyFilterTest(unittest.TestCase):
             saved = refresh(Path(tmp), get, only={"deepseek-v4-pro"})
             self.assertEqual(saved, ["deepseek__deepseek-v4-pro.json"])
             self.assertEqual(kept.read_text(), '{"old":true}')
+
+
+class TransportHygieneTest(unittest.TestCase):
+    def test_http_get_closes_failed_responses(self):
+        import gc
+        import urllib.request
+        import warnings
+        from unittest import mock
+
+        from opencode_rank.fetch import http_get
+
+        def boom(req, timeout=None):
+            raise urllib.error.HTTPError(
+                req.full_url, 401, "Unauthorized", {}, io.BytesIO()
+            )
+
+        err = None
+        with mock.patch.object(urllib.request, "urlopen", boom):
+            try:
+                http_get("https://example.invalid/x")
+            except urllib.error.HTTPError as caught:
+                err = caught
+            else:
+                self.fail("expected HTTPError")
+        self.assertIsNotNone(err)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            del err
+            gc.collect()
+        leaked = [w for w in caught if issubclass(w.category, ResourceWarning)]
+        self.assertEqual(leaked, [])

@@ -1,0 +1,24 @@
+#!/bin/sh
+# Fast local gates, no new installs: a secret-pattern sweep over the tree
+# plus ruff lint and format check from the project's own venv.
+# Fails the commit on findings. (CI runs the real gitleaks scanner on
+# every push and PR; this hook is the cheap local tripwire.)
+
+# 1. Tracked secret patterns (same sweep as `just audit`, but failing).
+# The pattern is split with '' so this file never matches itself.
+if grep -rniE 'BEGIN (RSA |OPENSSH |EC )?PRIVATE ''KEY|aws_secret_''access_key|ghp_''[A-Za-z0-9]{36}|github_pat_''[A-Za-z0-9]{22}' --exclude-dir=.venv --exclude-dir=.git --exclude-dir=__pycache__ . ; then
+    echo "pre-commit: secret-looking content above — remove it before committing" >&2
+    exit 1
+fi
+
+# 2. Lint + format via the project's own venv (installed by `just bootstrap`).
+# Missing venv is not a failure: warn and let CI be the backstop.
+if command -v uv >/dev/null 2>&1 && uv run --no-sync ruff --version >/dev/null 2>&1; then
+    uv run --no-sync ruff check opencode_rank tests || exit 1
+    uv run --no-sync ruff format --check opencode_rank tests || {
+        echo "pre-commit: run 'just lint' (or 'uv run ruff format opencode_rank tests') and re-stage" >&2
+        exit 1
+    }
+else
+    echo "pre-commit: ruff not available (run 'just bootstrap' once) — lint skipped, CI still checks" >&2
+fi

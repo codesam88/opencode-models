@@ -1,0 +1,17 @@
+#!/bin/sh
+# Block pushing the local-data branch: it holds the full fetched dataset
+# (hundreds of third-party records plus workspace-derived snapshots) and
+# must never leave this machine. The branch is intentionally never pushed;
+# this hook makes that rule mechanical instead of remembered.
+#
+# Invoked by git with lines "<local ref> <local sha> <remote ref>
+# <remote sha>" on stdin; exit non-zero rejects the push.
+
+while read local_ref _local_sha _remote_ref _remote_sha; do
+    case "$local_ref" in
+    refs/heads/local-data)
+        echo "refusing to push $local_ref: the fetched dataset must stay local (see README, Data)" >&2
+        exit 1
+        ;;
+    esac
+done

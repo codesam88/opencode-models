@@ -1,135 +1,125 @@
 # opencode-models
 
-Price/score Pareto frontier of AI models, from the
-[opencode.ai/data](https://opencode.ai/data) catalog.
+List [Opencode Zen / Go](https://opencode.ai/data) models by agentic coding score
+and score per dollar.
 
-Unrelated to the opencode coding agent (`sst/opencode`): this tool ranks
-*models* — the name follows the data lineage, since opencode's catalog is
-the primary source (with tbench.ai, Artificial Analysis and the arena
-dataset behind it).
+Tired of trying to correlate the latest OpenCode model listings with available
+benchmarks and costs?  This utility uses public/scraped benchmark reports and
+the opencode API to show the current best and cheapest available models.
 
-For a chosen benchmark, the tool plots every priced model's score against its
-input price (log scale) and lists the **Pareto frontier**: models where no
-other model is both cheaper and scores higher. Frontier membership is the
-claim; everything else is context.
+## TLDR; quick steps
+
+```sh
+uvx opencode-models
+alias ocm=opencode-models
+
+ocm auth  # register an openapi token to always fetch the current 'live' models
+ocm fetch # fetch benchmarks and model info from supported sources
+ocm list  # List non-expensive, non-trivial models, sorted by score/$
+ocm next  # 6 next-best recommended models to use (tell your agent to use this)
+```
 
 ## Install
 
-The tool is stdlib-only and installs with anything that understands Python
-packages — [uv](https://docs.astral.sh/uv/) is the recommended path:
+Run it once with `uvx`, or install the `opencode-models` binary to your
+`$PATH`:
 
 ```sh
-uv tool install .            # install the `opencode-models` binary to $PATH
-uvx --from . opencode-models   # or run it once without installing
+uvx opencode-models              # no install, just run it
+uv tool install opencode-models  # install the binary
 ```
 
-The name is longer than it needs to be for daily typing; a shell
-alias fixes that in one line, e.g. `alias ocm=opencode-models`.
+The name is longer than it wants to be for daily typing; a shell alias
+fixes that in one line: `alias ocm=opencode-models`.
 
-`just install` does the same, then seeds the reference dataset into your
-user data dir: fetched layers copy missing files only, so a workspace's own
-fetch results are never overwritten — but the tracked `overrides/` deploy,
-same-named pins included, because curation ships with the code. The seed
-comes from the checkout first and the `local-data` branch second.
-
-A fresh install has no data yet, so populate it once (this is the only
-network-touching command):
+### First run
 
 ```sh
-opencode-models fetch          # downloads into your user data dir
+ocm auth   # save a Console token so the views are live (recommended)
+ocm fetch  # download benchmark data and model info (~1 minute first time)
 ```
 
-Data lives in `$OPENCODE_RANK_DATA`, else the XDG user data dir
-(`~/.local/share/opencode-models`). Working from a checkout instead? Point at
-the committed dataset with `--data data` (or `OPENCODE_RANK_DATA=data`).
+`auth` stores an OpenCode Console service-account key at
+`~/.config/opencode-models/api_key` (owner-only, never echoed); the
+`OPENCODE_API_KEY` environment variable takes precedence if you set one.
+`fetch` is the only command that downloads data — benchmark numbers,
+tier prices, official boards — into your data directory:
+`$OPENCODE_MODELS_DATA` if set, else `~/.local/share/opencode-models`.
 
-For development, `uv sync` creates the repo virtualenv; `just test`, `just
-run list` and `just check` wrap `uv run` so the console and the tests run without
-installing anything.
+### Working from a checkout
+
+```sh
+just bootstrap   # uv sync + enable git hooks (pre-commit lint/audit,
+                 # pre-push guard for the local-data branch)
+just test        # unittest suite
+just lint        # ruff lint, format check, complexity gate
+just check       # tests + entry point + wheel build
+just run <cmd>   # the console against ./data, e.g. just run next
+```
+
+`just install` additionally seeds the reference dataset into your user
+data dir (missing files only — it never overwrites fetched results, while
+tracked curation deploys as shipped). The tool is stdlib-only: Python
+≥ 3.10, no runtime dependencies; ruff comes from the locked dev group.
+
+Project pointers: [SECURITY.md](SECURITY.md) (what touches the network,
+scraper etiquette, how to report a problem), [LIMITS.md](LIMITS.md) (what
+the plans actually meter), [CONTRIBUTING.md](CONTRIBUTING.md) (workflow,
+releasing).
 
 ## Usage
 
+Three commands cover daily use; four more exist for auditing and
+maintenance:
+
+| command | what it shows |
+|---|---|
+| `list` | the best-value table of what the plans offer today — free, included-usage and pay-as-you-go bands ranked by score per dollar |
+| `next` | the next models to reach for: free and paid picks interleaved, Zen/Go alternating (default 6; tell your agent to use these) |
+| `scores` | every offered model, one column per benchmark — the raw number beside where it lands |
+| `models` | the API endpoint and display name of every model each plan currently offers |
+| `overrides` | benchmark numbers more than one source reports, and which value the tool keeps |
+| `fetch` | refresh everything: benchmarks, tier prices, official boards, availability |
+| `auth` | store the Console token for live views (owner-only file) |
+
+### Live views and the token
+
+Every `list` and `next` run looks for a Console token first — the
+`OPENCODE_API_KEY` environment variable, then the file `auth` wrote. **With
+a token the view is live:** it queries the Console config API on each run,
+shows only the models the plans offer *right now*, and records the result
+so later offline runs stay current. Without a token the first line warns
+that availability may be stale and the last `fetch` snapshots decide
+(those are refreshed by any keyed `fetch` or `models` run).
+
+`--all-models` (alias `--all`) bypasses the availability filter entirely
+— what you want when auditing rather than choosing.
+
+### Common options
+
+- `--source zen|go|all` — one provider or the full-catalog view
+  (default: both providers merged)
+- `--all-models` / `--all` — ignore the availability filter
+  (`list`, `next`, `scores`)
+- `--tables all` — add the worst-score and highest-cost tables to `list`
+- `--benchmark NAME` — rank `list` on one benchmark instead of the
+  combined score
+- `--count N` — how many picks `next` recommends (default 6)
+- `--price input|output` — cost on a single rate instead of the
+  20/60/20 input-cached-output mix
+- `--data DIR` — point at a different data directory (checkout: `--data data`)
+
 ```sh
-opencode-models fetch                     # refresh the data from opencode.ai
-opencode-models fetch --all                 # also re-download unoffered models
-opencode-models models                   # the models the plans offer, per tier
-opencode-models auth                     # save the Console key (prompted, owner-only)
-opencode-models overrides                 # every number more than one source reports
-opencode-models list                      # both providers merged, best value
-opencode-models list --tables all         # also worst-score and highest-cost
-opencode-models list --source zen         # one provider only
-opencode-models list --source all --benchmark "SWE-Bench Verified"
-opencode-models list --all-models                # include models a plan has dropped
-opencode-models scores --all-models              # the whole catalog, not just offered
-opencode-models next                      # the next 4 models to use, in order
-opencode-models next --count 6 --source go
-opencode-models scores                    # offered models, one column per benchmark
+ocm list --tables all               # also the culled worst/pricey tables
+ocm list --source zen               # one provider only
+ocm next --count 8 --source go      # eight picks, Go plan only
+ocm scores                          # one column per tracked benchmark
 ```
 
-`next` answers the narrower question "what should I reach for next?". It
-draws from the same pipeline `list` uses, so it can never disagree with the
-ranking it came from. Three rules shape the sequence:
+## How it works
 
-- **Eligibility is strength, not the `++` marker.** Picks must be within 75%
-  of the strongest score in the catalog. The marker is not used to gate them:
-  it is a position in an ordering that divides by price, so it measures
-  value. In the live data MiMo-V2.6-Pro scores 89.9 — the best model in the
-  catalog — and is graded `o`, while a free model scoring 24.58 is graded
-  `++`. Gating on the marker recommends the weak model and misses the strong
-  one.
-- **Alternation is forced, on two axes.** Slots alternate between the free
-  and paid bands — even slots take the best remaining free pick, odd slots
-  the best remaining paid one — so a capped free tier still leaves half the
-  sequence usable, and a fresh one still leads with what costs nothing.
-  Within each slot the pick alternates between Zen and Go wherever both can
-  supply one, so following the sequence spreads across the two plans instead
-  of draining one allowance before touching the other. Either alternation
-  gives way when it must: a dry band yields its slot to the other band, a
-  plan with nothing eligible left is passed over, and the strongest free
-  pick always leads.
-- **One model, one slot.** Free on Zen and paid on Go are two lines for one
-  model — the `[free]` suffix is the only difference in the name — so a
-  model is never recommended twice, and price variants of one model do not
-  take two slots either.
-
-The view keeps the rules out of the output: it prints one headline, the
-sequence, and a pointer to [LIMITS.md](LIMITS.md) for what allowances cost.
-It does not consult how much of each allowance is left.
-
-`list` covers the Console **providers** (`zen` = curated, `go` = open) and
-prints the **best value** table. `--tables all` also prints the **worst
-score** (bottom 30%) and **highest cost** (top 30%) tables. Either way the
-cull happens: those two groups of rows are taken *out* of best value, so the
-default view is the models worth looking at and nothing else. The culls are disjoint and cost claims first,
-so a model that is both priciest and lowest-scoring is reported once, under
-cost. Cost decides *who* lands in the highest-cost table and score decides
-*who* lands in the worst-score table, but both culls are shown worst-scoring
-first.
-
-By default both providers are merged into one view. Rows that agree on model,
-score and cost are collapsed to a single line *before* ranking and culling —
-they are one offer, not two — with the providers enumerated in the `PROV`
-column immediately before the model name (`go,zen`, `zen`, `go`, or `-` for
-catalog models in neither tier; those only appear with `--source all`). When
-only some of the named providers fund a line from a monthly allowance, the
-more generous band wins: the line is available that way from at least one of
-them. Rates that differ (off-peak, token window, a limit one provider has and
-the other has not) keep their own line each. `--source zen` / `--source go`
-narrows the view to a single provider.
-
-Best value splits into bands — **free** (use first), **included usage**
-(lines the tier grants a monthly allowance for), **pay-as-you-go** — and is
-ranked by score per dollar *inside* each band. A line's cost is 20% input +
-60% cached read + 20% output; `--price input|output` picks a single rate
-instead. The numbers are all rounded integers: the score is the model's
-calculated 0–100 number, score per dollar explains the best-value order —
-free lines divide by their nominal rate, so the cheapest free models read
-highest — and the cost column counts cents (`¢/1M` =
-round(price·100)), so a $0.0612 line reads as `6`, not `0.0612`. Free lines
-still show a `0` cost: the nominal never reaches the price column, only
-the value one. Columns are
-measured from the lines actually being shown (header included), so nothing
-shifts when a price or a provider list outgrows the rest.
+The rest of this document is the detailed semantics: what a score means,
+how the views differ, and where every number comes from.
 
 ### Which benchmarks are scored
 
@@ -268,11 +258,10 @@ strong field can share the top and a weak one is never flattered by it.
 
 Ranking is best score per dollar first. The score is already comparable
 across axes — each benchmark reads on its own 0–100 scale and the median
-combines them — so there is no skeleton to build and no axis whose
-percentile a row is inserted at: value order is the combined score divided
-by the price, ties toward the higher score. Rows no benchmark reaches
-cannot be valued — free ones close the listing, paid ones follow, and rows
-nothing reaches drop out (`--benchmark X` ranks on one benchmark instead).
+combines them — so value order is the combined score divided by the price,
+ties toward the higher score. Rows no benchmark reaches cannot be valued:
+free ones close the listing, paid ones follow, and rows nothing reaches
+drop out (`--benchmark X` ranks on one benchmark instead). Terminal-Bench
 4.0 is a harder task set — its leaders reach ~58 where 2.1's reach ~87 —
 so a 4.0 score never competes directly with 2.x numbers, and `--benchmark X`
 tags which benchmark a row was ranked on. The axes are not comparable, so
@@ -288,20 +277,76 @@ like any other cost instead of going infinite, and the value column prints
 that division — the cheapest free models read highest. They are *shown*
 with an actual `0` price: the nominal price never reaches the cost column.
 
-Tier membership lists ship in `opencode_models/sources/` as slug files scraped
-from the tier pages; doc-calibrated prices are snapshotted in
-`data/tier_prices/` and refreshed by `fetch` (nothing else fetches docs).
-Refresh the slugs manually when the tiers change.
+### The `list` views
 
-Stdlib-only, Python ≥ 3.10, no dependencies. Tests: `just test`
-(`uv run python -m unittest discover -s tests`); `just check` adds a wheel
-build. CI runs the suite on 3.10/3.12/3.14 without the dataset, since CI
-never fetches third-party records. What the tool touches on the
-network, the scraper etiquette and how to report a security issue are in
-[SECURITY.md](SECURITY.md). What the *plans* actually meter — Zen's credits,
-Go's per-model dollar limits and windows — is in [LIMITS.md](LIMITS.md).
+`list` covers the Console **providers** (`zen` = curated, `go` = open) and
+prints the **best value** table. `--tables all` also prints the **worst
+score** (bottom 30%) and **highest cost** (top 30%) tables. Either way the
+cull happens: those two groups of rows are taken *out* of best value, so the
+default view is the models worth looking at and nothing else. The culls are
+disjoint and cost claims first, so a model that is both priciest and
+lowest-scoring is reported once, under cost. Cost decides *who* lands in the
+highest-cost table and score decides *who* lands in the worst-score table,
+but both culls are shown worst-scoring first.
 
-## Data
+By default both providers are merged into one view. Rows that agree on model,
+score and cost are collapsed to a single line *before* ranking and culling —
+they are one offer, not two — with the providers enumerated in the `PROV`
+column immediately before the model name (`go,zen`, `zen`, `go`, or `-` for
+catalog models in neither tier; those only appear with `--source all`). When
+only some of the named providers fund a line from a monthly allowance, the
+more generous band wins: the line is available that way from at least one of
+them. Rates that differ (off-peak, token window, a limit one provider has and
+the other has not) keep their own line each. `--source zen` / `--source go`
+narrows the view to a single provider.
+
+Best value splits into bands — **free** (use first), **included usage**
+(lines the tier grants a monthly allowance for), **pay-as-you-go** — and is
+ranked by score per dollar *inside* each band. A line's cost is 20% input +
+60% cached read + 20% output; `--price input|output` picks a single rate
+instead. The numbers are all rounded integers: the score is the model's
+calculated 0–100 number, score per dollar explains the best-value order —
+free lines divide by their nominal rate, so the cheapest free models read
+highest — and the cost column counts cents (`¢/1M` =
+round(price·100)), so a $0.0612 line reads as `6`, not `0.0612`. Free lines
+still show a `0` cost: the nominal never reaches the price column, only
+the value one. Columns are measured from the lines actually being shown
+(header included), so nothing shifts when a price or a provider list
+outgrows the rest.
+
+### The `next` sequence
+
+`next` answers the narrower question "what should I reach for next?". It
+draws from the same pipeline `list` uses, so it can never disagree with the
+ranking it came from. Three rules shape the sequence:
+
+- **Eligibility is strength, not the `++` marker.** Picks must be within 75%
+  of the strongest score in the catalog. The marker is not used to gate them:
+  it is a position in an ordering that divides by price, so it measures
+  value. In the live data MiMo-V2.6-Pro scores 89.9 — the best model in the
+  catalog — and is graded `o`, while a free model scoring 24.58 is graded
+  `++`. Gating on the marker recommends the weak model and misses the strong
+  one.
+- **Alternation is forced, on two axes.** Slots alternate between the free
+  and paid bands — even slots take the best remaining free pick, odd slots
+  the best remaining paid one — so a capped free tier still leaves half the
+  sequence usable, and a fresh one still leads with what costs nothing.
+  Within each slot the pick alternates between Zen and Go wherever both can
+  supply one, so following the sequence spreads across the two plans instead
+  of draining one allowance before touching the other. Either alternation
+  gives way when it must: a dry band yields its slot to the other band, a
+  plan with nothing eligible left is passed over, and the strongest free
+  pick always leads.
+- **One model, one slot.** Free on Zen and paid on Go are two lines for one
+  model — the `[free]` suffix is the only difference in the name — so a
+  model is never recommended twice, and price variants of one model do not
+  take two slots either.
+
+The view keeps the rules out of the output: it prints one headline, the
+sequence, and a pointer to [LIMITS.md](LIMITS.md) for what allowances cost.
+It does not consult how much of each allowance is left.
+
+### Where the data comes from
 
 `data/` is split by who writes it — and **the scraped layers are fetched, not
 committed**. They are third-party records, they go stale, and they are large;
@@ -313,12 +358,16 @@ committed**. They are third-party records, they go stale, and they are large;
 | `opencode/` | upstream records, one JSON per model, verbatim from `https://opencode.ai/data/<lab>/<model>.json` | `fetch` only | no — `.gitignore`d |
 | `aiarena/` | arena.ai (LMArena) Elo cache, `{slug: elo}` | `fetch` | no — `.gitignore`d |
 | `tier_prices/` | snapshots of the Console tier pricing tables (see below for what counts as offered) | `fetch` | no — `.gitignore`d |
-| `available/` | the live model set per tier from the Console config API — the plans as the API serves them right now | `fetch` (needs `OPENCODE_API_KEY`) | no — `.gitignore`d |
+| `available/` | the live model set per tier from the Console config API — the plans as the API serves them right now | keyed `fetch` / `models` | no — `.gitignore`d |
 | `boards/` | official benchmark boards, fetched from whoever runs them (see below) | `fetch` | no — `.gitignore`d |
-| `usage/` | free-tier nominal rates derived from the workspace usage export (per-model traffic only, no user columns) | `fetch` (needs `OPENCODE_API_KEY`) | no — `.gitignore`d |
-| `overrides/` | an escape hatch for hand-pinned benchmark values — currently empty, since `fetch` brings the boards themselves (see `data/overrides/README.md`) | nobody — `fetch` reports replacements via `overrides` | **yes** (the directory, no data) |
+| `usage/` | free-tier nominal rates derived from the workspace usage export (per-model traffic only, no user columns) | keyed `fetch` (needs `OPENCODE_API_KEY`) | no — `.gitignore`d |
+| `overrides/` | hand-pinned benchmark values (see `data/overrides/README.md`) | nobody — `overrides` reports disagreements | **yes** (the directory, no data) |
 
-### Which models the plans actually offer
+`fetch` downloads only the models the plans offer (use `--all` for the
+full catalog). Records already on disk are never deleted, so a dropped
+model keeps its place in the scales rather than moving every score.
+
+#### Which models the plans actually offer
 
 Providers unlist models and move them between plans, so "which models can I
 use" is a fact about today, not a property of the codebase. It used to come
@@ -330,25 +379,18 @@ own documentation had stopped listing them, among them `hy3-preview` and
 
 `fetch` already snapshots each tier's documentation for prices, but the
 docs go stale — providers unlist models the pages still name, and list new
-ones the pages do not. So availability now comes from the Console config
-API (`/api/v2/config`, the workspace's live model set), snapshotted to
-`data/available/` on every keyed `fetch` (`opencode_models/live.py`). The
+ones the pages do not. So availability comes from the Console config API
+(`/api/v2/config`, the workspace's live model set), snapshotted to
+`data/available/` on every keyed run (`opencode_models/live.py`). The
 docs snapshot stays the offline fallback, and `opencode-models models`
 prints whichever record is in force as one sorted table: the endpoint
 (as `next` shows it, preferring Go where both plans list the model)
 beside the display name (as `list` shows it, `—` where the catalog has
-none) — live from the API with `OPENCODE_API_KEY` (recorded to
-`data/available/` on the way, so the next `list` unlists the dropped
-models immediately), else the last snapshots.
+none).
 
-`fetch` downloads only the models the plans offer (use `--all` for the
-full catalog). Records already on disk are never deleted, so a dropped
-model keeps its place in the scales rather than moving every score.
-
-- **`list` and `next` show only what a plan lists.** With `OPENCODE_API_KEY`
-  they check the live config API on every run (recording it on the way);
-  offline the last snapshots decide. `next` therefore never recommends a
-  model that has been dropped.
+- **`list` and `next` show only what a plan lists** — live with a token
+  (checked every run), the last snapshots offline. `next` therefore never
+  recommends a model that has been dropped.
 - **`--all-models`** (alias `--all`, also on `next`) lists the whole catalog
   instead, bypassing every availability filter — which is what you want when
   auditing rather than choosing.
@@ -362,26 +404,7 @@ model keeps its place in the scales rather than moving every score.
 - **The scales do not move.** A model you cannot buy still marks where the
   field is, so a score never changes because a plan changed what it sells.
 
-### Data due diligence
-
-What this repo publishes: hand-pinned benchmark numbers
-(`data/overrides/`, each carrying its source URL and provenance note),
-plus code and docs. Everything the tool reads in bulk — the model
-catalog, tier snapshots, official boards, arena cache — is fetched into
-gitignored directories and never committed. No workspace or user data
-is ever written to the repo: the usage export is aggregated in memory
-and only per-model numeric totals reach disk.
-
-Why we think republishing those numbers is fair: benchmark scores are
-facts, and every curated value cites the page, chart, or board it was
-read from, with the date and method, so anyone can check or contest it.
-What we have *not* done is review every source site's Terms of Service,
-so if any number here violates a site's terms as you read them, that is
-unintentional — please open a GitHub issue, or a private security
-advisory if the matter is sensitive (see SECURITY.md), and we will
-correct or remove it.
-
-### Official boards, fetched from their owners
+#### Official boards, fetched from their owners
 
 `fetch` also pulls the boards themselves, so the axes are anchored on the
 numbers of whoever runs each benchmark rather than on one registry's
@@ -406,9 +429,10 @@ board *is* static HTML but was dropped as stale and redundant: its newest
 entry is GPT-5-era (Aug 2025), and diff-editing is already covered by
 SWE-bench and Terminal-Bench.
 
-Working from a checkout: `just run fetch` (or `opencode-models fetch`) once, then the
-`--data data` recipes work. If you want the dataset committed rather than
-fetched, use the `local-data` branch — it is intentionally never pushed.
+If you want the dataset committed rather than fetched, the `local-data`
+branch keeps a copy — it is intentionally never pushed.
+
+#### Curated overrides
 
 The upstream layer is never edited: curated scores are merged at load time,
 keyed by (benchmark name, version), so an overlay can *add* a benchmark the
@@ -417,14 +441,31 @@ when its source is at least as good as upstream's — sources are tiered:
 independent evaluators that run every model on one harness (Artificial
 Analysis) beat official benchmark boards (tbench.ai), which beat vendor
 model cards and launch posts. Everything a disagreement touches is printed
-by `overrides`; to accept the catalog value, delete the entry. Rows whose model
-carries an overlay are marked `*` in `list`.
+by `overrides`; to accept the catalog value, delete the entry. Rows whose
+model carries an overlay are marked `*` in `list`. See
+`data/overrides/README.md` for the entry format and rules.
 
 Parsing is tolerant: models without pricing or without the selected
-benchmark are simply excluded from the frontier rather than failing a render.
+benchmark are skipped rather than failing the view.
 
-`data/tier_prices/{zen,go}_prices.json` are snapshots of the Console tier
-pricing tables (parsed from the tier docs), rewritten by `fetch`.
+#### Data due diligence
+
+What this repo publishes: hand-pinned benchmark numbers
+(`data/overrides/`, each carrying its source URL and provenance note),
+plus code and docs. Everything the tool reads in bulk — the model
+catalog, tier snapshots, official boards, arena cache — is fetched into
+gitignored directories and never committed. No workspace or user data
+is ever written to the repo: the usage export is aggregated in memory
+and only per-model numeric totals reach disk.
+
+Why we think republishing those numbers is fair: benchmark scores are
+facts, and every curated value cites the page, chart, or board it was
+read from, with the date and method, so anyone can check or contest it.
+What we have *not* done is review every source site's Terms of Service,
+so if any number here violates a site's terms as you read them, that is
+unintentional — please open a GitHub issue, or a private security
+advisory if the matter is sensitive (see SECURITY.md), and we will
+correct or remove it.
 
 ## Caveats
 
@@ -434,7 +475,8 @@ pricing tables (parsed from the tier docs), rewritten by `fetch`.
 - Benchmarks are heterogeneous (metric, harness, conditions differ per source).
   `list` orders Terminal-Bench rows and SWE-Bench rows separately rather than
   mixing their scores; compare within one benchmark.
-- Frontier membership depends entirely on which models the catalog covers.
+- Coverage depends on which models the opencode catalog carries: a model
+  absent from the catalog is invisible to every view.
 
 ## Limitations
 

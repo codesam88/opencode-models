@@ -12,7 +12,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from opencode_rank.availability import available_ids, load_available, unlisted
+from opencode_rank.availability import (
+    _snapshot_ids,
+    available_ids,
+    load_available,
+    unlisted,
+)
 
 
 def _snapshot(data_dir: Path, tier: str, model_ids: list[str]) -> None:
@@ -82,6 +87,31 @@ class AvailabilityTest(unittest.TestCase):
                 )
             )
             self.assertEqual(load_available(d)["zen"], {"m1"})
+
+    def test_a_directory_at_the_snapshot_path_is_unknown(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            out = d / "tier_prices"
+            out.mkdir(parents=True, exist_ok=True)
+            (out / "zen_prices.json").mkdir()
+            self.assertIsNone(load_available(d)["zen"])
+            self.assertIsNone(_snapshot_ids(d, "zen"))
+
+    def test_non_dict_rows_are_skipped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            out = d / "tier_prices"
+            out.mkdir(parents=True, exist_ok=True)
+            (out / "zen_prices.json").write_text(
+                json.dumps(
+                    [
+                        {"tier": "zen", "model_id": "m1", "name": "M1"},
+                        "not a dict",
+                    ]
+                )
+            )
+            self.assertEqual(load_available(d)["zen"], {"m1"})
+            self.assertEqual(_snapshot_ids(d, "zen"), {"m1"})
 
     def test_it_reports_what_the_provider_has_dropped(self):
         from opencode_rank import sources

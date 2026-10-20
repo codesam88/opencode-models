@@ -34,9 +34,13 @@ def _snapshot_ids(data_dir: Path, tier: str) -> set[str] | None:
         return None
     try:
         rows = json.loads(path.read_text())
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, OSError):
         return None
-    return {row["model_id"] for row in rows if row.get("model_id")}
+    if not isinstance(rows, list):
+        return None
+    return {
+        row["model_id"] for row in rows if isinstance(row, dict) and row.get("model_id")
+    }
 
 
 def load_available(data_dir: Path) -> dict[str, set[str] | None]:

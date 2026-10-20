@@ -62,14 +62,14 @@ from .scoring import (
 )
 from .tables import column_widths, format_row, render
 
-#: Where the data lives for an installed tool: $OPENCODE_RANK_DATA, else the
+#: Where the data lives for an installed tool: $OPENCODE_MODELS_DATA, else the
 #: XDG user-data dir (~/.local/share/opencode-models). `fetch` populates it and
 #: every other command reads it; a repo checkout passes --data ./data.
-DATA_ENV = "OPENCODE_RANK_DATA"
+DATA_ENV = "OPENCODE_MODELS_DATA"
 
 
 def default_data_dir() -> Path:
-    """The user data directory: $OPENCODE_RANK_DATA, else XDG."""
+    """The user data directory: $OPENCODE_MODELS_DATA, else XDG."""
     env = os.environ.get(DATA_ENV)
     if env:
         return Path(env)

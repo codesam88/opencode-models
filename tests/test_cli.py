@@ -200,7 +200,7 @@ class CliTest(unittest.TestCase):
 
         import opencode_models.cli as cli
 
-        with mock.patch.dict(os.environ, {"OPENCODE_RANK_DATA": "/tmp/x"}):
+        with mock.patch.dict(os.environ, {"OPENCODE_MODELS_DATA": "/tmp/x"}):
             self.assertEqual(cli.default_data_dir(), Path("/tmp/x"))
         with mock.patch.dict(os.environ, {}, clear=True):
             self.assertEqual(

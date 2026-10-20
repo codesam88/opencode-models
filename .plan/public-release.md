@@ -1,5 +1,5 @@
 ---
-status: done
+status: in-progress
 type: chore
 priority: high
 area: devops
@@ -17,17 +17,6 @@ only. The gitleaks pre-commit hook needs its own toolchain
 test, so the local audit-grep hook stands in and CI keeps running real
 gitleaks.
 
-## Status values
-
-| status        | meaning                                                       |
-| ------------- | ------------------------------------------------------------- |
-| `idea`        | aspirational — not fully settled, not ready to start          |
-| `backlog`     | accepted but deferred — consider when stepping back to plan   |
-| `open`        | ready to be picked up                                         |
-| `in-progress` | actively being worked on                                      |
-| `blocked`     | cannot proceed; note the blocker in the body                  |
-| `done`        | complete                                                      |
-
 ## Steps
 
 - [x] 1. ~~LICENSE identity + history rewrite.~~ DROPPED by decision:
@@ -40,10 +29,10 @@ gitleaks.
   `pre-push` refuses `refs/heads/local-data`; `pre-commit` runs the
   secret-pattern sweep and `ruff check` + `ruff format --check` via the
   project's own venv, with a graceful skip when ruff is unavailable.
-  Verified: pre-commit passes on a clean tree, fails on planted `ghp_` /
-  `aws_secret_access_key` fixtures (the sweep no longer matches its own
-  pattern text); pre-push refuses a `local-data` push and allows normal
-  branches (scratch-repo end-to-end run).
+  Verified: pre-commit passes on a clean tree, fails on planted token
+  fixtures (a fake GitHub PAT and a fake AWS key); pre-push refuses a
+  `local-data` push and allows normal branches (scratch-repo end-to-end
+  run).
 
 ## Open questions — all settled 2026-10-20 (see Notes above for answers)
 
@@ -60,3 +49,19 @@ gitleaks.
   `local-data` push and allows a normal branch push.
 - `git config core.hooksPath` untouched when already set to something
   else (bootstrap must not clobber an existing hooks setup).
+
+## Remaining scope (reopened 2026-10-20 — not started, needs direction)
+
+- [ ] Release process: reserve the PyPI name with a first publish;
+  single-source the version (currently hardcoded in `pyproject.toml`
+  and as the `opencode-rank/0.1` User-Agent); add CHANGELOG.md;
+  tag-triggered publish workflow.
+- [ ] Repo hygiene: CONTRIBUTING.md only — decided against issue/PR
+  templates and against a CODE_OF_CONDUCT (small single-maintainer tool;
+  GitHub issues + private security advisories already cover reporting).
+- [ ] GitHub push protection + secret scanning at public-launch time
+  (free for public repos; the local grep and CI gitleaks stay as the
+  pre-launch layers).
+- [ ] Source-site Terms of Service review for republished benchmark
+  numbers — deferred counsel work; the README due-diligence note is the
+  interim public stance.

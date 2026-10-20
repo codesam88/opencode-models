@@ -529,7 +529,8 @@ class CliTest(unittest.TestCase):
         self.assertEqual(code, 0)
         # a BAND cell, not the headline prose (which no longer names one)
         picks = out.split("BAND", 1)[1]
-        self.assertRegex(picks, r"\bfree\b")
+        zfree = next(l for l in picks.splitlines() if "zfree" in l)
+        self.assertRegex(zfree, r"\b(catalog|free|included|payg)\s*$")
 
     def test_next_has_no_trailer(self):
         # headline and rules merged into the first line; nothing dangles
@@ -542,7 +543,7 @@ class CliTest(unittest.TestCase):
         head = next(l for l in out.splitlines() if l.startswith("Next "))
         self.assertIn("Zen/Go", head)
 
-    def test_next_shows_free_for_free_lines_and_the_ratio_for_paid(self):
+    def test_next_shows_the_nominal_ratio_for_free_lines(self):
         from opencode_rank.cli import _pick_value
         from opencode_rank.ranking import Row
         from opencode_rank.data import Model
@@ -555,6 +556,10 @@ class CliTest(unittest.TestCase):
                        band="included", score=score, benchmark=None,
                        provider="go", grade="o", entry=None)
 
+        # a free line carries its nominal rate, so it divides like any
+        # other cost: 95 at $0.0013/1M is 73077, directly comparable with
+        # the paid ratios beside it
+        self.assertEqual(_pick_value(row(0.0013, 95.0, free=True)), "73077")
         self.assertEqual(_pick_value(row(0.0, 90.0, free=True)), "free")
         self.assertEqual(_pick_value(row(1.0, None)), "-")
         self.assertEqual(_pick_value(row(0.5, 50.0)), "100")
@@ -795,7 +800,7 @@ class CliTest(unittest.TestCase):
         gift = [l for l in out.splitlines() if "GIFT [free]" in l]
         self.assertEqual(len(gift), 1, out)
         self.assertNotIn("0.1", gift[0])       # the nominal price stays hidden
-        self.assertRegex(gift[0], r"-\s+0\s+free\s+go\s+GIFT \[free\]$")
+        self.assertRegex(gift[0], r"-\s+0\s+-\s+go\s+GIFT \[free\]$")
 
     def test_columns_stay_aligned_whatever_the_cell_widths(self):
         """Column widths are measured once, across the whole view.
@@ -1563,10 +1568,9 @@ class AvailabilityTest(unittest.TestCase):
     def test_a_fetched_snapshot_sets_the_free_price(self):
         # the committed table is the offline fallback: a snapshot from fetch
         # wins, or recomputing on fetch would change nothing in the view.
-        # Free rows print the word "free" rather than a ratio, so the price
-        # only shows in the ordering: at the snapshot's $50/1M, M1's
-        # score-per-dollar (50/50 = 1) loses to M2's paid line (50/1 = 50),
-        # while the $0.0018 fallback would keep M1 first.
+        # At the snapshot's $50/1M nominal, M1's score-per-dollar (50/50 = 1)
+        # loses to M2's paid line (50/1 = 50), while the $0.0018 fallback
+        # would keep M1 first.
         import json
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)

@@ -119,9 +119,12 @@ Best value splits into bands — **free** (use first), **included usage**
 ranked by score per dollar *inside* each band. A line's cost is 20% input +
 60% cached read + 20% output; `--price input|output` picks a single rate
 instead. The numbers are all rounded integers: the score is the model's
-calculated 0–100 number, score per dollar explains the best-value order,
-and the cost column counts cents (`¢/1M` =
-round(price·100)), so a $0.0612 line reads as `6`, not `0.0612`. Columns are
+calculated 0–100 number, score per dollar explains the best-value order —
+free lines divide by their nominal rate, so the cheapest free models read
+highest — and the cost column counts cents (`¢/1M` =
+round(price·100)), so a $0.0612 line reads as `6`, not `0.0612`. Free lines
+still show a `0` cost: the nominal never reaches the price column, only
+the value one. Columns are
 measured from the lines actually being shown (header included), so nothing
 shifts when a price or a provider list outgrows the rest.
 
@@ -278,8 +281,9 @@ variant (peak/off-peak, token window) gets its own line. Free lines — `-free`
 tier slugs and zero-priced models — are *ranked* at their model's nominal
 free-tier rate (`pricing.FREE_TIER_NOMINAL_RATES`, recomputed on every
 `fetch` from the usage export; see LIMITS.md), so "free" sorts and divides
-like any other cost instead of going infinite, but they are *shown* with an
-actual `0` price — the nominal price never reaches the console.
+like any other cost instead of going infinite, and the value column prints
+that division — the cheapest free models read highest. They are *shown*
+with an actual `0` price: the nominal price never reaches the cost column.
 
 Tier membership lists ship in `opencode_rank/sources/` as slug files scraped
 from the tier pages; doc-calibrated prices are snapshotted in

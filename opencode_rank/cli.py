@@ -540,11 +540,12 @@ def _cells(row, axis: bool = True) -> tuple[str, ...]:
     """The fixed columns of one row, as text: score, cost, value, plan.
 
     The score is the model's combined 0-100 number, rounded for the column;
-    the value is score per dollar ("free" where there is no cost, "-" with
-    no score) - the best-value table orders on it, so the column that
-    explains the order stays printed. *axis* is kept for the
-    single-benchmark layout, which adds that benchmark's tag. Prices are
-    cents, as elsewhere.
+    the value is score per dollar — free lines divide by their nominal
+    rate, so the cheapest free models read highest ("free" only where the
+    price is exactly zero, "-" with no score). The best-value table orders
+    on it, so the column that explains the order stays printed. *axis* is
+    kept for the single-benchmark layout, which adds that benchmark's tag.
+    Prices are cents, as elsewhere.
     """
     no_cost = row.free or row.price == 0
     price = "0" if no_cost else f"{round(row.price * 100)}"
@@ -759,11 +760,16 @@ NEXT_BANDS = {"free": "free", "included": "included", "payg": "payg",
 
 
 def _pick_value(row) -> str:
-    """A pick's score per dollar: "free" for free lines, "-" with no score."""
-    if row.free or row.price == 0:
-        return "free"
+    """A pick's score per dollar, free lines included.
+
+    Free lines carry their nominal rate, so they divide like any other
+    cost — the cheapest free models read highest. "free" is only the
+    degenerate zero-price fallback; "-" means there is no score to value.
+    """
     if row.score is None:
         return "-"
+    if row.price == 0:
+        return "free"
     return f"{round(ratio(row.score, row.price))}"
 
 

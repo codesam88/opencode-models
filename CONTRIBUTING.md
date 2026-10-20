@@ -48,3 +48,18 @@ live in `data/overrides/README.md` — read it before adding a file.
 - Sensitive matters (including data-takedown requests under the
   [data due-diligence note](README.md#data-due-diligence)): use a private
   security advisory, not a public issue. See SECURITY.md.
+
+## Releasing
+
+Releases are cut from `main` by tagging `vX.Y.Z`, which triggers the
+`release` workflow (build via `uv build`, publish to PyPI via trusted
+publishing — no stored credentials). One-time setup on PyPI first: register
+the project name and add this repo as a trusted publisher. Checklist:
+
+1. Curate `CHANGELOG.md`: move the `Unreleased` section to a versioned
+   `## [X.Y.Z] - YYYY-MM-DD` section, written from `git log` (curated
+   prose, not auto-generated).
+2. Bump `version` in `pyproject.toml` (`uv lock` updates itself, and the
+   `--version` flag plus every User-Agent follow automatically).
+3. Commit, then tag and push: `git tag vX.Y.Z && git push origin vX.Y.Z`.
+   The workflow verifies the tag matches `pyproject.toml` before building.

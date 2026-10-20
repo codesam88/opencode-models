@@ -1,0 +1,34 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+# Least privilege: checkout needs repo read access; publishing uses
+# a short-lived OIDC token instead of a stored PyPI secret.
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write # trusted publishing (PyPI must list this repo as a trusted publisher first)
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        with:
+          # no cache: releases are rare enough that a cold sync is cheap,
+          # and it removes the cache-poisoning surface entirely
+          enable-cache: false
+      - name: check the tag matches the package version
+        run: test "${GITHUB_REF#refs/tags/v}" = "$(grep -m1 '^version *=' pyproject.toml | cut -d'"' -f2)"
+      - name: wheel + sdist build
+        run: uv build
+      - name: publish to PyPI
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2

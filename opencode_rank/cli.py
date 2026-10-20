@@ -16,8 +16,8 @@ import urllib.request
 from dataclasses import replace
 from pathlib import Path
 
+from . import __version__, sources
 from . import arena as arena_mod
-from . import sources
 from .arena import ArenaCache, merge_from_file
 from .auth import load_key, save_key
 from .availability import available_ids, load_available, offered
@@ -250,7 +250,7 @@ def _api_get(key: str):
             url,
             headers={
                 "Authorization": f"Bearer {key}",
-                "User-Agent": "opencode-rank/0.1",
+                "User-Agent": f"opencode-rank/{__version__}",
             },
         )
         try:
@@ -1042,6 +1042,9 @@ def main(argv: list[str] | None = None) -> int:
         "--data",
         default=str(DEFAULT_DATA),
         help="data directory (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--version", action="version", version=f"%(prog)s {__version__}"
     )
     sub = parser.add_subparsers(dest="command", required=True)
 

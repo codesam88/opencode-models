@@ -224,3 +224,22 @@ class TransportHygieneTest(unittest.TestCase):
             gc.collect()
         leaked = [w for w in caught if issubclass(w.category, ResourceWarning)]
         self.assertEqual(leaked, [])
+
+    def test_user_agent_carries_the_package_version(self):
+        import urllib.request
+        from importlib.metadata import version as pkg_version
+        from unittest import mock
+
+        from opencode_rank.fetch import http_get
+
+        seen = {}
+
+        def fake_urlopen(req, timeout=None):
+            seen["req"] = req
+            raise urllib.error.HTTPError(req.full_url, 404, "gone", {}, io.BytesIO())
+
+        with mock.patch.object(urllib.request, "urlopen", fake_urlopen):
+            with self.assertRaises(urllib.error.HTTPError):
+                http_get("https://example.invalid/x")
+        ua = next(v for k, v in seen["req"].header_items() if k.lower() == "user-agent")
+        self.assertEqual(ua, f"opencode-rank/{pkg_version('opencode-rank')}")

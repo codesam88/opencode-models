@@ -13,6 +13,7 @@ import urllib.request
 from pathlib import Path
 from xml.etree import ElementTree
 
+from . import __version__
 from .availability import offered
 
 SITEMAP_URL = "https://opencode.ai/data/sitemap.xml"
@@ -27,7 +28,9 @@ def http_get(url: str) -> str:
     leaves the error response open, and dropping it unclosed warns at
     GC time. No caller reads error bodies, so nothing is lost.
     """
-    req = urllib.request.Request(url, headers={"User-Agent": "opencode-rank/0.1"})
+    req = urllib.request.Request(
+        url, headers={"User-Agent": f"opencode-rank/{__version__}"}
+    )
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
             return resp.read().decode("utf-8", errors="replace")

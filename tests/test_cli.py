@@ -3593,3 +3593,36 @@ class TransportHygieneTest(unittest.TestCase):
             gc.collect()
         leaked = [w for w in caught if issubclass(w.category, ResourceWarning)]
         self.assertEqual(leaked, [])
+
+
+class VersionTest(unittest.TestCase):
+    def test_version_flag_reports_the_installed_version(self):
+        from importlib.metadata import version as pkg_version
+
+        from opencode_rank.cli import main
+
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            with self.assertRaises(SystemExit) as ctx:
+                main(["--version"])
+        self.assertEqual(ctx.exception.code, 0)
+        self.assertIn(pkg_version("opencode-rank"), buf.getvalue())
+
+    def test_api_get_sends_a_versioned_user_agent(self):
+        import urllib.request
+        from importlib.metadata import version as pkg_version
+
+        from opencode_rank.cli import _api_get
+
+        seen = {}
+
+        def fake_urlopen(req, timeout=None):
+            seen["req"] = req
+            raise urllib.error.HTTPError(req.full_url, 404, "gone", {}, io.BytesIO())
+
+        get = _api_get("oc_sk_test")
+        with mock.patch.object(urllib.request, "urlopen", fake_urlopen):
+            with self.assertRaises(urllib.error.HTTPError):
+                get("https://example.invalid/console/api/v2/config")
+        ua = next(v for k, v in seen["req"].header_items() if k.lower() == "user-agent")
+        self.assertEqual(ua, f"opencode-rank/{pkg_version('opencode-rank')}")

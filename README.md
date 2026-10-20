@@ -327,7 +327,8 @@ API (`/api/v2/config`, the workspace's live model set), snapshotted to
 `data/available/` on every keyed `fetch` (`opencode_rank/live.py`). The
 docs snapshot stays the offline fallback, and `opencode-rank models`
 prints whichever record is in force, per tier — live from the API with
-`OPENCODE_API_KEY`, else the last snapshots.
+`OPENCODE_API_KEY` (recorded to `data/available/` on the way, so the next
+`list` unlists the dropped models immediately), else the last snapshots.
 
 `fetch` downloads only the models the plans offer (use `--all` for the
 full catalog). Records already on disk are never deleted, so a dropped

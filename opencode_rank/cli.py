@@ -231,9 +231,10 @@ def _api_get(key: str):
 def _cmd_models(args: argparse.Namespace) -> int:
     """The models the plans offer right now, per tier.
 
-    Live from the Console config API when ``OPENCODE_API_KEY`` is set,
-    else the snapshots the last ``fetch`` left behind. Read-only either
-    way: refreshing the snapshots is ``fetch``'s job, not this one's.
+    Live from the Console config API when ``OPENCODE_API_KEY`` is set —
+    recorded to ``available/`` on the way, so `list` and `next` unlist
+    the dropped models immediately. Else the snapshots the last ``fetch``
+    left behind, read-only.
     """
     data_dir = Path(args.data)
     key = os.environ.get("OPENCODE_API_KEY")
@@ -244,7 +245,9 @@ def _cmd_models(args: argparse.Namespace) -> int:
             print(f"warning: live config unreachable ({exc}) — "
                   f"showing the last snapshots")
         else:
-            print(f"live from {LIVE_CONFIG_URL}")
+            save_live(data_dir, live)
+            print(f"live from {LIVE_CONFIG_URL} "
+                  f"(recorded to {data_dir / 'available'})")
             for tier in sorted(live):
                 slugs = sorted(live[tier])
                 print(f"{tier} · {len(slugs)} models")
@@ -555,6 +558,35 @@ def _select(data_dir: Path, source: str | None,
     return None
 
 
+def _current_offered(data_dir: Path, bypass: bool = False,
+                     ) -> set[str] | None:
+    """Model ids offered right now, or None for no restriction.
+
+    With ``OPENCODE_API_KEY`` the live config API is the record — it is
+    also snapshotted to ``available/`` on the way, so offline runs inherit
+    the liveness. Without a key (or when the API is unreachable) the last
+    snapshots decide. *bypass* (`--all`) skips every filter.
+    """
+    if bypass:
+        return None
+    key = os.environ.get("OPENCODE_API_KEY")
+    if key:
+        try:
+            live = fetch_live(_api_get(key))
+        except (OSError, ValueError, KeyError) as exc:
+            print(f"warning: live config unreachable ({exc}) — "
+                  f"using the last snapshots")
+        else:
+            ids = set().union(*live.values())
+            if not ids:
+                print("warning: live config lists no models — "
+                      f"using the last snapshots")
+            else:
+                save_live(data_dir, live)
+                return ids
+    return available_ids(data_dir)
+
+
 def _rows_for(data_dir: Path, selected: list[str], price: str,
               all_models: bool = False):
     """Build, merge and dedupe the rows for *selected* providers.
@@ -563,12 +595,13 @@ def _rows_for(data_dir: Path, selected: list[str], price: str,
     the ranking it was drawn from.
 
     Unless *all_models*, a row is a model the plans actually offer: the
-    provider's own snapshot is the record, and a model it has dropped is
-    neither listed nor scored. The scales are still built over the whole
-    catalog, so a score does not move when a plan changes what it sells.
+    live config API is the record when keyed, else the snapshots. A model
+    the plans dropped is neither listed nor scored. The scales are still
+    built over the whole catalog, so a score does not move when a plan
+    changes what it sells.
     """
     models, curated, _ = _load(data_dir)
-    on_offer = available_ids(data_dir)
+    on_offer = _current_offered(data_dir, bypass=all_models)
     # the fetched free-tier nominals win per model; the committed table is
     # only the offline fallback for whatever the snapshot does not cover
     snapshot = load_free_nominals(data_dir)
@@ -586,8 +619,7 @@ def _rows_for(data_dir: Path, selected: list[str], price: str,
         else:
             tier_slugs[provider] = sources.load_source(provider)
             pool, free_ids = sources.members(models, tier_slugs[provider])
-            on_offer = load_available(data_dir).get(provider)
-            if not all_models and on_offer is not None:
+            if on_offer is not None:
                 pool = [m for m in pool if offered(m.model_id, on_offer)]
                 free_ids &= {m.model_id for m in pool}
             counts[provider] = len(pool)
@@ -736,7 +768,8 @@ def _cmd_next(args: argparse.Namespace) -> int:
         return _fail(f"unknown source {args.source!r} — available: "
                      f"{', '.join(sources.available_sources())}, all")
     rows, listed, _curated, _counts, _slugs, _models = _rows_for(
-        data_dir, chosen[0], args.price)
+        data_dir, chosen[0], args.price,
+        getattr(args, "all_models", False))
     if not listed:
         return _fail(f"no model of {args.source or 'zen+go'} is in {data_dir} "
                      f"— run `fetch` first")
@@ -820,6 +853,10 @@ def main(argv: list[str] | None = None) -> int:
                         default="weighted",
                         help="cost of a line (default: weighted 20%% in, "
                              "60%% cached, 20%% out)")
+    p_next.add_argument("--all-models", "--all", dest="all_models",
+                        action="store_true",
+                        help="include models the plans no longer offer; the "
+                             "default shows only what a plan currently lists")
 
     p_scores = sub.add_parser(
         "scores", help="manage cached arena.ai Elo scores (offline unless --refresh)"

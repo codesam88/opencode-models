@@ -2,6 +2,7 @@
 
 import contextlib
 import io
+import os
 import re
 import sys
 import unittest
@@ -10,6 +11,11 @@ import tempfile
 from unittest import mock
 
 from opencode_rank.cli import main
+
+#: Fixture tests must be hermetic: a key in the environment would send
+#: `list`/`next` to the live config API and filter the fixtures away.
+#: Tests that need keyed behaviour set it explicitly via patch.dict.
+os.environ.pop("OPENCODE_API_KEY", None)
 
 
 def _write_sample(data_dir: Path):
@@ -2000,3 +2006,119 @@ class ModelsCommandTest(unittest.TestCase):
             self.assertEqual(code, 0)
             self.assertIn("m-live", out)
             self.assertNotIn("m-stale", out)
+
+    def test_models_records_the_live_set_for_next_and_list(self):
+        import json
+        import os
+        import opencode_rank.cli as cli_mod
+        with tempfile.TemporaryDirectory() as tmp:
+            self._snapshot(tmp, "zen", ["m-stale"])
+            with mock.patch.dict(os.environ,
+                                 {"OPENCODE_API_KEY": "oc_sk_test"}):
+                with mock.patch.object(
+                        cli_mod, "fetch_live",
+                        return_value={"zen": {"m-live"}, "go": set()}):
+                    code, _ = self._run("--data", tmp, "models")
+            self.assertEqual(code, 0)
+            saved = json.loads((Path(tmp) / "available" / "zen.json")
+                               .read_text())["models"]
+            self.assertEqual(saved, ["m-live"])
+
+
+class CurrentOfferedTest(unittest.TestCase):
+    def _run(self, *argv):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = main(list(argv))
+        return code, out.getvalue()
+
+    def _snapshot(self, data_dir, tier, model_ids):
+        import json
+        out = Path(data_dir) / "tier_prices"
+        out.mkdir(parents=True, exist_ok=True)
+        (out / f"{tier}_prices.json").write_text(json.dumps(
+            [{"tier": tier, "model_id": mid, "name": mid, "input": 1.0,
+              "output": 1.0, "cached_read": None, "limit": None,
+              "free": False} for mid in model_ids]))
+
+    def _offered(self, tmp, **kw):
+        import io
+        import opencode_rank.cli as cli_mod
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            return cli_mod._current_offered(Path(tmp), **kw)
+
+    def test_bypass_means_no_restriction_even_when_keyed(self):
+        import os
+        import opencode_rank.cli as cli_mod
+        with tempfile.TemporaryDirectory() as tmp:
+            self._snapshot(tmp, "zen", ["m1"])
+            with mock.patch.dict(os.environ,
+                                 {"OPENCODE_API_KEY": "oc_sk_test"}):
+                with mock.patch.object(cli_mod, "fetch_live",
+                                       side_effect=AssertionError("no net")):
+                    self.assertIsNone(self._offered(tmp, bypass=True))
+
+    def test_without_a_key_the_snapshots_decide(self):
+        import os
+        with tempfile.TemporaryDirectory() as tmp:
+            self._snapshot(tmp, "zen", ["m1"])
+            os.environ.pop("OPENCODE_API_KEY", None)
+            self.assertEqual(self._offered(tmp), {"m1"})
+
+    def test_with_a_key_the_live_set_decides_and_is_recorded(self):
+        import json
+        import os
+        import opencode_rank.cli as cli_mod
+        with tempfile.TemporaryDirectory() as tmp:
+            self._snapshot(tmp, "zen", ["m-stale"])
+            with mock.patch.dict(os.environ,
+                                 {"OPENCODE_API_KEY": "oc_sk_test"}):
+                with mock.patch.object(
+                        cli_mod, "fetch_live",
+                        return_value={"zen": {"m-live"}, "go": set()}):
+                    self.assertEqual(self._offered(tmp), {"m-live"})
+            saved = json.loads((Path(tmp) / "available" / "zen.json")
+                               .read_text())["models"]
+            self.assertEqual(saved, ["m-live"])
+
+    def test_an_unreachable_api_falls_back_to_snapshots(self):
+        import os
+        import opencode_rank.cli as cli_mod
+        with tempfile.TemporaryDirectory() as tmp:
+            self._snapshot(tmp, "zen", ["m-doc"])
+            with mock.patch.dict(os.environ,
+                                 {"OPENCODE_API_KEY": "oc_sk_test"}):
+                with mock.patch.object(cli_mod, "fetch_live",
+                                       side_effect=OSError("down")):
+                    self.assertEqual(self._offered(tmp), {"m-doc"})
+
+    def test_next_accepts_all_to_bypass_the_filter(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            code, out = self._run("--data", tmp, "next", "--all")
+        self.assertEqual(code, 1)
+        self.assertIn("run `fetch` first", out)
+
+    def test_next_with_a_key_unlists_what_the_api_dropped(self):
+        import os
+        import opencode_rank.sources as sources
+        import opencode_rank.cli as cli_mod
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_grid(Path(tmp))
+            orig = sources.load_source
+            sources.load_source = lambda name: {f"m{i:02d}" for i in range(1, 11)}
+            try:
+                with mock.patch.dict(os.environ,
+                                     {"OPENCODE_API_KEY": "oc_sk_test"}):
+                    live = {"zen": {f"m{i:02d}" for i in range(1, 10)},
+                            "go": set()}
+                    with mock.patch.object(cli_mod, "fetch_live",
+                                           return_value=live):
+                        code, out = self._run("--data", tmp, "next",
+                                              "--source", "zen")
+            finally:
+                sources.load_source = orig
+        self.assertEqual(code, 0)
+        self.assertNotIn("M10", out)
+        self.assertNotIn("m10", out)
+        self.assertIn("m09", out)

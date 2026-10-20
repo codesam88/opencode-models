@@ -413,3 +413,28 @@ pricing tables (parsed from the tier docs), rewritten by `fetch`.
   `list` orders Terminal-Bench rows and SWE-Bench rows separately rather than
   mixing their scores; compare within one benchmark.
 - Frontier membership depends entirely on which models the catalog covers.
+
+## Limitations
+
+What the tool deliberately does not do, and why.
+
+**Cost per request is not a ranking axis.** The same model served to two
+workspaces burns a different number of tokens per request — agent traffic
+with full context re-sends versus chat-sized prompts differ by orders of
+magnitude — so a model's $/request is a property of how *you* use it, not
+of the model. Folding a per-request cost into score-per-dollar would rank
+models on one workspace's habits: the same table would order differently
+for every reader. The metric is not universally available either — no
+catalog, board, or Console endpoint publishes typical per-request token
+volumes (the docs' estimated-request tables imply one, but disagree with
+measured traffic by 10–100× on heavy agent use) — so there is nothing
+stable to divide by. `list` and `next` rank on list price and on the
+nominal free-tier rate instead: comparable across workspaces, even where
+they are less precise for any single one.
+
+**Allowances and per-request spend are not shown.** For the same reason,
+there is no allowance column and no $/request column: a Go plan's remaining
+dollars depend on metered usage the tool would have to snapshot per
+workspace, and free tiers publish no cap at all. What the plans grant is
+documented once in [LIMITS.md](LIMITS.md); what you have used is in the
+Console, not here.

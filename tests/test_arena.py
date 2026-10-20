@@ -15,7 +15,7 @@ from opencode_rank.arena import (
 from opencode_rank.data import Model
 
 
-def _m(model_id, price=1.0, scores=None):
+def _m(model_id, price=1.0, scores=None, sources=None):
     return Model(
         model_id=model_id,
         name=model_id,
@@ -24,12 +24,25 @@ def _m(model_id, price=1.0, scores=None):
         price_output=None,
         price_cached_input=None,
         scores=scores or {},
+        sources=sources or {},
     )
 
 
 class ArenaCacheTest(unittest.TestCase):
     def test_missing_cache_loads_empty(self):
         with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual(ArenaCache(Path(tmp)).load(), {})
+
+    def test_truncated_cache_loads_empty(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "scores.json"
+            path.write_text('{"deepseek-v4-pro": 1400.0')
+            self.assertEqual(ArenaCache(Path(tmp)).load(), {})
+
+    def test_empty_cache_loads_empty(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "scores.json"
+            path.write_text("")
             self.assertEqual(ArenaCache(Path(tmp)).load(), {})
 
     def test_round_trip(self):
@@ -94,6 +107,18 @@ class MergeTest(unittest.TestCase):
         merged = merge_arena_score(m, 1200.0)
         self.assertIsNot(merged, m)
         self.assertNotIn(ARENA_BENCHMARK, m.scores)
+
+    def test_merge_arena_score_keeps_sources(self):
+        m = _m("a/b", sources={"Foo": "https://example.com"})
+        merged = merge_arena_score(m, 1200.0)
+        self.assertEqual(merged.sources, m.sources)
+        self.assertIsNot(merged.sources, m.sources)
+
+    def test_merge_keeps_sources(self):
+        m = _m("a/b", sources={"Foo": "https://example.com"})
+        out = merge_arena_scores([m], {"b": 1400.0})
+        self.assertEqual(out[0].sources, {"Foo": "https://example.com"})
+        self.assertIsNot(out[0].sources, m.sources)
 
     def test_merge_from_file_applies_cached_scores(self):
         with tempfile.TemporaryDirectory() as tmp:

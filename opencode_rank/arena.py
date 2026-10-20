@@ -32,7 +32,11 @@ class ArenaCache:
     def load(self) -> dict[str, float]:
         if not self.path.exists():
             return {}
-        return json.loads(self.path.read_text())
+        try:
+            data = json.loads(self.path.read_text())
+        except (json.JSONDecodeError, OSError):
+            return {}
+        return data if isinstance(data, dict) else {}
 
     def save(self, scores: dict[str, float]) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -94,6 +98,7 @@ def merge_arena_score(m: Model, elo: float) -> Model:
         price_output=m.price_output,
         price_cached_input=m.price_cached_input,
         scores=scores,
+        sources=dict(m.sources),
     )
 
 

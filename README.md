@@ -50,6 +50,7 @@ installing anything.
 opencode-rank fetch                     # refresh the data from opencode.ai
 opencode-rank fetch --all                 # also re-download unoffered models
 opencode-rank models                   # the models the plans offer, per tier
+opencode-rank auth                     # save the Console key (prompted, owner-only)
 opencode-rank overrides                 # every number more than one source reports
 opencode-rank list                      # both providers merged, best value
 opencode-rank list --tables all         # also worst-score and highest-cost
@@ -334,10 +335,13 @@ prints whichever record is in force, per tier — live from the API with
 full catalog). Records already on disk are never deleted, so a dropped
 model keeps its place in the scales rather than moving every score.
 
-- **`list` and `scores` show only what a plan lists.** `next` therefore never
-  recommends a model that has been dropped.
-- **`--all-models`** (alias `--all`) lists the whole catalog instead, which is
-  what you want when auditing rather than choosing.
+- **`list` and `next` show only what a plan lists.** With `OPENCODE_API_KEY`
+  they check the live config API on every run (recording it on the way);
+  offline the last snapshots decide. `next` therefore never recommends a
+  model that has been dropped.
+- **`--all-models`** (alias `--all`, also on `next`) lists the whole catalog
+  instead, bypassing every availability filter — which is what you want when
+  auditing rather than choosing.
 - **The view says what it covers.** `list` notes it shows only what the
   plans offer right now and points at `--all-models` for the rest, without
   naming names — which models a plan dropped is audit material, not a

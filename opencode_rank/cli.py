@@ -43,6 +43,7 @@ from .ranking import (
 )
 from . import arena as arena_mod
 from .availability import available_ids, load_available, offered
+from .auth import key_file, load_key, save_key
 from .live import LIVE_CONFIG_URL, fetch_live, save_live
 from . import sources
 
@@ -228,6 +229,35 @@ def _api_get(key: str):
     return get
 
 
+def _cmd_auth(args: argparse.Namespace) -> int:
+    """Ask for the Console service-account key and save it owner-only.
+
+    The prompt never echoes, the key is never printed back, and the file
+    is created (or tightened) to owner-only access. The saved key is then
+    verified against the live config API — a rejection fails the command
+    but keeps the file, so an offline first run is not punished.
+    """
+    import getpass
+
+    if not sys.stdin.isatty():
+        return _fail("auth needs an interactive terminal — pipe a key via "
+                     "OPENCODE_API_KEY instead")
+    key = getpass.getpass("OPENCODE_API_KEY: ").strip()
+    if not key:
+        return _fail("no key entered — nothing saved")
+    path = save_key(key)
+    print(f"saved to {path} (owner-only)")
+    try:
+        live = fetch_live(_api_get(key))
+    except (OSError, ValueError, KeyError) as exc:
+        print(f"warning: key saved but not verified ({exc})")
+        return 0
+    count = len(set().union(*live.values()))
+    print(f"verified live: {count} models across "
+          f"{len([t for t in live.values() if t])} tiers")
+    return 0
+
+
 def _cmd_models(args: argparse.Namespace) -> int:
     """The models the plans offer right now, per tier.
 
@@ -237,7 +267,7 @@ def _cmd_models(args: argparse.Namespace) -> int:
     left behind, read-only.
     """
     data_dir = Path(args.data)
-    key = os.environ.get("OPENCODE_API_KEY")
+    key = load_key()
     if key:
         try:
             live = fetch_live(_api_get(key))
@@ -272,7 +302,7 @@ def _cmd_models(args: argparse.Namespace) -> int:
 
 def _cmd_fetch(args: argparse.Namespace) -> int:
     data_dir = Path(args.data)
-    key = os.environ.get("OPENCODE_API_KEY")
+    key = load_key()
     only: set[str] | None = None
     if args.all_models:
         print("fetching the full catalog (--all)")
@@ -569,7 +599,7 @@ def _current_offered(data_dir: Path, bypass: bool = False,
     """
     if bypass:
         return None
-    key = os.environ.get("OPENCODE_API_KEY")
+    key = load_key()
     if key:
         try:
             live = fetch_live(_api_get(key))
@@ -810,6 +840,9 @@ def main(argv: list[str] | None = None) -> int:
                                   "per tier: live from the Console config "
                                   "API with OPENCODE_API_KEY, else the last "
                                   "fetch snapshots")
+    sub.add_parser("auth", help="save the Console service-account key "
+                                "to an owner-only file (prompted, never "
+                                "echoed); verifies it live when it can")
     sub.add_parser("overrides",
                    help="every benchmark number more than one source "
                         "reports, and which value the console keeps")
@@ -870,6 +903,7 @@ def main(argv: list[str] | None = None) -> int:
     return {
         "fetch": _cmd_fetch,
         "models": _cmd_models,
+        "auth": _cmd_auth,
         "overrides": _cmd_conflicts,
         "list": _cmd_list,
         "next": _cmd_next,

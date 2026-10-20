@@ -56,6 +56,10 @@ list-go:
 next:
     uv run --no-sync opencode-rank --data data next
 
+# Save the Console key to an owner-only file (prompted, never echoed)
+auth:
+    uv run --no-sync opencode-rank auth
+
 # Models the plans offer right now, per tier (live with OPENCODE_API_KEY)
 models:
     uv run --no-sync opencode-rank --data data models

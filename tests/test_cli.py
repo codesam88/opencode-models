@@ -2122,3 +2122,73 @@ class CurrentOfferedTest(unittest.TestCase):
         self.assertNotIn("M10", out)
         self.assertNotIn("m10", out)
         self.assertIn("m09", out)
+
+
+class AuthCommandTest(unittest.TestCase):
+    def _run(self, *argv):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = main(list(argv))
+        return code, out.getvalue()
+
+    def _home(self, tmp):
+        return {"XDG_CONFIG_HOME": str(Path(tmp) / "config"), "HOME": tmp}
+
+    def test_auth_saves_the_prompted_key_and_verifies_it(self):
+        import getpass
+        import opencode_rank.cli as cli_mod
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.dict(os.environ, self._home(tmp), clear=True):
+                with mock.patch.object(getpass, "getpass",
+                                       return_value="oc_sk_new"), \
+                     mock.patch.object(cli_mod.sys.stdin, "isatty",
+                                       return_value=True), \
+                     mock.patch.object(cli_mod, "fetch_live",
+                                       return_value={"zen": {"m"},
+                                                     "go": set()}) as live:
+                    code, out = self._run("--data", tmp, "auth")
+                    self.assertEqual(code, 0)
+                    self.assertTrue(live.called)
+                    self.assertNotIn("oc_sk_new", out)
+                    from opencode_rank.auth import key_file
+                    self.assertEqual(key_file().read_text(), "oc_sk_new")
+
+    def test_auth_refuses_an_empty_key(self):
+        import getpass
+        import opencode_rank.cli as cli_mod
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.dict(os.environ, self._home(tmp), clear=True):
+                with mock.patch.object(getpass, "getpass",
+                                       return_value="  "), \
+                     mock.patch.object(cli_mod.sys.stdin, "isatty",
+                                       return_value=True):
+                    code, out = self._run("--data", tmp, "auth")
+        self.assertEqual(code, 1)
+        from opencode_rank.auth import key_file
+        with mock.patch.dict(os.environ, self._home(tmp), clear=True):
+            self.assertFalse(key_file().exists())
+
+    def test_auth_needs_an_interactive_terminal(self):
+        import opencode_rank.cli as cli_mod
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.dict(os.environ, self._home(tmp), clear=True):
+                with mock.patch.object(cli_mod.sys.stdin, "isatty",
+                                       return_value=False):
+                    code, out = self._run("--data", tmp, "auth")
+        self.assertEqual(code, 1)
+        self.assertIn("interactive", out)
+
+    def test_a_saved_key_is_used_when_the_environment_is_quiet(self):
+        import opencode_rank.cli as cli_mod
+        from opencode_rank.auth import save_key
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.dict(os.environ, self._home(tmp), clear=True):
+                save_key("oc_sk_file")
+                with mock.patch.object(
+                        cli_mod, "fetch_live",
+                        return_value={"zen": {"m-live"},
+                                      "go": set()}) as live:
+                    code, out = self._run("--data", tmp, "models")
+        self.assertEqual(code, 0)
+        self.assertTrue(live.called)
+        self.assertIn("m-live", out)

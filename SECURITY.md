@@ -2,20 +2,32 @@
 
 ## What the tool touches
 
-`opencode-rank` is an offline-first console tool: every command except two
-runs entirely on data committed in this repository.
+`opencode-rank` is an offline-first console tool: everything except the
+rows marked yes below runs entirely on data already on disk.
 
 | command | network | destination |
 |---|---|---|
-| `fetch` | yes, one sequential pass | `opencode.ai/data` model records, the Console tier docs for pricing snapshots, the Terminal-Bench 4.0 board page (tbench.ai), swebench.com's leaderboard, and — with `OPENCODE_API_KEY` — the Console config API (live model set) plus the usage export (free-tier nominals) |
-| `models` | yes with `OPENCODE_API_KEY`, else no | the Console config API (live model set); the last snapshots offline |
+| `fetch` | yes, one sequential pass | `opencode.ai/data` model records, the Console tier docs for pricing snapshots, the Terminal-Bench 4.0 board page (tbench.ai), swebench.com's leaderboard, and — with a key — the Console config API (live model set) plus the usage export (free-tier nominals) |
+| `models` | yes with a key, else no | the Console config API (live model set); the last snapshots offline |
+| `list`, `next` | yes with a key, else no | the Console config API (live model set, recorded on the way) |
+| `auth` | yes, one verification call | the Console config API (key validity check only) |
 | `scores --refresh` | yes | the Hugging Face `datasets-server` copy of the arena Elo table |
-| everything else (`list`, `scores`, `models`, `conflicts`) | **no** | — |
+| everything else (`scores`, `overrides`, `conflicts`) | **no** | — |
 
-No credentials, tokens, cookies or telemetry are involved, and nothing the
-tool computes ever leaves the machine. There is no dependency tree to
-supply-chain: the package is stdlib-only, so `uv tool install .` resolves
-nothing at runtime.
+## The service-account key
+
+Key-gated commands read `OPENCODE_API_KEY` from the environment first
+and fall back to `~/.config/opencode-rank/api_key`. `auth` writes that
+file: the key is prompted without echo, never printed back, and the
+file is created (or tightened) to owner-only access (`0600`). The key
+travels only as an `Authorization: Bearer` header to `opencode.ai` —
+every request carries the `opencode-rank` user agent and a 30-second
+timeout — and it is never written to fetched data, logs, or output.
+
+No cookies or telemetry are involved, and nothing the tool computes
+ever leaves the machine. There is no dependency tree to supply-chain:
+the package is stdlib-only, so `uv tool install .` resolves nothing at
+runtime.
 
 ## Scraper etiquette
 

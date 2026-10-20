@@ -144,6 +144,56 @@ class ApplyTest(unittest.TestCase):
         self.assertEqual(model.scores["SWE-Bench Verified"], 74.0)
         self.assertFalse(conflicts[0].override_wins)
 
+    def test_a_losing_override_leaves_the_kept_value_source_untouched(self):
+        upstream_source = "https://artificialanalysis.ai/models/m"
+        override = {
+            "benchmarks": [
+                {
+                    "name": "SWE-Bench",
+                    "version": "Verified",
+                    "score": 99.0,
+                    "source": "https://random-blog.example/post",
+                }
+            ]
+        }
+        model, conflicts = apply(
+            _m(
+                "a/m",
+                {"SWE-Bench Verified": 74.0},
+                {"SWE-Bench Verified": upstream_source},
+            ),
+            override,
+        )
+        self.assertEqual(model.scores["SWE-Bench Verified"], 74.0)
+        self.assertEqual(model.sources["SWE-Bench Verified"], upstream_source)
+        self.assertFalse(conflicts[0].override_wins)
+
+    def test_a_winning_override_updates_value_and_source(self):
+        override = {
+            "benchmarks": [
+                {
+                    "name": "Terminal-Bench",
+                    "version": "4.0",
+                    "score": 33.0,
+                    "source": "https://artificialanalysis.ai/models/grok-4-7",
+                }
+            ]
+        }
+        model, conflicts = apply(
+            _m(
+                "xai/grok-4.7",
+                {"Terminal-Bench 4.0": 37.6},
+                {"Terminal-Bench 4.0": "https://x.ai/news/grok-4-7"},
+            ),
+            override,
+        )
+        self.assertEqual(model.scores["Terminal-Bench 4.0"], 33.0)
+        self.assertEqual(
+            model.sources["Terminal-Bench 4.0"],
+            "https://artificialanalysis.ai/models/grok-4-7",
+        )
+        self.assertTrue(conflicts[0].override_wins)
+
     def test_agreeing_values_conflict_about_nothing(self):
         override = {
             "benchmarks": [

@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 
 from .data import Model
+from .identity import canonical_id
 from .pricing import nominal_free_rate, variant_of, weighted_cost
 from .scoring import combined, derived_scores, scales, tracked
 
@@ -470,7 +471,7 @@ def _take_banded(free: list[Row], paid: list[Row], want: int) -> list[Row]:
         if row is None:
             break
         taken.append(row)
-        seen.add(row.model.model_id)
+        seen.add(canonical_id(row.model.model_id))
         previous = plans_of(row)
     return taken
 
@@ -478,7 +479,7 @@ def _take_banded(free: list[Row], paid: list[Row], want: int) -> list[Row]:
 def _first_unseen(pool: list[Row], seen: set[str]) -> Row | None:
     """The strongest row in *pool* for a model not yet recommended."""
     for row in pool:
-        if row.model.model_id not in seen:
+        if canonical_id(row.model.model_id) not in seen:
             return row
     return None
 
@@ -490,7 +491,10 @@ def _off_plan(pool: list[Row], seen: set[str], previous: set[str]) -> Row | None
     through to the strongest row outright.
     """
     for row in pool:
-        if row.model.model_id not in seen and not plans_of(row) & previous:
+        if (
+            canonical_id(row.model.model_id) not in seen
+            and not plans_of(row) & previous
+        ):
             return row
     return None
 
@@ -511,9 +515,9 @@ def _take(ordered: list[Row], want: int) -> list[Row]:
     seen: set[str] = set()
     unique: list[Row] = []
     for row in remaining:
-        if row.model.model_id in seen:
+        if canonical_id(row.model.model_id) in seen:
             continue
-        seen.add(row.model.model_id)
+        seen.add(canonical_id(row.model.model_id))
         unique.append(row)
     remaining = unique
     plans = sorted(

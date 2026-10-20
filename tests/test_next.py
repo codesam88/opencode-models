@@ -335,6 +335,32 @@ class NextUpTest(unittest.TestCase):
         picks = next_up(rows, count=4)
         self.assertEqual([p.name for p in picks], ["f1", "p1", "f2", "f3"])
 
+    def test_alias_twins_take_one_slot_not_two(self):
+        # meta/muse-spark-1.3 and its -contributor designation are the same
+        # model on two plans; canonical dedupe must collapse them to one
+        # recommendation slot, so three rows (an aliased pair plus one other)
+        # yield two picks, and the cheaper free line survives
+        rows = [
+            _row(
+                "meta/muse-spark-1.3-contributor",
+                88.0,
+                0.0,
+                BAND_FREE,
+                provider="zen",
+            ),
+            _row(
+                "meta/muse-spark-1.3",
+                88.0,
+                6.0,
+                BAND_INCLUDED,
+                provider="go",
+            ),
+            _row("z/other", 80.0, 2.0, BAND_INCLUDED, provider="go"),
+        ]
+        picks = next_up(rows, count=4)
+        self.assertEqual(len(picks), 2)
+        self.assertTrue(picks[0].free)
+
 
 if __name__ == "__main__":
     unittest.main()

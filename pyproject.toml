@@ -1,5 +1,5 @@
 [project]
-name = "opencode-rank"
+name = "opencode-models"
 version = "0.1.0"
 description = "Ranked console of AI models: benchmark scores against real per-token prices"
 readme = "README.md"
@@ -20,19 +20,19 @@ classifiers = [
 dependencies = []
 
 [project.urls]
-Homepage = "https://github.com/codesam88/opencode-rank"
-Repository = "https://github.com/codesam88/opencode-rank"
-Issues = "https://github.com/codesam88/opencode-rank/issues"
+Homepage = "https://github.com/codesam88/opencode-models"
+Repository = "https://github.com/codesam88/opencode-models"
+Issues = "https://github.com/codesam88/opencode-models/issues"
 
 [project.scripts]
-opencode-rank = "opencode_rank.cli:main"
+opencode-models = "opencode_models.cli:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["opencode_rank"]
+packages = ["opencode_models"]
 
 [dependency-groups]
 dev = [

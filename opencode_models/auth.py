@@ -15,7 +15,7 @@ from pathlib import Path
 def key_file() -> Path:
     """Where the saved key lives (XDG config home, per user)."""
     base = os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config"
-    return Path(base) / "opencode-rank" / "api_key"
+    return Path(base) / "opencode-models" / "api_key"
 
 
 def save_key(key: str) -> Path:

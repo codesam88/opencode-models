@@ -2,7 +2,7 @@
 
 What we know about the two billing products, and where each number can be
 read from. Everything here was checked against the live sites and the
-`opencode-rank` data on **2026-10-12**; each section says how it was
+`opencode-models` data on **2026-10-12**; each section says how it was
 verified. Prices and limits change without notice — treat the docs links as
 the authority and this file as a reading of them.
 

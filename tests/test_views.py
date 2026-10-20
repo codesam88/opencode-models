@@ -15,12 +15,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from opencode_rank.cli import main
+from opencode_models.cli import main
 
 #: Hermetic fixtures: keep a saved user key (or env key) from sending
 #: `list`/`next` to the live API and filtering the fixtures away.
 os.environ.pop("OPENCODE_API_KEY", None)
-os.environ["XDG_CONFIG_HOME"] = tempfile.mkdtemp(prefix="opencode-rank-test-home-")
+os.environ["XDG_CONFIG_HOME"] = tempfile.mkdtemp(prefix="opencode-models-test-home-")
 
 
 def _doc(mid, price, benches):
@@ -339,7 +339,7 @@ class NextViewContract(unittest.TestCase):
     COLUMNS = ["#", "PLAN", "SCORE", "¢/1M", "SCORE/$", "ENDPOINT", "BAND"]
 
     def test_columns(self):
-        import opencode_rank.sources as sources
+        import opencode_models.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
             _grid(tmp)
@@ -354,7 +354,7 @@ class NextViewContract(unittest.TestCase):
         self.assertEqual(head.split(), self.COLUMNS)
 
     def test_picks_stay_within_a_quarter_of_the_best(self):
-        import opencode_rank.sources as sources
+        import opencode_models.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
             _grid(tmp)
@@ -419,8 +419,8 @@ class NextTableContract(unittest.TestCase):
     COLUMNS = ["#", "PLAN", "SCORE", "¢/1M", "SCORE/$", "ENDPOINT", "BAND"]
 
     def _row(self, name, provider, score, price, free=False):
-        from opencode_rank.data import Model
-        from opencode_rank.ranking import Row
+        from opencode_models.data import Model
+        from opencode_models.ranking import Row
 
         model = Model(
             model_id=f"l/{name}",
@@ -445,7 +445,7 @@ class NextTableContract(unittest.TestCase):
         )
 
     def _table(self, picks):
-        from opencode_rank.cli import _next_table
+        from opencode_models.cli import _next_table
 
         return _next_table(picks)
 

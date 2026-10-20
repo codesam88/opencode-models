@@ -14,9 +14,9 @@ fi
 # 2. Lint + format via the project's own venv (installed by `just bootstrap`).
 # Missing venv is not a failure: warn and let CI be the backstop.
 if command -v uv >/dev/null 2>&1 && uv run --no-sync ruff --version >/dev/null 2>&1; then
-    uv run --no-sync ruff check opencode_rank tests || exit 1
-    uv run --no-sync ruff format --check opencode_rank tests || {
-        echo "pre-commit: run 'just lint' (or 'uv run ruff format opencode_rank tests') and re-stage" >&2
+    uv run --no-sync ruff check opencode_models tests || exit 1
+    uv run --no-sync ruff format --check opencode_models tests || {
+        echo "pre-commit: run 'just lint' (or 'uv run ruff format opencode_models tests') and re-stage" >&2
         exit 1
     }
 else

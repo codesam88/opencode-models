@@ -1,6 +1,6 @@
 ---
 name: backfill-scores
-description: Use when an opencode-rank model has only one scored benchmark and is therefore unranked, or when asked to find, research or add benchmark numbers — covers where to look, which sources are actually scrapable, how to write a data/overrides JSON file, and how to verify it landed.
+description: Use when an opencode-models model has only one scored benchmark and is therefore unranked, or when asked to find, research or add benchmark numbers — covers where to look, which sources are actually scrapable, how to write a data/overrides JSON file, and how to verify it landed.
 ---
 
 # Backfilling missing benchmark scores
@@ -28,10 +28,10 @@ The target list is models that are **listed in a Zen or Go plan** and carry
 ```sh
 PYTHONPATH=. uv run python -c "
 from pathlib import Path
-from opencode_rank.cli import _load
-from opencode_rank.scoring import scales, derived_scores, canonical, _TRACKED
-from opencode_rank.availability import load_available, offered
-from opencode_rank import sources
+from opencode_models.cli import _load
+from opencode_models.scoring import scales, derived_scores, canonical, _TRACKED
+from opencode_models.availability import load_available, offered
+from opencode_models import sources
 
 models, *_ = _load(Path('data'))
 table = scales(models)
@@ -61,7 +61,7 @@ Coverage per benchmark, for a wider view — the `scores` command prints one
 column per benchmark with model counts:
 
 ```sh
-uv run opencode-rank --data data scores
+uv run opencode-models --data data scores
 ```
 
 Filter that list down before spending time on it: an unreleased model or a
@@ -84,7 +84,7 @@ for name in ('tbench', 'swebench'):
 "
 ```
 
-Those two boards are fetched by `opencode-rank fetch` and merged by tier. Do
+Those two boards are fetched by `opencode-models fetch` and merged by tier. Do
 not hand-copy a number that is already in there.
 
 **Checked and empty for the thin models (2026-10).** Of the 26 Zen/Go models
@@ -112,7 +112,7 @@ spaces. A plain-space search misses all three and reports a false negative.
 python3 - <<'EOF'
 import re, subprocess, unicodedata
 html = subprocess.run(["curl", "-sL", "--max-time", "30",
-                       "-H", "User-Agent: opencode-rank/0.1", URL],
+                       "-H", "User-Agent: opencode-models/0.1", URL],
                       capture_output=True, text=True).stdout
 for a, b in (("\u2011", "-"), ("\u00a0", " "), ("\u2122", ""), ("\u00ae", "")):
     html = html.replace(a, b)
@@ -154,7 +154,7 @@ model is unbenchmarked, exactly as LongCat-2.5-Preview was.
 
 | source | how | notes |
 |---|---|---|
-| **Hugging Face datasets-server** | `https://datasets-server.huggingface.co/rows?dataset=<org>/<name>&config=…&split=…&offset=0&length=100` | public JSON, no auth. Already used: `opencode-rank fetch` reads arena Elo from `openaccess-ai-collective/chatbot-arena-elo-scores` (fields `elo_score`, `chatbot_name`) |
+| **Hugging Face datasets-server** | `https://datasets-server.huggingface.co/rows?dataset=<org>/<name>&config=…&split=…&offset=0&length=100` | public JSON, no auth. Already used: `opencode-models fetch` reads arena Elo from `openaccess-ai-collective/chatbot-arena-elo-scores` (fields `elo_score`, `chatbot_name`) |
 | **Terminal-Bench 4.0 board** | `https://www.tbench.ai/leaderboard/terminal-bench/4.0` | parsed by `fetch`; per row: accuracy ± CI95, agent, reasoning effort, date, rank |
 | **SWE-bench** | `https://www.swebench.com/` | parsed by `fetch`; subsets Verified, Multilingual, Multimodal, Lite; `checked` entries only |
 | **aider polyglot** | `https://aider.chat/docs/leaderboards/` | a plain `<tr>` table — but its newest entry is GPT-5-era (Aug 2025), so only use it for older models, never for ranking current ones |
@@ -258,8 +258,8 @@ tier decides the outcome anyway.
 
 ```sh
 just test                                    # guard tests read the real files
-uv run opencode-rank --data data conflicts   # did it apply, or just get noted?
-uv run opencode-rank --data data list --benchmark "Terminal-Bench 2.1"
+uv run opencode-models --data data conflicts   # did it apply, or just get noted?
+uv run opencode-models --data data list --benchmark "Terminal-Bench 2.1"
 ```
 
 What to look for:
@@ -278,7 +278,7 @@ is the tier: a vendor number cannot displace an independent one.
 
 ## Etiquette
 
-One sequential pass per source, real `User-Agent: opencode-rank/0.1`, 30s
+One sequential pass per source, real `User-Agent: opencode-models/0.1`, 30s
 timeouts. No credentials, no telemetry, no scraping a source that asks not
 to be scraped. A board that publishes a JSON API is meant to be read; a
 social feed is meant to be read by a person.

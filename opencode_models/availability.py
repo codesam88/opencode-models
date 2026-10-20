@@ -1,6 +1,6 @@
 """Which models the plans actually offer right now.
 
-The membership lists under ``opencode_rank/sources/`` are committed text,
+The membership lists under ``opencode_models/sources/`` are committed text,
 hand-maintained, and they drift in both directions: a model the provider
 unlisted stays in the list, and a newly offered model is missing from it. In
 the live data 13 Go slugs were still being offered to the console after the

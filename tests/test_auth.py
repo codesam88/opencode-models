@@ -12,7 +12,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from opencode_rank.auth import key_file, load_key, save_key
+from opencode_models.auth import key_file, load_key, save_key
 
 
 class KeyFileTest(unittest.TestCase):
@@ -23,7 +23,7 @@ class KeyFileTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             with mock.patch.dict(os.environ, self._home(tmp), clear=True):
                 self.assertEqual(
-                    key_file(), Path(tmp) / "config" / "opencode-rank" / "api_key"
+                    key_file(), Path(tmp) / "config" / "opencode-models" / "api_key"
                 )
 
     def test_save_creates_an_owner_only_file(self):

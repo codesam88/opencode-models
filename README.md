@@ -1,4 +1,4 @@
-# opencode-rank
+# opencode-models
 
 Price/score Pareto frontier of AI models, from the
 [opencode.ai/data](https://opencode.ai/data) catalog.
@@ -19,9 +19,12 @@ The tool is stdlib-only and installs with anything that understands Python
 packages — [uv](https://docs.astral.sh/uv/) is the recommended path:
 
 ```sh
-uv tool install .            # install the `opencode-rank` binary to $PATH
-uvx --from . opencode-rank   # or run it once without installing
+uv tool install .            # install the `opencode-models` binary to $PATH
+uvx --from . opencode-models   # or run it once without installing
 ```
+
+The name is longer than it needs to be for daily typing; a shell
+alias fixes that in one line, e.g. `alias ocm=opencode-models`.
 
 `just install` does the same, then seeds the reference dataset into your
 user data dir: fetched layers copy missing files only, so a workspace's own
@@ -33,11 +36,11 @@ A fresh install has no data yet, so populate it once (this is the only
 network-touching command):
 
 ```sh
-opencode-rank fetch          # downloads into your user data dir
+opencode-models fetch          # downloads into your user data dir
 ```
 
 Data lives in `$OPENCODE_RANK_DATA`, else the XDG user data dir
-(`~/.local/share/opencode-rank`). Working from a checkout instead? Point at
+(`~/.local/share/opencode-models`). Working from a checkout instead? Point at
 the committed dataset with `--data data` (or `OPENCODE_RANK_DATA=data`).
 
 For development, `uv sync` creates the repo virtualenv; `just test`, `just
@@ -47,20 +50,20 @@ installing anything.
 ## Usage
 
 ```sh
-opencode-rank fetch                     # refresh the data from opencode.ai
-opencode-rank fetch --all                 # also re-download unoffered models
-opencode-rank models                   # the models the plans offer, per tier
-opencode-rank auth                     # save the Console key (prompted, owner-only)
-opencode-rank overrides                 # every number more than one source reports
-opencode-rank list                      # both providers merged, best value
-opencode-rank list --tables all         # also worst-score and highest-cost
-opencode-rank list --source zen         # one provider only
-opencode-rank list --source all --benchmark "SWE-Bench Verified"
-opencode-rank list --all-models                # include models a plan has dropped
-opencode-rank scores --all-models              # the whole catalog, not just offered
-opencode-rank next                      # the next 4 models to use, in order
-opencode-rank next --count 6 --source go
-opencode-rank scores                    # offered models, one column per benchmark
+opencode-models fetch                     # refresh the data from opencode.ai
+opencode-models fetch --all                 # also re-download unoffered models
+opencode-models models                   # the models the plans offer, per tier
+opencode-models auth                     # save the Console key (prompted, owner-only)
+opencode-models overrides                 # every number more than one source reports
+opencode-models list                      # both providers merged, best value
+opencode-models list --tables all         # also worst-score and highest-cost
+opencode-models list --source zen         # one provider only
+opencode-models list --source all --benchmark "SWE-Bench Verified"
+opencode-models list --all-models                # include models a plan has dropped
+opencode-models scores --all-models              # the whole catalog, not just offered
+opencode-models next                      # the next 4 models to use, in order
+opencode-models next --count 6 --source go
+opencode-models scores                    # offered models, one column per benchmark
 ```
 
 `next` answers the narrower question "what should I reach for next?". It
@@ -156,7 +159,7 @@ the weakest on provenance: all 29 numbers are vendor self-reports, and no
 board runs it, so it can never set the ends of its own scale. What it does is
 supply the second axis for models that have nothing else: nine of the 25
 offered models sitting on a single benchmark carry it, and admitting it takes
-the scored field from 36 models to 45. `opencode-rank scores` names that
+the scored field from 36 models to 45. `opencode-models scores` names that
 group explicitly — "N on one benchmark" — so a thin row is never presented as
 a ranked one.
 
@@ -208,7 +211,7 @@ lowest is 0, and distances are proportionate and linear — and a model's
 score is the **median** of the scales it has.
 
 The median, not the mean: coverage here is wildly uneven, and one bad result
-must not bury a model that is strong on everything else. `opencode-rank
+must not bury a model that is strong on everything else. `opencode-models
 scores` gives each of those benchmarks its own column and shows the raw
 number beside where it lands, so the arithmetic is checkable:
 
@@ -285,7 +288,7 @@ like any other cost instead of going infinite, and the value column prints
 that division — the cheapest free models read highest. They are *shown*
 with an actual `0` price: the nominal price never reaches the cost column.
 
-Tier membership lists ship in `opencode_rank/sources/` as slug files scraped
+Tier membership lists ship in `opencode_models/sources/` as slug files scraped
 from the tier pages; doc-calibrated prices are snapshotted in
 `data/tier_prices/` and refreshed by `fetch` (nothing else fetches docs).
 Refresh the slugs manually when the tiers change.
@@ -302,7 +305,7 @@ Go's per-model dollar limits and windows — is in [LIMITS.md](LIMITS.md).
 
 `data/` is split by who writes it — and **the scraped layers are fetched, not
 committed**. They are third-party records, they go stale, and they are large;
-`opencode-rank fetch` populates them into your data directory, and a private
+`opencode-models fetch` populates them into your data directory, and a private
 `local-data` branch keeps a committed copy for offline work (see below).
 
 | directory | contents | written by | in the repo? |
@@ -319,7 +322,7 @@ committed**. They are third-party records, they go stale, and they are large;
 
 Providers unlist models and move them between plans, so "which models can I
 use" is a fact about today, not a property of the codebase. It used to come
-from committed text files — `opencode_rank/sources/zen.txt` and `go.txt` —
+from committed text files — `opencode_models/sources/zen.txt` and `go.txt` —
 which are hand-maintained and drifted in both directions. In the live data 13
 Go models were still being listed, scored and recommended after the provider's
 own documentation had stopped listing them, among them `hy3-preview` and
@@ -329,8 +332,8 @@ own documentation had stopped listing them, among them `hy3-preview` and
 docs go stale — providers unlist models the pages still name, and list new
 ones the pages do not. So availability now comes from the Console config
 API (`/api/v2/config`, the workspace's live model set), snapshotted to
-`data/available/` on every keyed `fetch` (`opencode_rank/live.py`). The
-docs snapshot stays the offline fallback, and `opencode-rank models`
+`data/available/` on every keyed `fetch` (`opencode_models/live.py`). The
+docs snapshot stays the offline fallback, and `opencode-models models`
 prints whichever record is in force as one sorted table: the endpoint
 (as `next` shows it, preferring Go where both plans list the model)
 beside the display name (as `list` shows it, `—` where the catalog has
@@ -403,7 +406,7 @@ board *is* static HTML but was dropped as stale and redundant: its newest
 entry is GPT-5-era (Aug 2025), and diff-editing is already covered by
 SWE-bench and Terminal-Bench.
 
-Working from a checkout: `just run fetch` (or `opencode-rank fetch`) once, then the
+Working from a checkout: `just run fetch` (or `opencode-models fetch`) once, then the
 `--data data` recipes work. If you want the dataset committed rather than
 fetched, use the `local-data` branch — it is intentionally never pushed.
 

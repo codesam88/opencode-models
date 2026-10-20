@@ -2,8 +2,8 @@
 
 import unittest
 
-from opencode_rank.data import Model
-from opencode_rank.scoring import (
+from opencode_models.data import Model
+from opencode_models.scoring import (
     NEUTRAL,
     canonical,
     combined,

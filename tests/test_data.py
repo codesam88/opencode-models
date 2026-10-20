@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from opencode_rank.data import Model, load_model, load_models
+from opencode_models.data import Model, load_model, load_models
 
 SAMPLE = {
     "page": "https://opencode.ai/data/deepseek/deepseek-v4-pro",

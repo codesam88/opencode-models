@@ -3,6 +3,6 @@
 from importlib.metadata import PackageNotFoundError, version
 
 try:
-    __version__ = version("opencode-rank")
+    __version__ = version("opencode-models")
 except PackageNotFoundError:  # bare checkout without an install
     __version__ = "0.0.0+unknown"

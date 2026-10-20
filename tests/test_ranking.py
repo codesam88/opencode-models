@@ -2,9 +2,9 @@
 
 import unittest
 
-from opencode_rank.data import Model
-from opencode_rank.pricing import PriceEntry
-from opencode_rank.ranking import (
+from opencode_models.data import Model
+from opencode_models.pricing import PriceEntry
+from opencode_models.ranking import (
     Row,
     axis_scores,
     build_rows,
@@ -101,7 +101,7 @@ class RowBuildingTest(unittest.TestCase):
         # not a tenth of the cheapest real price: free models are not equally
         # expensive to serve, so each carries its own nominal rate instead of
         # sharing one. Unknown models get the anchor rate.
-        from opencode_rank.pricing import FREE_TIER_DEFAULT_RATE
+        from opencode_models.pricing import FREE_TIER_DEFAULT_RATE
 
         models = [_m("lab/paid", 1.0, tb=50.0), _m("lab/gift", 5.0, tb=40.0)]
         entries = [
@@ -358,7 +358,7 @@ class MergeTest(unittest.TestCase):
     def test_a_free_line_keeps_its_nominal_rate_across_providers(self):
         # the nominal rate is per-model rather than per-group, so merging
         # zen and go changes nothing about what a free line costs
-        from opencode_rank.pricing import FREE_TIER_DEFAULT_RATE
+        from opencode_models.pricing import FREE_TIER_DEFAULT_RATE
 
         zen = build_rows(
             [_m("l/zfree", 5.0, tb=40.0)],
@@ -694,7 +694,7 @@ def _rows(scores_and_prices):
     """Rows with set scores, for grading without building anything."""
     from dataclasses import replace
 
-    from opencode_rank.data import Model
+    from opencode_models.data import Model
 
     rows = []
     for i, (score, price) in enumerate(scores_and_prices):

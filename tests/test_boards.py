@@ -4,7 +4,7 @@ import json
 import unittest
 from pathlib import Path
 
-from opencode_rank.boards import (
+from opencode_models.boards import (
     SWE_URL,
     BoardRow,
     fetch_boards,
@@ -230,7 +230,7 @@ class MatchModelTest(unittest.TestCase):
     """Board display names must meet catalog ids without guessing."""
 
     def _models(self, *ids):
-        from opencode_rank.data import Model
+        from opencode_models.data import Model
 
         return [
             Model(
@@ -245,7 +245,7 @@ class MatchModelTest(unittest.TestCase):
         ]
 
     def _row(self, name, org=None):
-        from opencode_rank.boards import BoardRow
+        from opencode_models.boards import BoardRow
 
         return BoardRow(
             benchmark="Terminal-Bench 4.0",
@@ -330,7 +330,7 @@ class MergeBoardsTest(unittest.TestCase):
     """Official boards replace self-reported numbers, not better ones."""
 
     def _models(self, *ids):
-        from opencode_rank.data import Model
+        from opencode_models.data import Model
 
         return [
             Model(
@@ -558,7 +558,7 @@ class ModelNameTest(unittest.TestCase):
     """
 
     def _models(self):
-        from opencode_rank.data import Model
+        from opencode_models.data import Model
 
         rows = [
             ("anthropic/claude-sonnet-4-0", "Claude Sonnet 4 (latest)"),
@@ -639,7 +639,7 @@ class LabelMapTest(unittest.TestCase):
         )
 
     def _models(self):
-        from opencode_rank.data import Model
+        from opencode_models.data import Model
 
         rows = [
             ("openai/gpt-3.5-turbo", "GPT-3.5-turbo"),
@@ -676,7 +676,7 @@ class LabelMapTest(unittest.TestCase):
         self.assertIsNone(match_model(elsewhere, self._models()))
 
     def test_a_mapped_label_reaches_every_row_of_the_model(self):
-        from opencode_rank.labelmap import LABEL_MAPS
+        from opencode_models.labelmap import LABEL_MAPS
 
         LABEL_MAPS.setdefault("www.tbench.ai", {})["Opus 4.5"] = (
             "anthropic/claude-opus-4-5"
@@ -691,7 +691,7 @@ class LabelMapTest(unittest.TestCase):
             LABEL_MAPS["www.tbench.ai"].pop("Opus 4.5")
 
     def test_a_mapping_to_a_model_the_catalog_lost_is_ignored(self):
-        from opencode_rank.labelmap import LABEL_MAPS
+        from opencode_models.labelmap import LABEL_MAPS
 
         LABEL_MAPS.setdefault("www.swebench.com", {})["Ghost"] = "nobody/ghost-model"
         try:
@@ -701,8 +701,8 @@ class LabelMapTest(unittest.TestCase):
 
     def test_every_recorded_id_exists_in_the_real_catalog(self):
 
-        from opencode_rank.data import load_models
-        from opencode_rank.labelmap import LABEL_MAPS
+        from opencode_models.data import load_models
+        from opencode_models.labelmap import LABEL_MAPS
 
         ids = {m.model_id for m in load_models(Path("data/opencode"))}
         if not ids:  # no dataset fetched: nothing to check

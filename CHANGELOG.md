@@ -7,14 +7,19 @@ CONTRIBUTING.md ("Releasing") for the checklist.
 
 ## [Unreleased]
 
+### Changed
+- Project renamed `opencode-rank` → `opencode-models` (distribution,
+  console binary, importable package, and the XDG config/data dirs)
+  ahead of the first public release.
+
 ### Added
-- `opencode-rank --version` reports the installed package version, and
+- `opencode-models --version` reports the installed package version, and
   the same version is sent as the HTTP `User-Agent` on every request
   (previously a hardcoded `0.1` that drifted from the package version).
-- `opencode-rank models`: lists the models each plan offers right now as
+- `opencode-models models`: lists the models each plan offers right now as
   endpoints beside display names — live from the Console config API with
   `OPENCODE_API_KEY`, else the last `fetch` snapshots (recorded on the way).
-- `opencode-rank auth`: saves the Console service-account key to an
+- `opencode-models auth`: saves the Console service-account key to an
   owner-only file instead of requiring it in the environment every time.
 - `next` interleaves free and paid picks and defaults to 6 recommendations.
 - `list` shows nominal score-per-dollar for free lines instead of the word

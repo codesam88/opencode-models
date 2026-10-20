@@ -9,8 +9,8 @@ allowance before touching the other.
 import unittest
 from dataclasses import replace
 
-from opencode_rank.data import Model
-from opencode_rank.ranking import BAND_FREE, BAND_INCLUDED, BAND_PAYG, Row, next_up
+from opencode_models.data import Model
+from opencode_models.ranking import BAND_FREE, BAND_INCLUDED, BAND_PAYG, Row, next_up
 
 
 def _model(mid, scores=None):

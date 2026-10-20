@@ -2,12 +2,12 @@
 
 import unittest
 
-from opencode_rank.pareto import frontier
+from opencode_models.pareto import frontier
 
 
 def _m(model_id, price, score):
     """Minimal Model-shaped object for frontier input."""
-    from opencode_rank.data import Model
+    from opencode_models.data import Model
 
     return Model(
         model_id=model_id,

@@ -18,7 +18,7 @@ the *exception list*: labels the matcher places by name or by unique token
 overlap are not listed, because there is nothing to decide. When one appears
 here it is because a human looked at the candidates and made a call.
 
-To add an entry: run ``opencode-rank boards``-style analysis (see the
+To add an entry: run ``opencode-models boards``-style analysis (see the
 backfill-scores skill), find the label the matcher cannot place, look at its
 candidates, and write down the one you mean. If the candidates are genuinely
 different models, leave the label out — an absent label is dropped on
@@ -29,7 +29,7 @@ from __future__ import annotations
 
 #: Board source host → {label as the board writes it: catalog model id}.
 #: Ids are the canonical ones; a dated snapshot beside them is reached
-#: through :func:`~opencode_rank.boards.match_models`, which returns every
+#: through :func:`~opencode_models.boards.match_models`, which returns every
 #: row of the matched model.
 LABEL_MAPS: dict[str, dict[str, str]] = {
     # Terminal-Bench drops the vendor prefix: "Opus 5.5", not "Claude".

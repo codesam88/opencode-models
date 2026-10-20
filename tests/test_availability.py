@@ -1,6 +1,6 @@
 """Which models the plans actually offer, as the provider's own snapshot says.
 
-The shipped slug lists under ``opencode_rank/sources/`` are hand-maintained
+The shipped slug lists under ``opencode_models/sources/`` are hand-maintained
 and drift: providers unlist models and move them between plans, and a model
 that is no longer offered is still displayed, scored and recommended as if it
 were. The tier pricing snapshot that ``fetch`` writes is the provider's own
@@ -12,7 +12,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from opencode_rank.availability import (
+from opencode_models.availability import (
     _snapshot_ids,
     available_ids,
     load_available,
@@ -114,7 +114,7 @@ class AvailabilityTest(unittest.TestCase):
             self.assertEqual(_snapshot_ids(d, "zen"), {"m1"})
 
     def test_it_reports_what_the_provider_has_dropped(self):
-        from opencode_rank import sources
+        from opencode_models import sources
 
         real = sources.load_source
         sources.load_source = lambda tier: {"m1", "m2"}
@@ -138,7 +138,7 @@ class AvailabilityTest(unittest.TestCase):
         # the base slug ("stepfun/step-5-preview"): exact matching drops the
         # model from the pool entirely, which is how every free row vanished
         # from the list view
-        from opencode_rank.availability import offered
+        from opencode_models.availability import offered
 
         ids = {"step-5-preview-free", "m1"}
         self.assertTrue(offered("stepfun/step-5-preview", ids))
@@ -152,7 +152,7 @@ if __name__ == "__main__":
 
 class LivePrecedenceTest(unittest.TestCase):
     def test_the_live_snapshot_wins_over_the_docs_snapshot(self):
-        from opencode_rank.live import save_live
+        from opencode_models.live import save_live
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)

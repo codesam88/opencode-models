@@ -29,7 +29,7 @@ def http_get(url: str) -> str:
     GC time. No caller reads error bodies, so nothing is lost.
     """
     req = urllib.request.Request(
-        url, headers={"User-Agent": f"opencode-rank/{__version__}"}
+        url, headers={"User-Agent": f"opencode-models/{__version__}"}
     )
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:

@@ -11,7 +11,7 @@ dist/
 !README.md
 
 # The scraped/fetched dataset is deliberately not in this branch's history:
-# `opencode-rank fetch` populates it, and the `local-data` branch keeps a
+# `opencode-models fetch` populates it, and the `local-data` branch keeps a
 # committed copy. The curated overlays in data/overrides/ ARE tracked.
 data/opencode/
 data/tier_prices/

@@ -2,7 +2,7 @@
 
 Usage::
 
-    python3 -m opencode_rank fetch            # refresh data/ from opencode.ai
+    python3 -m opencode_models fetch            # refresh data/ from opencode.ai
 
 Exit codes: 0 success, 1 usage or data error (message on stdout).
 """
@@ -63,7 +63,7 @@ from .scoring import (
 from .tables import column_widths, format_row, render
 
 #: Where the data lives for an installed tool: $OPENCODE_RANK_DATA, else the
-#: XDG user-data dir (~/.local/share/opencode-rank). `fetch` populates it and
+#: XDG user-data dir (~/.local/share/opencode-models). `fetch` populates it and
 #: every other command reads it; a repo checkout passes --data ./data.
 DATA_ENV = "OPENCODE_RANK_DATA"
 
@@ -75,7 +75,7 @@ def default_data_dir() -> Path:
         return Path(env)
     xdg = os.environ.get("XDG_DATA_HOME")
     base = Path(xdg) if xdg else Path.home() / ".local" / "share"
-    return base / "opencode-rank"
+    return base / "opencode-models"
 
 
 DEFAULT_DATA = default_data_dir()
@@ -250,7 +250,7 @@ def _api_get(key: str):
             url,
             headers={
                 "Authorization": f"Bearer {key}",
-                "User-Agent": f"opencode-rank/{__version__}",
+                "User-Agent": f"opencode-models/{__version__}",
             },
         )
         try:
@@ -1035,7 +1035,7 @@ def _cmd_next(args: argparse.Namespace) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        prog="opencode-rank",
+        prog="opencode-models",
         description="Price/score Pareto frontier of models from opencode.ai/data",
     )
     parser.add_argument(

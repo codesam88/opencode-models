@@ -2,7 +2,7 @@
 
 ## What the tool touches
 
-`opencode-rank` is an offline-first console tool: everything except the
+`opencode-models` is an offline-first console tool: everything except the
 rows marked yes below runs entirely on data already on disk.
 
 | command | network | destination |
@@ -16,11 +16,11 @@ rows marked yes below runs entirely on data already on disk.
 ## The service-account key
 
 Key-gated commands read `OPENCODE_API_KEY` from the environment first
-and fall back to `~/.config/opencode-rank/api_key`. `auth` writes that
+and fall back to `~/.config/opencode-models/api_key`. `auth` writes that
 file: the key is prompted without echo, never printed back, and the
 file is created (or tightened) to owner-only access (`0600`). The key
 travels only as an `Authorization: Bearer` header to `opencode.ai` —
-every request carries the `opencode-rank` user agent and a 30-second
+every request carries the `opencode-models` user agent and a 30-second
 timeout — and it is never written to fetched data, logs, or output.
 
 No cookies or telemetry are involved, and nothing the tool computes
@@ -31,7 +31,7 @@ runtime. Developer tooling (the ruff linter/formatter) lives in the locked
 
 ## Scraper etiquette
 
-`fetch` identifies itself with a real user agent (`opencode-rank/<version>`),
+`fetch` identifies itself with a real user agent (`opencode-models/<version>`),
 uses a 30-second timeout per request, and walks the sitemap once rather than
 probing. Run it rarely; the data directory is the cache.
 

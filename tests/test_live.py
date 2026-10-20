@@ -10,7 +10,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from opencode_rank.live import fetch_live, load_live, save_live
+from opencode_models.live import fetch_live, load_live, save_live
 
 PAYLOAD = {
     "providers": {

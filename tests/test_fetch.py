@@ -7,7 +7,7 @@ import unittest
 import urllib.error
 from pathlib import Path
 
-from opencode_rank.fetch import SITEMAP_URL, refresh, urls_from_sitemap
+from opencode_models.fetch import SITEMAP_URL, refresh, urls_from_sitemap
 
 SITEMAP_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -202,7 +202,7 @@ class TransportHygieneTest(unittest.TestCase):
         import warnings
         from unittest import mock
 
-        from opencode_rank.fetch import http_get
+        from opencode_models.fetch import http_get
 
         def boom(req, timeout=None):
             raise urllib.error.HTTPError(
@@ -230,7 +230,7 @@ class TransportHygieneTest(unittest.TestCase):
         from importlib.metadata import version as pkg_version
         from unittest import mock
 
-        from opencode_rank.fetch import http_get
+        from opencode_models.fetch import http_get
 
         seen = {}
 
@@ -242,4 +242,4 @@ class TransportHygieneTest(unittest.TestCase):
             with self.assertRaises(urllib.error.HTTPError):
                 http_get("https://example.invalid/x")
         ua = next(v for k, v in seen["req"].header_items() if k.lower() == "user-agent")
-        self.assertEqual(ua, f"opencode-rank/{pkg_version('opencode-rank')}")
+        self.assertEqual(ua, f"opencode-models/{pkg_version('opencode-models')}")

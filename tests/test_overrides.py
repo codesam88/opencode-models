@@ -5,8 +5,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from opencode_rank.data import Model
-from opencode_rank.overrides import (
+from opencode_models.data import Model
+from opencode_models.overrides import (
     TIER_INDEPENDENT,
     TIER_OFFICIAL,
     TIER_SELF_REPORTED,
@@ -467,7 +467,7 @@ class OverrideRulesTest(unittest.TestCase):
             self.assertEqual(load_overrides(Path(d)), {})
 
     def test_an_entry_lands_under_its_own_key(self):
-        from opencode_rank.overrides import benchmark_key
+        from opencode_models.overrides import benchmark_key
 
         with tempfile.TemporaryDirectory() as d:
             found = self._write(Path(d), self._entry(score=88.4))
@@ -479,7 +479,7 @@ class OverrideRulesTest(unittest.TestCase):
 
     def test_an_entry_with_a_non_numeric_score_lands_nothing(self):
         # a half-filled entry is inert rather than wrong
-        from opencode_rank.overrides import benchmark_key
+        from opencode_models.overrides import benchmark_key
 
         with tempfile.TemporaryDirectory() as d:
             found = self._write(Path(d), self._entry(score="88.4"))

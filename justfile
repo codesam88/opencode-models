@@ -14,7 +14,7 @@ bootstrap:
 # overrides/ deploy so pushed curation reaches the installed tool
 install:
     uv tool install --force .
-    uv run --no-sync python -m opencode_rank.seed
+    uv run --no-sync python -m opencode_models.seed
 
 # Unit tests
 test:
@@ -22,12 +22,12 @@ test:
 
 # Lint, format check and complexity gate (ruff from the locked dev group)
 lint:
-    uv run --no-sync ruff check opencode_rank tests
-    uv run --no-sync ruff format --check opencode_rank tests
+    uv run --no-sync ruff check opencode_models tests
+    uv run --no-sync ruff format --check opencode_models tests
 
 # Full check: tests + the entry point resolving + a wheel build
 check: test
-    uv run --no-sync opencode-rank --help >/dev/null
+    uv run --no-sync opencode-models --help >/dev/null
     uv build
 
 # Local opsec sweep: tracked secret patterns (the '' splits keep this
@@ -38,4 +38,4 @@ audit:
 # Run the console against the checkout dataset, passing everything through:
 # just run <command> [args...]  — e.g. just run next, just run list --source zen
 run *args:
-    uv run --no-sync opencode-rank --data data {{args}}
+    uv run --no-sync opencode-models --data data {{args}}

@@ -14,8 +14,13 @@ model, the score is computed once, and each plan's price stays its own line.
 
 import unittest
 
-from opencode_rank.data import Model
-from opencode_rank.identity import MODEL_ALIASES, canonical_id, merge_aliases, plan_ids
+from opencode_models.data import Model
+from opencode_models.identity import (
+    MODEL_ALIASES,
+    canonical_id,
+    merge_aliases,
+    plan_ids,
+)
 
 
 def _model(mid, price=1.25, **scores):

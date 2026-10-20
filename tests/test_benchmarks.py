@@ -2,8 +2,8 @@
 
 import unittest
 
-from opencode_rank.benchmarks import available
-from opencode_rank.data import Model
+from opencode_models.benchmarks import available
+from opencode_models.data import Model
 
 
 def _m(model_id, scores):

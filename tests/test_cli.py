@@ -10,14 +10,14 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from opencode_rank.cli import main
+from opencode_models.cli import main
 
 #: Fixture tests must be hermetic: a key in the environment — or in the
 #: user config file — would send `list`/`next` to the live config API and
 #: filter the fixtures away. Tests that need keyed behaviour set it
 #: explicitly via patch.dict.
 os.environ.pop("OPENCODE_API_KEY", None)
-os.environ["XDG_CONFIG_HOME"] = tempfile.mkdtemp(prefix="opencode-rank-test-home-")
+os.environ["XDG_CONFIG_HOME"] = tempfile.mkdtemp(prefix="opencode-models-test-home-")
 
 
 def _write_sample(data_dir: Path):
@@ -137,7 +137,7 @@ class CliTest(unittest.TestCase):
                 )
             return "{}"
 
-        import opencode_rank.cli as cli
+        import opencode_models.cli as cli
 
         with tempfile.TemporaryDirectory() as tmp:
             orig = cli.http_get
@@ -181,7 +181,7 @@ class CliTest(unittest.TestCase):
                 return endpoints + pricing
             return "{}"
 
-        import opencode_rank.cli as cli
+        import opencode_models.cli as cli
 
         with tempfile.TemporaryDirectory() as tmp:
             orig = cli.http_get
@@ -198,7 +198,7 @@ class CliTest(unittest.TestCase):
     def test_default_data_dir_honours_the_environment(self):
         import os
 
-        import opencode_rank.cli as cli
+        import opencode_models.cli as cli
 
         with mock.patch.dict(os.environ, {"OPENCODE_RANK_DATA": "/tmp/x"}):
             self.assertEqual(cli.default_data_dir(), Path("/tmp/x"))
@@ -210,7 +210,7 @@ class CliTest(unittest.TestCase):
                         "XDG_DATA_HOME", str(Path.home() / ".local" / "share")
                     )
                 )
-                / "opencode-rank",
+                / "opencode-models",
             )
 
     def test_missing_data_dir_is_a_clear_error(self):
@@ -227,12 +227,12 @@ class CliTest(unittest.TestCase):
         self.assertNotIn("failed", out.lower())
 
     def test_fetch_refreshes_the_arena_cache(self):
-        import opencode_rank.arena as arena
+        import opencode_models.arena as arena
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
             _write_sample(d)
-            import opencode_rank.cli as cli
+            import opencode_models.cli as cli
 
             orig = arena.lookup_arena_elo
             arena.lookup_arena_elo = lambda get: {"m1": 1500.0, "m2": 1400.0}
@@ -243,7 +243,7 @@ class CliTest(unittest.TestCase):
             finally:
                 arena.lookup_arena_elo = orig
                 cli.http_get = transport
-            from opencode_rank.arena import ArenaCache
+            from opencode_models.arena import ArenaCache
 
             cached = ArenaCache(d / "aiarena").load()
         self.assertEqual(code, 0)
@@ -251,7 +251,7 @@ class CliTest(unittest.TestCase):
         self.assertIn("arena", out.lower())
 
     def test_a_failed_arena_lookup_does_not_fail_the_fetch(self):
-        import opencode_rank.arena as arena
+        import opencode_models.arena as arena
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
@@ -262,7 +262,7 @@ class CliTest(unittest.TestCase):
                 raise OSError("arena down")
 
             arena.lookup_arena_elo = boom
-            import opencode_rank.cli as cli
+            import opencode_models.cli as cli
 
             transport = cli.http_get
             cli.http_get = _offline_get
@@ -278,7 +278,7 @@ class CliTest(unittest.TestCase):
     def test_fetch_refreshes_free_nominals_when_a_key_is_present(self):
         import os
 
-        import opencode_rank.cli as cli
+        import opencode_models.cli as cli
 
         calls = {}
 
@@ -315,7 +315,7 @@ class CliTest(unittest.TestCase):
     def test_fetch_skips_free_nominals_without_a_key(self):
         import os
 
-        import opencode_rank.cli as cli
+        import opencode_models.cli as cli
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
@@ -341,7 +341,7 @@ class CliTest(unittest.TestCase):
     def test_fetch_keyed_free_slugs_use_attribute_access(self):
         import os
 
-        import opencode_rank.cli as cli
+        import opencode_models.cli as cli
 
         sitemap = (
             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
@@ -395,7 +395,7 @@ class CliTest(unittest.TestCase):
         self.assertEqual(calls.get("slugs"), {"m1"})
 
     def test_scores_reads_the_cache_and_never_the_network(self):
-        import opencode_rank.arena as arena
+        import opencode_models.arena as arena
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
@@ -413,7 +413,7 @@ class CliTest(unittest.TestCase):
         self.assertEqual(code, 0)
 
     def test_list_source_sorted_by_score_per_price(self):
-        import opencode_rank.sources as sources
+        import opencode_models.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
             _write_sample(Path(tmp))
@@ -443,7 +443,7 @@ class CliTest(unittest.TestCase):
         self.assertIn("highest cost", out)
 
     def test_list_filters_to_source_members_only(self):
-        import opencode_rank.sources as sources
+        import opencode_models.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
             _write_sample(Path(tmp))
@@ -466,7 +466,7 @@ class CliTest(unittest.TestCase):
         self.assertNotIn("M2", out)
 
     def test_list_shows_score_cost_value_and_plan_columns(self):
-        import opencode_rank.sources as sources
+        import opencode_models.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
             _write_sample(Path(tmp))
@@ -494,7 +494,7 @@ class CliTest(unittest.TestCase):
     def test_numbers_are_shown_as_rounded_integers(self):
         import json
 
-        import opencode_rank.sources as sources
+        import opencode_models.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
@@ -613,7 +613,7 @@ class CliTest(unittest.TestCase):
     def test_list_output_price_uses_output_axis(self):
         import json
 
-        import opencode_rank.sources as sources
+        import opencode_models.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
@@ -686,10 +686,10 @@ class CliTest(unittest.TestCase):
         self.assertIn("BAND", out)
 
     def test_next_lists_the_endpoint_not_the_display_name(self):
-        from opencode_rank.cli import _endpoint
-        from opencode_rank.data import Model
-        from opencode_rank.pricing import PriceEntry
-        from opencode_rank.ranking import Row
+        from opencode_models.cli import _endpoint
+        from opencode_models.data import Model
+        from opencode_models.pricing import PriceEntry
+        from opencode_models.ranking import Row
 
         def row(provider, mid, entry_id=None):
             model = Model(
@@ -820,9 +820,9 @@ class CliTest(unittest.TestCase):
         self.assertIn("Zen/Go", head)
 
     def test_next_shows_the_nominal_ratio_for_free_lines(self):
-        from opencode_rank.cli import _pick_value
-        from opencode_rank.data import Model
-        from opencode_rank.ranking import Row
+        from opencode_models.cli import _pick_value
+        from opencode_models.data import Model
+        from opencode_models.ranking import Row
 
         def row(price, score, free=False):
             model = Model(
@@ -929,7 +929,7 @@ class CliTest(unittest.TestCase):
         self.assertIn("M3", out)
 
     def test_the_three_tables_are_visually_separated(self):
-        import opencode_rank.sources as sources
+        import opencode_models.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
             _write_grid(Path(tmp))
@@ -951,7 +951,7 @@ class CliTest(unittest.TestCase):
         self.assertEqual(len(header.findall(out)), 3)
 
     def test_headers_are_bold_when_the_output_is_a_terminal(self):
-        import opencode_rank.cli as cli
+        import opencode_models.cli as cli
 
         with mock.patch.object(sys.stdout, "isatty", return_value=True):
             self.assertEqual(cli._style("hi"), "\033[1mhi\033[0m")
@@ -963,7 +963,7 @@ class CliTest(unittest.TestCase):
     def test_list_defaults_to_both_providers_merged(self):
         import json
 
-        import opencode_rank.sources as sources
+        import opencode_models.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
@@ -1086,7 +1086,7 @@ class CliTest(unittest.TestCase):
         self.assertIn("pay-as-you-go", out)  # zen does not
 
     def test_list_all_adds_a_dash_provider_for_catalog_only_models(self):
-        import opencode_rank.sources as sources
+        import opencode_models.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
             _write_sample(Path(tmp))
@@ -1121,7 +1121,7 @@ class CliTest(unittest.TestCase):
     def test_list_collapses_a_pair_priced_the_same_into_one_line(self):
         import json
 
-        import opencode_rank.sources as sources
+        import opencode_models.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
@@ -1187,7 +1187,7 @@ class CliTest(unittest.TestCase):
     def test_free_lines_show_a_zero_price_tag(self):
         import json
 
-        import opencode_rank.sources as sources
+        import opencode_models.sources as sources
 
         def doc(mid, price, score):
             return json.dumps(
@@ -1258,7 +1258,7 @@ class CliTest(unittest.TestCase):
         """
         import json
 
-        import opencode_rank.sources as sources
+        import opencode_models.sources as sources
 
         def doc(mid, price, score):
             return json.dumps(
@@ -1354,7 +1354,7 @@ class CliTest(unittest.TestCase):
     def test_models_with_different_coverage_share_one_score_column(self):
         import json
 
-        import opencode_rank.sources as sources
+        import opencode_models.sources as sources
 
         def doc(mid, tb, swe):
             return json.dumps(
@@ -1485,7 +1485,7 @@ class CliTest(unittest.TestCase):
         self.assertEqual(exit_.exception.code, 2)
 
     def test_list_prints_three_tables_in_order(self):
-        import opencode_rank.sources as sources
+        import opencode_models.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
             _write_grid(Path(tmp))
@@ -1504,7 +1504,7 @@ class CliTest(unittest.TestCase):
         self.assertLess(out.index("worst score"), out.index("highest cost"))
 
     def test_list_culls_are_disjoint_and_cover_every_line(self):
-        import opencode_rank.sources as sources
+        import opencode_models.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
             _write_grid(Path(tmp))
@@ -1524,7 +1524,7 @@ class CliTest(unittest.TestCase):
     def test_list_splits_best_value_into_free_included_and_payg(self):
         import json
 
-        import opencode_rank.sources as sources
+        import opencode_models.sources as sources
 
         def doc(mid, price, score):
             return json.dumps(
@@ -1634,7 +1634,7 @@ class CliTest(unittest.TestCase):
     def test_list_shows_the_representative_cost_not_the_bare_input(self):
         import json
 
-        import opencode_rank.sources as sources
+        import opencode_models.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
@@ -1693,7 +1693,7 @@ class CliTest(unittest.TestCase):
     def test_list_gives_each_priced_variant_its_own_line(self):
         import json
 
-        import opencode_rank.sources as sources
+        import opencode_models.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
@@ -1980,7 +1980,7 @@ class ListViewContractTest(unittest.TestCase):
     def _data(self, tmp):
         import json
 
-        import opencode_rank.sources as sources
+        import opencode_models.sources as sources
 
         _write_grid(Path(tmp))
         docs = {
@@ -2055,9 +2055,9 @@ class ListViewContractTest(unittest.TestCase):
         return rows
 
     def _expected(self, tmp):
-        from opencode_rank.data import load_models
-        from opencode_rank.pricing import weighted_cost
-        from opencode_rank.scoring import combined, derived_scores, scales
+        from opencode_models.data import load_models
+        from opencode_models.pricing import weighted_cost
+        from opencode_models.scoring import combined, derived_scores, scales
 
         models = {m.model_id: m for m in load_models(_models(Path(tmp)))}
         table = scales(list(models.values()))
@@ -2261,7 +2261,7 @@ class AvailabilityTest(unittest.TestCase):
             )
         )
         # no go snapshot at all: unknown, not "offers nothing"
-        import opencode_rank.sources as sources
+        import opencode_models.sources as sources
 
         orig = sources.load_source
         sources.load_source = lambda tier: set(shipped)
@@ -2333,7 +2333,7 @@ class AvailabilityTest(unittest.TestCase):
                     ]
                 )
             )
-            import opencode_rank.sources as sources
+            import opencode_models.sources as sources
 
             orig = sources.load_source
             sources.load_source = lambda tier: {"step-5-preview-free", "other", "third"}
@@ -2499,7 +2499,7 @@ class AvailabilityTest(unittest.TestCase):
             (usage / "free_tier_nominals.json").write_text(
                 json.dumps({"meta": {}, "rates": {"m1": 50.0}})
             )
-            import opencode_rank.sources as sources
+            import opencode_models.sources as sources
 
             orig = sources.load_source
             sources.load_source = lambda tier: {"m1", "m2"}
@@ -3125,7 +3125,7 @@ class ModelsCommandTest(unittest.TestCase):
     def test_models_prefers_the_live_api_when_keyed(self):
         import os
 
-        import opencode_rank.cli as cli_mod
+        import opencode_models.cli as cli_mod
 
         with tempfile.TemporaryDirectory() as tmp:
             self._snapshot(tmp, "zen", ["m-stale"])
@@ -3142,7 +3142,7 @@ class ModelsCommandTest(unittest.TestCase):
         import json
         import os
 
-        import opencode_rank.cli as cli_mod
+        import opencode_models.cli as cli_mod
 
         with tempfile.TemporaryDirectory() as tmp:
             self._snapshot(tmp, "zen", ["m-stale"])
@@ -3191,7 +3191,7 @@ class CurrentOfferedTest(unittest.TestCase):
     def _offered(self, tmp, **kw):
         import io
 
-        import opencode_rank.cli as cli_mod
+        import opencode_models.cli as cli_mod
 
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
@@ -3200,7 +3200,7 @@ class CurrentOfferedTest(unittest.TestCase):
     def test_bypass_means_no_restriction_even_when_keyed(self):
         import os
 
-        import opencode_rank.cli as cli_mod
+        import opencode_models.cli as cli_mod
 
         with tempfile.TemporaryDirectory() as tmp:
             self._snapshot(tmp, "zen", ["m1"])
@@ -3222,7 +3222,7 @@ class CurrentOfferedTest(unittest.TestCase):
         import json
         import os
 
-        import opencode_rank.cli as cli_mod
+        import opencode_models.cli as cli_mod
 
         with tempfile.TemporaryDirectory() as tmp:
             self._snapshot(tmp, "zen", ["m-stale"])
@@ -3239,7 +3239,7 @@ class CurrentOfferedTest(unittest.TestCase):
     def test_an_unreachable_api_falls_back_to_snapshots(self):
         import os
 
-        import opencode_rank.cli as cli_mod
+        import opencode_models.cli as cli_mod
 
         with tempfile.TemporaryDirectory() as tmp:
             self._snapshot(tmp, "zen", ["m-doc"])
@@ -3258,8 +3258,8 @@ class CurrentOfferedTest(unittest.TestCase):
     def test_next_with_a_key_unlists_what_the_api_dropped(self):
         import os
 
-        import opencode_rank.cli as cli_mod
-        import opencode_rank.sources as sources
+        import opencode_models.cli as cli_mod
+        import opencode_models.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
             _write_grid(Path(tmp))
@@ -3291,7 +3291,7 @@ class AuthCommandTest(unittest.TestCase):
     def test_auth_saves_the_prompted_key_and_verifies_it(self):
         import getpass
 
-        import opencode_rank.cli as cli_mod
+        import opencode_models.cli as cli_mod
 
         with tempfile.TemporaryDirectory() as tmp:
             with mock.patch.dict(os.environ, self._home(tmp), clear=True):
@@ -3306,14 +3306,14 @@ class AuthCommandTest(unittest.TestCase):
                     self.assertEqual(code, 0)
                     self.assertTrue(live.called)
                     self.assertNotIn("oc_sk_new", out)
-                    from opencode_rank.auth import key_file
+                    from opencode_models.auth import key_file
 
                     self.assertEqual(key_file().read_text(), "oc_sk_new")
 
     def test_auth_refuses_an_empty_key(self):
         import getpass
 
-        import opencode_rank.cli as cli_mod
+        import opencode_models.cli as cli_mod
 
         with tempfile.TemporaryDirectory() as tmp:
             with mock.patch.dict(os.environ, self._home(tmp), clear=True):
@@ -3323,13 +3323,13 @@ class AuthCommandTest(unittest.TestCase):
                 ):
                     code, out = self._run("--data", tmp, "auth")
         self.assertEqual(code, 1)
-        from opencode_rank.auth import key_file
+        from opencode_models.auth import key_file
 
         with mock.patch.dict(os.environ, self._home(tmp), clear=True):
             self.assertFalse(key_file().exists())
 
     def test_auth_needs_an_interactive_terminal(self):
-        import opencode_rank.cli as cli_mod
+        import opencode_models.cli as cli_mod
 
         with tempfile.TemporaryDirectory() as tmp:
             with mock.patch.dict(os.environ, self._home(tmp), clear=True):
@@ -3339,8 +3339,8 @@ class AuthCommandTest(unittest.TestCase):
         self.assertIn("interactive", out)
 
     def test_a_saved_key_is_used_when_the_environment_is_quiet(self):
-        import opencode_rank.cli as cli_mod
-        from opencode_rank.auth import save_key
+        import opencode_models.cli as cli_mod
+        from opencode_models.auth import save_key
 
         with tempfile.TemporaryDirectory() as tmp:
             with mock.patch.dict(os.environ, self._home(tmp), clear=True):
@@ -3364,7 +3364,7 @@ class NoKeyNoticeTest(unittest.TestCase):
     def test_list_without_a_key_warns_first(self):
         import os
 
-        import opencode_rank.sources as sources
+        import opencode_models.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
             _write_sample(Path(tmp))
@@ -3385,8 +3385,8 @@ class NoKeyNoticeTest(unittest.TestCase):
     def test_next_with_a_key_has_no_warning(self):
         import os
 
-        import opencode_rank.cli as cli_mod
-        import opencode_rank.sources as sources
+        import opencode_models.cli as cli_mod
+        import opencode_models.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
             _write_grid(Path(tmp))
@@ -3511,7 +3511,7 @@ class ModelsTableTest(unittest.TestCase):
 
 class ColumnLabelTest(unittest.TestCase):
     def test_deepswe_drops_its_version_in_the_header(self):
-        from opencode_rank.cli import _column_label
+        from opencode_models.cli import _column_label
 
         self.assertEqual(_column_label("DeepSWE 1.1"), "DeepSWE")
 
@@ -3570,7 +3570,7 @@ class TransportHygieneTest(unittest.TestCase):
         import urllib.request
         import warnings
 
-        from opencode_rank.cli import _api_get
+        from opencode_models.cli import _api_get
 
         def boom(req, timeout=None):
             raise urllib.error.HTTPError(
@@ -3599,20 +3599,20 @@ class VersionTest(unittest.TestCase):
     def test_version_flag_reports_the_installed_version(self):
         from importlib.metadata import version as pkg_version
 
-        from opencode_rank.cli import main
+        from opencode_models.cli import main
 
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             with self.assertRaises(SystemExit) as ctx:
                 main(["--version"])
         self.assertEqual(ctx.exception.code, 0)
-        self.assertIn(pkg_version("opencode-rank"), buf.getvalue())
+        self.assertIn(pkg_version("opencode-models"), buf.getvalue())
 
     def test_api_get_sends_a_versioned_user_agent(self):
         import urllib.request
         from importlib.metadata import version as pkg_version
 
-        from opencode_rank.cli import _api_get
+        from opencode_models.cli import _api_get
 
         seen = {}
 
@@ -3625,4 +3625,4 @@ class VersionTest(unittest.TestCase):
             with self.assertRaises(urllib.error.HTTPError):
                 get("https://example.invalid/console/api/v2/config")
         ua = next(v for k, v in seen["req"].header_items() if k.lower() == "user-agent")
-        self.assertEqual(ua, f"opencode-rank/{pkg_version('opencode-rank')}")
+        self.assertEqual(ua, f"opencode-models/{pkg_version('opencode-models')}")

@@ -2,7 +2,7 @@
 
 A fresh `uv tool install` leaves the XDG data dir empty (or stale from an
 older fetch): the curated `overrides/` live in the repo, the catalog lives
-in no branch at all, and a bare `opencode-rank list` then silently disagrees
+in no branch at all, and a bare `opencode-models list` then silently disagrees
 with `just run list`. Seeding copies reference files into the target directory
 for files that are *missing* only - an existing file is never overwritten,
 so a workspace's own fetch results are always safe.
@@ -13,7 +13,7 @@ import subprocess
 import unittest
 from pathlib import Path
 
-from opencode_rank.seed import (
+from opencode_models.seed import (
     copy_missing,
     read_branch_files,
     seed,

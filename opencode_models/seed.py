@@ -2,7 +2,7 @@
 
 A fresh `uv tool install` leaves the XDG data dir empty (or stale from an
 older fetch): the catalog lives in no branch at all, and a bare
-`opencode-rank list` then silently disagrees with `just run list`. Seeding
+`opencode-models list` then silently disagrees with `just run list`. Seeding
 copies reference files into the target directory for files that are
 *missing* only - an existing file is never overwritten, so a workspace's
 own fetch results are always safe.

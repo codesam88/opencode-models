@@ -23,7 +23,7 @@ the lint gate passes, and a reviewer can see *why* from the diff alone.
   dependency group (`uv add --dev ...`), never in the install path.
 - **No secrets in the repo, ever.** Test keys are obvious dummies
   (`oc_sk_test`-shaped). Real keys live in the environment or
-  `~/.config/opencode-rank/api_key`, never in code, fixtures, or docs.
+  `~/.config/opencode-models/api_key`, never in code, fixtures, or docs.
 - **Fetched data is never committed.** Only hand-vouched curation goes in
   (`data/overrides/`); everything `fetch` downloads stays gitignored.
 - **Console output is a contract.** Column changes go through
@@ -44,7 +44,7 @@ live in `data/overrides/README.md` — read it before adding a file.
 ## Reporting problems
 
 - Bugs and questions: open a GitHub issue with steps to reproduce and
-  the output of `opencode-rank --help` (plus `just test` status if relevant).
+  the output of `opencode-models --help` (plus `just test` status if relevant).
 - Sensitive matters (including data-takedown requests under the
   [data due-diligence note](README.md#data-due-diligence)): use a private
   security advisory, not a public issue. See SECURITY.md.

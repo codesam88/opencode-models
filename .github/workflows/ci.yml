@@ -35,7 +35,7 @@ jobs:
         run: uv run --no-sync python -m unittest discover -s tests -v
       - name: the console resolves and runs from the entry point
         # no scraped dataset in CI: it is fetched on demand (see README)
-        run: uv run --no-sync opencode-rank --help
+        run: uv run --no-sync opencode-models --help
 
   build:
     runs-on: ubuntu-latest
@@ -50,7 +50,7 @@ jobs:
       - name: install the wheel into a throwaway tool env
         run: |
           uv tool install --force dist/*.whl
-          opencode-rank --help >/dev/null
+          opencode-models --help >/dev/null
 
   lint:
     runs-on: ubuntu-latest
@@ -66,8 +66,8 @@ jobs:
       # dev group, never from the network at CI time beyond the lockfile
       - name: lint, format check and complexity gate
         run: |
-          uv run --no-sync ruff check opencode_rank tests
-          uv run --no-sync ruff format --check opencode_rank tests
+          uv run --no-sync ruff check opencode_models tests
+          uv run --no-sync ruff format --check opencode_models tests
 
   zizmor:
     runs-on: ubuntu-latest

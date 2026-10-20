@@ -11,7 +11,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from opencode_rank.pricing import (
+from opencode_models.pricing import (
     PriceEntry,
     load_prices,
     parse_pricing,
@@ -172,7 +172,7 @@ class FreeTierNominalTest(unittest.TestCase):
     tiers get different score/$ instead of sharing one."""
 
     def test_the_most_expensive_free_model_costs_most(self):
-        from opencode_rank.pricing import nominal_free_rate
+        from opencode_models.pricing import nominal_free_rate
 
         self.assertGreater(
             nominal_free_rate("stepfun/step-5-preview"),
@@ -180,7 +180,7 @@ class FreeTierNominalTest(unittest.TestCase):
         )
 
     def test_a_free_suffix_reaches_the_same_model(self):
-        from opencode_rank.pricing import nominal_free_rate
+        from opencode_models.pricing import nominal_free_rate
 
         self.assertEqual(
             nominal_free_rate("step-5-preview-free"),
@@ -190,14 +190,14 @@ class FreeTierNominalTest(unittest.TestCase):
     def test_every_nominal_rate_stays_below_the_cheapest_paid_rate(self):
         # free must stay cheaper than paid on average, or the list view
         # stops preferring it: cheapest paid is zen jev-1.13 at $0.034/1M
-        from opencode_rank.pricing import FREE_TIER_NOMINAL_RATES, nominal_free_rate
+        from opencode_models.pricing import FREE_TIER_NOMINAL_RATES, nominal_free_rate
 
         for slug in list(FREE_TIER_NOMINAL_RATES) + ["something-new-free"]:
             with self.subTest(slug=slug):
                 self.assertLess(nominal_free_rate(slug), 0.034)
 
     def test_an_unknown_free_model_gets_the_anchor_rate(self):
-        from opencode_rank.pricing import FREE_TIER_DEFAULT_RATE, nominal_free_rate
+        from opencode_models.pricing import FREE_TIER_DEFAULT_RATE, nominal_free_rate
 
         self.assertEqual(nominal_free_rate("lab/mystery-free"), FREE_TIER_DEFAULT_RATE)
 
@@ -242,7 +242,7 @@ class RefreshFreeNominalsTest(unittest.TestCase):
     committed table is only the offline fallback."""
 
     def test_it_derives_nominals_from_the_export_and_the_catalog(self):
-        from opencode_rank.pricing import refresh_free_nominals
+        from opencode_models.pricing import refresh_free_nominals
 
         with tempfile.TemporaryDirectory() as tmp:
             catalog = _catalog(
@@ -274,7 +274,7 @@ class RefreshFreeNominalsTest(unittest.TestCase):
         self.assertAlmostEqual(rates["space-bunny-free"], 0.00176, places=5)
 
     def test_a_model_with_almost_no_traffic_is_left_out(self):
-        from opencode_rank.pricing import refresh_free_nominals
+        from opencode_models.pricing import refresh_free_nominals
 
         with tempfile.TemporaryDirectory() as tmp:
             catalog = _catalog(tmp, {})
@@ -289,7 +289,7 @@ class RefreshFreeNominalsTest(unittest.TestCase):
         self.assertIn("space-bunny-free", rates)
 
     def test_paid_models_never_get_a_nominal(self):
-        from opencode_rank.pricing import refresh_free_nominals
+        from opencode_models.pricing import refresh_free_nominals
 
         with tempfile.TemporaryDirectory() as tmp:
             catalog = _catalog(tmp, {})
@@ -303,7 +303,7 @@ class RefreshFreeNominalsTest(unittest.TestCase):
         self.assertNotIn("muse-spark-1.3-contributor", rates)
 
     def test_no_user_columns_survive_into_the_snapshot(self):
-        from opencode_rank.pricing import refresh_free_nominals
+        from opencode_models.pricing import refresh_free_nominals
 
         with tempfile.TemporaryDirectory() as tmp:
             catalog = _catalog(tmp, {})
@@ -324,7 +324,7 @@ class RefreshFreeNominalsTest(unittest.TestCase):
             self.assertIsInstance(rate, float)
 
     def test_without_the_anchor_there_is_nothing_to_normalise_against(self):
-        from opencode_rank.pricing import refresh_free_nominals
+        from opencode_models.pricing import refresh_free_nominals
 
         with tempfile.TemporaryDirectory() as tmp:
             catalog = _catalog(tmp, {})
@@ -339,7 +339,7 @@ class RefreshFreeNominalsTest(unittest.TestCase):
         self.assertFalse((out / "free_tier_nominals.json").exists())
 
     def test_load_reads_back_what_refresh_wrote(self):
-        from opencode_rank.pricing import load_free_nominals, refresh_free_nominals
+        from opencode_models.pricing import load_free_nominals, refresh_free_nominals
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
@@ -356,7 +356,7 @@ class RefreshFreeNominalsTest(unittest.TestCase):
         self.assertIn("space-bunny-free", loaded)
 
     def test_load_without_a_snapshot_is_unknown_not_empty(self):
-        from opencode_rank.pricing import load_free_nominals
+        from opencode_models.pricing import load_free_nominals
 
         with tempfile.TemporaryDirectory() as tmp:
             self.assertIsNone(load_free_nominals(Path(tmp)))

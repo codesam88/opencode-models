@@ -359,6 +359,25 @@ model keeps its place in the scales rather than moving every score.
 - **The scales do not move.** A model you cannot buy still marks where the
   field is, so a score never changes because a plan changed what it sells.
 
+### Data due diligence
+
+What this repo publishes: hand-pinned benchmark numbers
+(`data/overrides/`, each carrying its source URL and provenance note),
+plus code and docs. Everything the tool reads in bulk — the model
+catalog, tier snapshots, official boards, arena cache — is fetched into
+gitignored directories and never committed. No workspace or user data
+is ever written to the repo: the usage export is aggregated in memory
+and only per-model numeric totals reach disk.
+
+Why we think republishing those numbers is fair: benchmark scores are
+facts, and every curated value cites the page, chart, or board it was
+read from, with the date and method, so anyone can check or contest it.
+What we have *not* done is review every source site's Terms of Service,
+so if any number here violates a site's terms as you read them, that is
+unintentional — please open a GitHub issue, or a private security
+advisory if the matter is sensitive (see SECURITY.md), and we will
+correct or remove it.
+
 ### Official boards, fetched from their owners
 
 `fetch` also pulls the boards themselves, so the axes are anchored on the

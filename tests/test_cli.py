@@ -894,7 +894,10 @@ class CliTest(unittest.TestCase):
 
         with mock.patch.object(sys.stdout, "isatty", return_value=True):
             self.assertEqual(cli._style("hi"), "\033[1mhi\033[0m")
-        self.assertEqual(cli._style("hi"), "hi")  # plain when redirected/piped
+        # the plain branch must not depend on the ambient terminal either:
+        # under a pty this would otherwise read as bold and fail
+        with mock.patch.object(sys.stdout, "isatty", return_value=False):
+            self.assertEqual(cli._style("hi"), "hi")  # plain when redirected
 
     def test_list_defaults_to_both_providers_merged(self):
         import json

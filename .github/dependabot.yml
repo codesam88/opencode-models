@@ -1,10 +1,20 @@
 version: 2
+
 updates:
-  # The package itself is stdlib-only, so there is nothing to bump here.
-  # The Actions pinned in .github/workflows still drift, so watch them.
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  # The package itself is stdlib-only; the Actions pinned in
+  # .github/workflows are what drifts. All minor/patch action updates
+  # land in one grouped weekly PR instead of one PR each; majors stay
+  # individual so a breaking action change gets its own review.
+  - package-ecosystem: github-actions
+    directory: /
     schedule:
-      interval: "weekly"
-    cooldown:
-      default-days: 7
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      github-actions:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch

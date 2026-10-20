@@ -55,6 +55,11 @@ jobs:
   zizmor:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # contents: read comes from the top level; the SARIF upload bundled
+    # with the action needs security-events: write, scoped to this job.
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:

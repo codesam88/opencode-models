@@ -11,7 +11,6 @@ rows marked yes below runs entirely on data already on disk.
 | `models` | yes with a key, else no | the Console config API (live model set); the last snapshots offline |
 | `list`, `next` | yes with a key, else no | the Console config API (live model set, recorded on the way) |
 | `auth` | yes, one verification call | the Console config API (key validity check only) |
-| `scores --refresh` | yes | the Hugging Face `datasets-server` copy of the arena Elo table |
 | everything else (`scores`, `overrides`, `conflicts`) | **no** | — |
 
 ## The service-account key

@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
-from .data import Model
 from .identity import canonical_id
+from .models import Model
 from .pricing import nominal_free_rate, variant_of, weighted_cost
 from .scoring import combined, derived_scores, scales, tracked
 

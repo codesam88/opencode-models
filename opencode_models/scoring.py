@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from statistics import median
 
-from .data import Model
+from .models import Model
 from .overrides import TIER_OFFICIAL, source_tier
 
 #: A benchmark every model scored the same on carries no information, so it

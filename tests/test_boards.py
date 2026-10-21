@@ -230,7 +230,7 @@ class MatchModelTest(unittest.TestCase):
     """Board display names must meet catalog ids without guessing."""
 
     def _models(self, *ids):
-        from opencode_models.data import Model
+        from opencode_models.models import Model
 
         return [
             Model(
@@ -330,7 +330,7 @@ class MergeBoardsTest(unittest.TestCase):
     """Official boards replace self-reported numbers, not better ones."""
 
     def _models(self, *ids):
-        from opencode_models.data import Model
+        from opencode_models.models import Model
 
         return [
             Model(
@@ -558,7 +558,7 @@ class ModelNameTest(unittest.TestCase):
     """
 
     def _models(self):
-        from opencode_models.data import Model
+        from opencode_models.models import Model
 
         rows = [
             ("anthropic/claude-sonnet-4-0", "Claude Sonnet 4 (latest)"),
@@ -639,7 +639,7 @@ class LabelMapTest(unittest.TestCase):
         )
 
     def _models(self):
-        from opencode_models.data import Model
+        from opencode_models.models import Model
 
         rows = [
             ("openai/gpt-3.5-turbo", "GPT-3.5-turbo"),
@@ -701,8 +701,8 @@ class LabelMapTest(unittest.TestCase):
 
     def test_every_recorded_id_exists_in_the_real_catalog(self):
 
-        from opencode_models.data import load_models
         from opencode_models.labelmap import LABEL_MAPS
+        from opencode_models.models import load_models
 
         ids = {m.model_id for m in load_models(Path("data/opencode"))}
         if not ids:  # no dataset fetched: nothing to check

@@ -2,7 +2,7 @@
 
 import unittest
 
-from opencode_models.data import Model
+from opencode_models.models import Model
 from opencode_models.pricing import PriceEntry
 from opencode_models.ranking import (
     Row,
@@ -694,7 +694,7 @@ def _rows(scores_and_prices):
     """Rows with set scores, for grading without building anything."""
     from dataclasses import replace
 
-    from opencode_models.data import Model
+    from opencode_models.models import Model
 
     rows = []
     for i, (score, price) in enumerate(scores_and_prices):

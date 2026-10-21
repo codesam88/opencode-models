@@ -687,7 +687,7 @@ class CliTest(unittest.TestCase):
 
     def test_next_lists_the_endpoint_not_the_display_name(self):
         from opencode_models.cli import _endpoint
-        from opencode_models.data import Model
+        from opencode_models.models import Model
         from opencode_models.pricing import PriceEntry
         from opencode_models.ranking import Row
 
@@ -821,7 +821,7 @@ class CliTest(unittest.TestCase):
 
     def test_next_shows_the_nominal_ratio_for_free_lines(self):
         from opencode_models.cli import _pick_value
-        from opencode_models.data import Model
+        from opencode_models.models import Model
         from opencode_models.ranking import Row
 
         def row(price, score, free=False):
@@ -2055,7 +2055,7 @@ class ListViewContractTest(unittest.TestCase):
         return rows
 
     def _expected(self, tmp):
-        from opencode_models.data import load_models
+        from opencode_models.models import load_models
         from opencode_models.pricing import weighted_cost
         from opencode_models.scoring import combined, derived_scores, scales
 

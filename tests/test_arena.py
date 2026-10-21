@@ -12,7 +12,7 @@ from opencode_models.arena import (
     merge_arena_scores,
     merge_from_file,
 )
-from opencode_models.data import Model
+from opencode_models.models import Model
 
 
 def _m(model_id, price=1.0, scores=None, sources=None):

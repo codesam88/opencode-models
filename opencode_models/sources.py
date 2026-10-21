@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .data import Model
+from .models import Model
 
 _DIR = Path(__file__).resolve().parent / "sources"
 

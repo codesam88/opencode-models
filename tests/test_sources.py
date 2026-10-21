@@ -2,7 +2,7 @@
 
 import unittest
 
-from opencode_models.data import Model
+from opencode_models.models import Model
 from opencode_models.ranking import by_score_per_price
 from opencode_models.sources import available_sources, load_source, members
 

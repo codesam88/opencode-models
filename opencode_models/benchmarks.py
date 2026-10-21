@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import Counter
 
-from .data import Model
+from .models import Model
 
 
 def available(models: list[Model]) -> list[tuple[str, int]]:

@@ -3,7 +3,7 @@
 import unittest
 
 from opencode_models.benchmarks import available
-from opencode_models.data import Model
+from opencode_models.models import Model
 
 
 def _m(model_id, scores):

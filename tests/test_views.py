@@ -419,7 +419,7 @@ class NextTableContract(unittest.TestCase):
     COLUMNS = ["#", "PLAN", "SCORE", "¢/1M", "SCORE/$", "ENDPOINT", "BAND"]
 
     def _row(self, name, provider, score, price, free=False):
-        from opencode_models.data import Model
+        from opencode_models.models import Model
         from opencode_models.ranking import Row
 
         model = Model(

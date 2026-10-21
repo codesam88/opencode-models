@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from .data import Model
+from .models import Model
 
 #: Designation id → the model it is a designation of.
 #:

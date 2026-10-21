@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from opencode_models.data import Model
+from opencode_models.models import Model
 from opencode_models.overrides import (
     TIER_INDEPENDENT,
     TIER_OFFICIAL,

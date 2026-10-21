@@ -7,9 +7,9 @@ rows marked yes below runs entirely on data already on disk.
 
 | command | network | destination |
 |---|---|---|
-| `fetch` | yes, one sequential pass | `opencode.ai/data` model records, the Console tier docs for pricing snapshots, the Terminal-Bench 4.0 board page (tbench.ai), swebench.com's leaderboard, and — with a key — the Console config API (live model set) plus the usage export (free-tier nominals) |
-| `models` | yes with a key, else no | the Console config API (live model set); the last snapshots offline |
-| `list`, `next` | yes with a key, else no | the Console config API (live model set, recorded on the way) |
+| `fetch` | yes, one sequential pass | `opencode.ai/data` model records, the Console tier docs for pricing snapshots, the Terminal-Bench 4.0 board page (tbench.ai), swebench.com's leaderboard, and — with a key — the Console config API, the inference model lists, and the usage export (free-tier nominals) |
+| `models` | yes with a key, else no | the inference model lists (`opencode.ai/inference/{,go/}v1/models`) + Console config API (known-set annotation); the last snapshots offline |
+| `list`, `next` | yes with a key, else no | the inference model lists + Console config API (recorded on the way) |
 | `auth` | yes, one verification call | the Console config API (key validity check only) |
 | everything else (`scores`, `overrides`, `conflicts`) | **no** | — |
 

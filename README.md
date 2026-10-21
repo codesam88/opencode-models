@@ -77,7 +77,7 @@ maintenance:
 | `list` | the best-value table of what the plans offer today — free, included-usage and pay-as-you-go bands ranked by score per dollar |
 | `next` | the next models to reach for: free and paid picks interleaved, Zen/Go alternating (default 6; tell your agent to use these) |
 | `scores` | every offered model, one column per benchmark — the raw number beside where it lands |
-| `models` | the API endpoint and display name of every model each plan currently offers |
+| `models` | endpoint + display name for every model the plans list (`--all` adds an `Avail` column: `[x]` served, `[ ]` known-unserved, `[?]` unknown) |
 | `overrides` | benchmark numbers more than one source reports, and which value the tool keeps |
 | `fetch` | refresh everything: benchmarks, tier prices, official boards, availability |
 | `auth` | store the Console token for live views (owner-only file) |
@@ -86,11 +86,18 @@ maintenance:
 
 Every `list` and `next` run looks for a Console token first — the
 `OPENCODE_API_KEY` environment variable, then the file `auth` wrote. **With
-a token the view is live:** it queries the Console config API on each run,
-shows only the models the plans offer *right now*, and records the result
-so later offline runs stay current. Without a token the first line warns
-that availability may be stale and the last `fetch` snapshots decide
-(those are refreshed by any keyed `fetch` or `models` run).
+a token the view is live:** it reads the inference gateway's model lists
+(`opencode.ai/inference/v1/models` and `.../go/v1/models`) on each run —
+the models this key can actually call, which is the plans' real
+availability — and records the result so later offline runs stay current.
+Without a token the first line warns that availability may be stale and
+the last `fetch` snapshots decide (those are refreshed by any keyed
+`fetch` or `models` run). A keyed run that comes back with **no Go
+models** prints a warning: check that the models are enabled in the
+Console and that the key is a **personal** one (Account → Personal API
+Keys) with model permissions — a service-account key sees the workspace
+catalog without entitlements. An invalid or expired token falls back to
+snapshots with a 401 warning.
 
 `--all-models` (alias `--all`) bypasses the availability filter entirely
 — what you want when auditing rather than choosing.
@@ -379,14 +386,18 @@ own documentation had stopped listing them, among them `hy3-preview` and
 
 `fetch` already snapshots each tier's documentation for prices, but the
 docs go stale — providers unlist models the pages still name, and list new
-ones the pages do not. So availability comes from the Console config API
-(`/api/v2/config`, the workspace's live model set), snapshotted to
-`data/available/` on every keyed run (`opencode_models/live.py`). The
-docs snapshot stays the offline fallback, and `opencode-models models`
-prints whichever record is in force as one sorted table: the endpoint
-(as `next` shows it, preferring Go where both plans list the model)
-beside the display name (as `list` shows it, `—` where the catalog has
-none).
+ones the pages do not. So availability comes from **the inference
+gateway's model lists** (`opencode.ai/inference/v1/models` and
+`.../go/v1/models`), fetched keyed so they are this workspace's
+entitlements, and snapshotted to `data/available/` on every keyed run
+(`opencode_models/live.py`). The Console config API (`/api/v2/config`) is
+only consulted alongside them to mark models it knows but does not serve;
+the docs snapshot stays the offline fallback. `opencode-models models`
+prints the record as one sorted table — endpoint (preferring Go where
+both plans list the model) and display name — with `--all` adding
+known-but-unserved rows plus an `Avail` status column (`[x]`/`[ ]`/`[?]`).
+Rows the catalog cannot
+name (internal ids like `test`) are never shown.
 
 - **`list` and `next` show only what a plan lists** — live with a token
   (checked every run), the last snapshots offline. `next` therefore never

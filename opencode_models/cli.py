@@ -25,7 +25,7 @@ from .benchmarks import available
 from .boards import fetch_boards, load_boards, merge_boards, save_boards
 from .data import load_models
 from .fetch import http_get, refresh
-from .live import LIVE_CONFIG_URL, fetch_live, save_live
+from .live import LIVE_CONFIG_URL, fetch_live, fetch_served, merge_served, save_live
 from .overrides import load_curated, off_band_models, source_tier
 from .pricing import (
     FREE_TIER_NOMINAL_RATES,
@@ -322,30 +322,59 @@ def _model_name(names: dict[str, str], slug: str) -> str:
     return slug
 
 
+def _status_label(ids, slug: str) -> str:
+    """The API status marker for one row: [x] served, [ ] not, [?] unknown.
+
+    *ids* is a live status mapping (slug -> bool) or a bare slug set from
+    a docs snapshot — sets carry no per-model status, so the honest
+    marker there is [?] rather than an invented one.
+    """
+    if not isinstance(ids, dict):
+        return "[?]"
+    value = ids.get(slug)
+    return "[x]" if value is True else "[ ]" if value is False else "[?]"
+
+
+def _catalog_known(slug: str, names: dict[str, str]) -> bool:
+    """Whether the catalog can name *slug* (free variants reach each other)."""
+    base = slug[: -len("-free")] if slug.endswith("-free") else slug
+    return slug in names or base in names or f"{slug}-free" in names
+
+
 def _cmd_models(args: argparse.Namespace) -> int:
     """The models the plans offer right now, per tier.
 
-    Live from the Console config API when ``OPENCODE_API_KEY`` is set —
-    recorded to ``available/`` on the way, so `list` and `next` unlist
-    the dropped models immediately. Else the snapshots the last ``fetch``
-    left behind, read-only.
+    Live from the inference gateway's model lists (served = callable)
+    plus the config API's known set, merged to ``available/`` on the way
+    so `list` and `next` inherit the liveness. Default rows are the
+    served models only; ``--all`` adds known-but-not-served rows, marked
+    ``[ ]``. Offline: the snapshots the last ``fetch`` left behind. Rows
+    the catalog cannot name (internal ids like ``test``) are hidden.
     """
     data_dir = Path(args.data)
     key = load_key()
-    tiers: dict[str, set[str]] | None = None
+    tiers = None
     if key:
         try:
-            tiers = fetch_live(_api_get(key))
+            served = fetch_served(_api_get(key))
+            known = fetch_live(_api_get(key))
         except (OSError, ValueError, KeyError) as exc:
             print(
-                f"warning: live config unreachable ({exc}) — showing the last snapshots"
+                f"warning: live model list unreachable ({exc}) — showing the last snapshots"
             )
-            tiers = None
         else:
+            tiers = merge_served(served, known)
             save_live(data_dir, tiers)
             origin = (
                 f"live from {LIVE_CONFIG_URL} (recorded to {data_dir / 'available'})"
             )
+            if not served.get("go"):
+                print(
+                    "warning: the Go plan returned no models — check that "
+                    "models are enabled in the Console and that the key is a "
+                    "personal one with model permissions "
+                    "(User \u2192 Account \u2192 Personal API Keys)"
+                )
     if tiers is None:
         known = load_available(data_dir)
         if all(ids is None for ids in known.values()):
@@ -359,18 +388,22 @@ def _cmd_models(args: argparse.Namespace) -> int:
     else:
         unknown = []
     names = _display_names(data_dir)
-    by_slug: dict[str, str] = {}
+    by_slug: dict[str, tuple[str, str]] = {}  # slug -> (tier, status)
     for tier in sorted(tiers):
-        for slug in sorted(tiers[tier]):
+        ids = tiers[tier]
+        for slug in sorted(ids):
+            marker = _status_label(ids, slug)
+            if marker == "[ ]" and not args.all_models:
+                continue  # known-unserved: an --all view only
+            if not _catalog_known(slug, names):
+                continue  # internal ids (test, *-backup) are not ours to show
             if slug not in by_slug or tier == "go":
-                by_slug[slug] = tier
+                by_slug[slug] = (tier, marker)
     rows = []
-    for slug, tier in by_slug.items():
+    for slug, (tier, marker) in by_slug.items():
         endpoint = f"opencode-go/{slug}" if tier == "go" else f"opencode/{slug}"
         name = _model_name(names, slug)
-        # the endpoint already carries the slug: a missing display name
-        # reads "—" (as a missing score does), not the slug twice
-        rows.append((endpoint, name if name != slug else "—"))
+        rows.append((endpoint, name if name != slug else "—", marker))
     rows.sort(key=lambda row: (row[1].lower(), row[0]))
     counts = " + ".join(f"{len(tiers[t])} {t}" for t in sorted(tiers))
     print(origin)
@@ -378,7 +411,14 @@ def _cmd_models(args: argparse.Namespace) -> int:
         f"{len(by_slug)} models · {counts}"
         + (f" · {', '.join(unknown)} unknown" if unknown else "")
     )
-    print(render(["ENDPOINT", "MODEL"], rows, aligns=("<", "<"), indent="  "))
+    # the status marker column is an --all extra; default is endpoint + name
+    if args.all_models:
+        head = ["Avail", "ENDPOINT", "MODEL"]
+        view = [(marker, endpoint, name) for endpoint, name, marker in rows]
+    else:
+        head = ["ENDPOINT", "MODEL"]
+        view = [(endpoint, name) for endpoint, name, _marker in rows]
+    print(render(head, view, aligns=("<",) * len(head), indent="  "))
     return 0
 
 
@@ -389,18 +429,22 @@ def _cmd_fetch(args: argparse.Namespace) -> int:
     if args.all_models:
         print("fetching the full catalog (--all)")
     elif key:
-        print(f"fetch live model set from {LIVE_CONFIG_URL} ...")
+        print("fetch live model availability (inference lists + config) ...")
         try:
-            live = fetch_live(_api_get(key))
+            served = fetch_served(_api_get(key))
+            known = fetch_live(_api_get(key))
         except (OSError, ValueError, KeyError) as exc:
             print(
-                f"warning: live config unreachable ({exc}) — "
+                f"warning: live model list unreachable ({exc}) — "
                 f"downloading the full catalog"
             )
         else:
-            saved_live = save_live(data_dir, live)
+            saved_live = save_live(data_dir, merge_served(served, known))
             print(f"saved {', '.join(saved_live)} to {data_dir / 'available'}")
-            only = set().union(*live.values()) or set()
+            only = set().union(*served.values())
+            if not only:
+                print("warning: no models served — using last known availability")
+                only = None
     if only is None and not args.all_models:
         only = available_ids(data_dir)
     if only is not None:
@@ -713,11 +757,13 @@ def _current_offered(
     data_dir: Path,
     bypass: bool = False,
 ) -> set[str] | None:
-    """Model ids offered right now, or None for no restriction.
+    """Model ids served right now, or None for no restriction.
 
-    With ``OPENCODE_API_KEY`` the live config API is the record — it is
-    also snapshotted to ``available/`` on the way, so offline runs inherit
-    the liveness. Without a key (or when the API is unreachable) the last
+    With ``OPENCODE_API_KEY`` availability comes from the inference
+    gateway's model lists (served = callable), while the config API
+    only annotates what is known-but-unserved; the merged status is
+    snapshotted to ``available/`` on the way, so offline runs inherit
+    the liveness. Without a key the existing notice prints and the last
     snapshots decide. *bypass* (`--all`) skips every filter.
     """
     if bypass:
@@ -725,17 +771,25 @@ def _current_offered(
     key = load_key()
     if key:
         try:
-            live = fetch_live(_api_get(key))
+            served = fetch_served(_api_get(key))
+            known = fetch_live(_api_get(key))
         except (OSError, ValueError, KeyError) as exc:
             print(
-                f"warning: live config unreachable ({exc}) — using the last snapshots"
+                f"warning: live model list unreachable ({exc}) — using the last snapshots"
             )
         else:
-            ids = set().union(*live.values())
+            ids = set().union(*served.values())
             if not ids:
-                print("warning: live config lists no models — using the last snapshots")
+                print("warning: no models served — using the last snapshots")
             else:
-                save_live(data_dir, live)
+                save_live(data_dir, merge_served(served, known))
+                if not served.get("go"):
+                    print(
+                        "warning: the Go plan returned no models — check that "
+                        "models are enabled in the Console and that the key is a "
+                        "personal one with model permissions "
+                        "(User \u2192 Account \u2192 Personal API Keys)"
+                    )
                 return ids
     else:
         print(
@@ -743,7 +797,16 @@ def _current_offered(
             "may be unavailable (`auth` for live data, `--all` for the "
             "full catalog)"
         )
-    return available_ids(data_dir)
+    known = load_available(data_dir)
+    if all(ids is None for ids in known.values()):
+        return None
+    out: set[str] = set()
+    for tier_ids in known.values():
+        if isinstance(tier_ids, dict):
+            out |= {slug for slug, served in tier_ids.items() if served is not False}
+        elif tier_ids:
+            out |= tier_ids
+    return out or None
 
 
 def _in_tier_slug_list(model_id: str, slugs: set[str]) -> bool:
@@ -1057,11 +1120,15 @@ def main(argv: list[str] | None = None) -> int:
     )
     sub.add_parser(
         "models",
-        help="the models the plans offer right now, "
-        "as endpoints beside display names: live "
-        "from the Console config API with "
-        "OPENCODE_API_KEY, else the last fetch "
-        "snapshots",
+        help="the models the plans offer right now, endpoints "
+        "and names (--all adds API status); live from the inference "
+        "gateway with a key, else the last fetch snapshots",
+    ).add_argument(
+        "--all",
+        dest="all_models",
+        action="store_true",
+        help="also show known-but-not-served models, marked [ ], plus the "
+        "API status column ([x] served, [?] unknown)",
     )
     sub.add_parser(
         "auth",

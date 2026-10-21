@@ -23,9 +23,9 @@ from .auth import load_key, save_key
 from .availability import available_ids, load_available, offered
 from .benchmarks import available
 from .boards import fetch_boards, load_boards, merge_boards, save_boards
-from .data import load_models
 from .fetch import http_get, refresh
 from .live import LIVE_CONFIG_URL, fetch_live, fetch_served, merge_served, save_live
+from .models import load_models
 from .overrides import load_curated, off_band_models, source_tier
 from .pricing import (
     FREE_TIER_NOMINAL_RATES,

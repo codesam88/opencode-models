@@ -9,7 +9,7 @@ placed and are excluded.
 
 from __future__ import annotations
 
-from .data import Model
+from .models import Model
 
 
 def frontier(models: list[Model], benchmark: str) -> list[Model]:

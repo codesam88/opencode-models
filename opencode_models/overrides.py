@@ -24,7 +24,7 @@ import json
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-from .data import Model, benchmark_key, load_models
+from .models import Model, benchmark_key, load_models
 
 #: Independent evaluator that runs every model on one harness — the only
 #: regime where cross-model differences are model differences.

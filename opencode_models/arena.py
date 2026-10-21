@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from .data import Model
+from .models import Model
 
 CACHE_NAME = "scores.json"
 ARENA_BENCHMARK = "LMArena Elo"

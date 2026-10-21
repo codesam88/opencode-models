@@ -72,24 +72,49 @@ page parsing is `html.parser`, with a maintainer-paste fallback).
   per-model table with footnote flags, invariant checks.
 - [ ] 4. Refresh flow (RED first where pure): scrape/parse, consistency
   gate, expand-not-replace publish to the release asset; staleness
-  display in views.
+  display in views. Manual workflow today: `just plans-update`
+  (fetch+validate, exit 1 = gate failed, nothing written) → human
+  confirmation (dropped real? added models have assumptions? limit deltas
+  plausible?) → `just plans-freeze` (check local copy, then copy it over
+  the shipped fallback; the pinned gate test guards the committed file in
+  CI) → commit. Future Action: weekly cron runs plans-update;
+  gate failure = red workflow, no PR; diff vs fallback = PR body; merge =
+  promote. Gaps before automating: `page_sha256` in meta, per-model limit
+  deltas in the report.
 - [ ] 5. Plan identity: stored preference + `--plan` + fit hint.
 - [ ] 6. Free-tier diagnostic footnotes + error-signature collection.
+- [ ] 7b. Consolidation (single Go pricing file): declare
+  `plans/go.json` the authority (caps, tiered prices, assumptions,
+  estimates); derive `tier_prices/go` variant rows from its tiers instead
+  of scraping `/docs/go/`; derive Go pool membership as page-keys ∪
+  served (retires hand-maintained `sources/go.txt`, keeps curated
+  `zen.txt`). Verification condition: Go pool parity except +1 intended
+  (`step-5-preview` appears; 6 grandfathered page-dropped models stay
+  while served; 3 dead slugs vanish — they were never in the pool).
+  Location: `opencode_models/data/plans/go.json` (`data.py` became
+  `models.py` for the record types; `data/` is a pure shipped-data
+  namespace; import sites repointed mechanically, no behavior change).
 - [ ] 7. Verification: full suite, ruff/zizmor, live matrix (keyed
   `usage` vs export vs page math), docs (README/LIMITS/CHANGELOG +
   `docs/model-go-plan.md` status flip per settled assumption).
 
-## Open decisions (interview before building)
+## Open decisions (settled with maintainer 2026-10-21)
 
-- Snapshot home: `data/`-local cache only vs repo-frozen fallback copy
-  for offline installs (recommended: both — frozen fallback ships,
-  refresh overwrites local).
-- Refresh trigger: CI-scheduled scrape + PR (recommended) vs
-  maintainer-run script vs staleness check inside `fetch`.
-- `usage` scope: read-only overview + flags first (recommended) vs
-  advice text ("switch to X") from day one.
-- Default plan: assume Go until declared (recommended) vs force explicit
-  choice on first `usage` run.
+- Snapshot home: **runtime snapshot in local `data/`**
+  (`data/plans/`, gitignored; committed copies ride the `local-data`
+  branch). The wheel additionally ships a **frozen fallback**
+  (`opencode_models/data/plans/go.json`, refreshed deliberately via
+  `--out`, same validation gate) so installs work with no network.
+  Resolution order (for the step-1 core): local copy first, fallback
+  second. Refresh merges extend-not-replace into the local copy only.
+- Refresh trigger: **conversion script now, online release + CI later.**
+  An independent stdlib script (`scripts/`) converts the page tables to
+  the committed JSON; the file is **extended on updates, never replaced**
+  (new models added, dropped models flagged, schema changes fail shut).
+  Curated release asset + CI scrape when needed.
+- `usage` scope: **read-only first** — expose the model via the `usage`
+  command (step 3): overview table + footnote flags + invariants.
+- Default plan: **assume Go, `--go-pro` selects Plus caps** (step 5).
 
 ## Verification
 

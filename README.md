@@ -365,10 +365,21 @@ committed**. They are third-party records, they go stale, and they are large;
 | `opencode/` | upstream records, one JSON per model, verbatim from `https://opencode.ai/data/<lab>/<model>.json` | `fetch` only | no — `.gitignore`d |
 | `aiarena/` | arena.ai (LMArena) Elo cache, `{slug: elo}` | `fetch` | no — `.gitignore`d |
 | `tier_prices/` | snapshots of the Console tier pricing tables (see below for what counts as offered) | `fetch` | no — `.gitignore`d |
-| `available/` | the live model set per tier from the Console config API — the plans as the API serves them right now | keyed `fetch` / `models` | no — `.gitignore`d |
+| `available/` | the live model set per tier from the inference gateway lists (served = callable), annotated with the Console config API's known set | keyed `fetch` / `models` | no — `.gitignore`d |
+| `plans/` | validated plan allowance snapshots: per-model token prices, monthly limits per plan, token/req assumptions, request estimates (`update_go_pricing.py` + gate) | `just plans-update` on cadence | no — `.gitignore`d |
 | `boards/` | official benchmark boards, fetched from whoever runs them (see below) | `fetch` | no — `.gitignore`d |
 | `usage/` | free-tier nominal rates derived from the workspace usage export (per-model traffic only, no user columns) | keyed `fetch` (needs `OPENCODE_API_KEY`) | no — `.gitignore`d |
 | `overrides/` | hand-pinned benchmark values (see `data/overrides/README.md`) | nobody — `overrides` reports disagreements | **yes** (the directory, no data) |
+
+Shipped fallbacks (committed, versioned deliberately, validated — the
+offline copy when no snapshot exists): `opencode_models/data/plans/go.json`
+(promoted from `data/plans/` via `just plans-freeze`, pinned by
+test), `opencode_models/sources/*.txt` (hand-maintained tier membership —
+`zen` curated, `go` open), and the nominal free-tier rates at the top of
+`opencode_models/pricing.py` (overridden at runtime by
+`data/usage/free_tier_nominals.json` when `fetch` has derived it from the
+usage export). Rule of thumb: mutability decides the home — refreshable
+state lives in `data/`, frozen seeds ship in the package.
 
 `fetch` downloads only the models the plans offer (use `--all` for the
 full catalog). Records already on disk are never deleted, so a dropped

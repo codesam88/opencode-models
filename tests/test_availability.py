@@ -157,8 +157,8 @@ class LivePrecedenceTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
             _snapshot(d, "zen", ["stale-model"])
-            save_live(d, {"zen": {"live-model"}})
-            self.assertEqual(load_available(d)["zen"], {"live-model"})
+            save_live(d, {"zen": {"live-model": False}})
+            self.assertEqual(load_available(d)["zen"], {"live-model": False})
 
     def test_the_docs_snapshot_survives_where_live_was_never_fetched(self):
         with tempfile.TemporaryDirectory() as tmp:

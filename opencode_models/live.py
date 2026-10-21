@@ -28,25 +28,61 @@ LIVE_TIERS = {"opencode": "zen", "opencode-go": "go"}
 SNAPSHOT_DIR = "available"
 
 
-def fetch_live(get) -> dict[str, set[str]]:
-    """Model slugs each tier offers right now, keyed by tier.
+#: The inference gateway's model lists — the live truth for availability.
+#: Presence on the list = servable by this key; the endpoint is public but
+#: key-scoped (an anonymous zen call returns the catalog-wide list, a keyed
+#: one this workspace's entitlements), so always call it authed.
+SERVED_URLS = {
+    "zen": "https://opencode.ai/inference/v1/models",
+    "go": "https://opencode.ai/inference/go/v1/models",
+}
+
+
+def fetch_served(get) -> dict[str, set[str]]:
+    """Model ids the inference gateway serves per tier, keyed by tier.
+
+    *get* is an authed ``(url) -> str`` callable. Entries carry the
+    OpenAI ``data[].id`` shape; malformed entries are skipped rather
+    than trusted.
+    """
+    out: dict[str, set[str]] = {}
+    for tier, url in SERVED_URLS.items():
+        payload = json.loads(get(url))
+        out[tier] = {
+            item["id"]
+            for item in (payload.get("data") or [])
+            if isinstance(item, dict) and item.get("id")
+        }
+    return out
+
+
+def fetch_live(get) -> dict[str, dict[str, bool]]:
+    """Model slugs each tier offers right now, mapped to their disabled
+    flag, keyed by tier.
 
     *get* is an authed ``(url) -> str`` callable (the endpoint is
     person-free but key-gated). Unknown providers are ignored; a provider
-    with no models entry counts as offering nothing, not as unknown.
+    with no models entry counts as offering nothing, not as unknown. The
+    revised config marks withdrawn models with ``disabled: true`` — the
+    flag rides along so the console can show status, and availability
+    consumers decide separately what to do with it.
     """
     payload = json.loads(get(LIVE_CONFIG_URL))
     providers = payload.get("providers") or {}
-    return {
-        tier: set((providers.get(name) or {}).get("models") or {})
-        for name, tier in LIVE_TIERS.items()
-    }
+    out: dict[str, dict[str, bool]] = {}
+    for name, tier in LIVE_TIERS.items():
+        models = (providers.get(name) or {}).get("models") or {}
+        out[tier] = {
+            slug: bool(spec.get("disabled")) if isinstance(spec, dict) else False
+            for slug, spec in models.items()
+        }
+    return out
 
 
-def save_live(data_dir: Path, live: dict[str, set[str]]) -> list[str]:
-    """Snapshot the live set to ``available/<tier>.json``; returns files."""
+def save_live(data_dir: Path, live: dict[str, dict[str, bool]]) -> list[str]:
+    """Snapshot the live set with statuses to ``available/<tier>.json``."""
     saved = []
-    for tier, slugs in live.items():
+    for tier, statuses in live.items():
         directory = Path(data_dir) / SNAPSHOT_DIR
         directory.mkdir(parents=True, exist_ok=True)
         path = directory / f"{tier}.json"
@@ -59,7 +95,7 @@ def save_live(data_dir: Path, live: dict[str, set[str]]) -> list[str]:
                             timespec="seconds"
                         ),
                     },
-                    "models": sorted(slugs),
+                    "models": {slug: statuses[slug] for slug in sorted(statuses)},
                 },
                 indent=1,
             )
@@ -68,10 +104,31 @@ def save_live(data_dir: Path, live: dict[str, set[str]]) -> list[str]:
     return saved
 
 
-def load_live(data_dir: Path) -> dict[str, set[str] | None]:
-    """The live snapshot, by tier; None where there is none.
+def merge_served(
+    served: dict[str, set[str]], known: dict[str, dict[str, bool]]
+) -> dict[str, dict[str, bool]]:
+    """Union of what the gateway serves and what config knows, per tier.
 
-    None means "never fetched live", not "the plan offers nothing".
+    Stored semantics: True = served right now, False = known to config
+    but not served (the stale legacy set), absent = nobody knows. The
+    config entry's own disabled flag is discarded — served-ness is the
+    availability truth.
+    """
+    out: dict[str, dict[str, bool]] = {}
+    for tier in sorted(set(served) | set(known)):
+        status = {slug: False for slug in known.get(tier) or {}}
+        for slug in served.get(tier) or set():
+            status[slug] = True
+        out[tier] = status
+    return out
+
+
+def load_live(data_dir: Path) -> dict[str, dict[str, bool | None] | None]:
+    """The live snapshot by tier: slug -> disabled flag; None if absent.
+
+    None tier means "never fetched live", not "the plan offers nothing".
+    Files written before the flag existed stored a bare slug list; those
+    load as ``{slug: None}`` — status unknown rather than invented.
     """
     out = {}
     for tier in sorted(LIVE_TIERS.values()):
@@ -84,5 +141,13 @@ def load_live(data_dir: Path) -> dict[str, set[str] | None]:
         except (json.JSONDecodeError, OSError, AttributeError):
             out[tier] = None
             continue
-        out[tier] = set(models) if isinstance(models, list) else None
+        if isinstance(models, list):
+            out[tier] = {slug: None for slug in models}
+        elif isinstance(models, dict):
+            out[tier] = {
+                slug: value if isinstance(value, bool) else None
+                for slug, value in models.items()
+            }
+        else:
+            out[tier] = None
     return out

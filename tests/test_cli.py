@@ -297,7 +297,7 @@ class CliTest(unittest.TestCase):
             cli.refresh_free_nominals = fake_refresh
             # live config is a separate keyed call: stub it so this unit
             # test performs no real network I/O at all
-            cli.fetch_live = lambda get: {"zen": {"m1"}, "go": set()}
+            cli.fetch_live = lambda get: {"zen": {"m1": False}, "go": {}}
             try:
                 code, out = self._run("--data", str(d), "fetch")
             finally:
@@ -376,7 +376,7 @@ class CliTest(unittest.TestCase):
         os.environ["OPENCODE_API_KEY"] = "oc_sk_test"
         cli.http_get = fake_get
         cli.refresh_free_nominals = fake_refresh
-        cli.fetch_live = lambda get: {"zen": {"m1"}, "go": set()}
+        cli.fetch_live = lambda get: {"zen": {"m1": False}, "go": {}}
         try:
             with tempfile.TemporaryDirectory() as tmp:
                 d = Path(tmp)
@@ -3113,8 +3113,14 @@ class ModelsCommandTest(unittest.TestCase):
         import os
 
         with tempfile.TemporaryDirectory() as tmp:
+            import json as _json
+
             self._snapshot(tmp, "zen", ["m-zen"])
             self._snapshot(tmp, "go", ["m-go"])
+            for mid in ("m-zen", "m-go"):
+                (_models(Path(tmp)) / f"l__{mid}.json").write_text(
+                    _json.dumps({"model": {"id": f"l/{mid}", "name": mid.upper()}})
+                )
             with mock.patch.dict(os.environ, {}, clear=False):
                 os.environ.pop("OPENCODE_API_KEY", None)
                 code, out = self._run("--data", tmp, "models")
@@ -3128,10 +3134,27 @@ class ModelsCommandTest(unittest.TestCase):
         import opencode_models.cli as cli_mod
 
         with tempfile.TemporaryDirectory() as tmp:
+            import json as _json
+
             self._snapshot(tmp, "zen", ["m-stale"])
+            # both catalog-known: m-stale's absence proves the served
+            # filter, not the catalog intersect, does the hiding
+            for mid in ("m-live", "m-stale"):
+                (_models(Path(tmp)) / f"l__{mid}.json").write_text(
+                    _json.dumps({"model": {"id": f"l/{mid}", "name": mid.upper()}})
+                )
             with mock.patch.dict(os.environ, {"OPENCODE_API_KEY": "oc_sk_test"}):
-                with mock.patch.object(
-                    cli_mod, "fetch_live", return_value={"zen": {"m-live"}, "go": set()}
+                with (
+                    mock.patch.object(
+                        cli_mod,
+                        "fetch_served",
+                        return_value={"zen": {"m-live"}, "go": set()},
+                    ),
+                    mock.patch.object(
+                        cli_mod,
+                        "fetch_live",
+                        return_value={"zen": {"m-live": False}, "go": {}},
+                    ),
                 ):
                     code, out = self._run("--data", tmp, "models")
             self.assertEqual(code, 0)
@@ -3147,15 +3170,24 @@ class ModelsCommandTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             self._snapshot(tmp, "zen", ["m-stale"])
             with mock.patch.dict(os.environ, {"OPENCODE_API_KEY": "oc_sk_test"}):
-                with mock.patch.object(
-                    cli_mod, "fetch_live", return_value={"zen": {"m-live"}, "go": set()}
+                with (
+                    mock.patch.object(
+                        cli_mod,
+                        "fetch_served",
+                        return_value={"zen": {"m-live"}, "go": set()},
+                    ),
+                    mock.patch.object(
+                        cli_mod,
+                        "fetch_live",
+                        return_value={"zen": {"m-live": False}, "go": {}},
+                    ),
                 ):
                     code, _ = self._run("--data", tmp, "models")
             self.assertEqual(code, 0)
             saved = json.loads((Path(tmp) / "available" / "zen.json").read_text())[
                 "models"
             ]
-            self.assertEqual(saved, ["m-live"])
+            self.assertEqual(saved, {"m-live": True})
 
 
 class CurrentOfferedTest(unittest.TestCase):
@@ -3206,7 +3238,7 @@ class CurrentOfferedTest(unittest.TestCase):
             self._snapshot(tmp, "zen", ["m1"])
             with mock.patch.dict(os.environ, {"OPENCODE_API_KEY": "oc_sk_test"}):
                 with mock.patch.object(
-                    cli_mod, "fetch_live", side_effect=AssertionError("no net")
+                    cli_mod, "fetch_served", side_effect=AssertionError("no net")
                 ):
                     self.assertIsNone(self._offered(tmp, bypass=True))
 
@@ -3218,7 +3250,7 @@ class CurrentOfferedTest(unittest.TestCase):
             os.environ.pop("OPENCODE_API_KEY", None)
             self.assertEqual(self._offered(tmp), {"m1"})
 
-    def test_with_a_key_the_live_set_decides_and_is_recorded(self):
+    def test_with_a_key_the_served_set_decides_and_is_recorded(self):
         import json
         import os
 
@@ -3227,14 +3259,58 @@ class CurrentOfferedTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             self._snapshot(tmp, "zen", ["m-stale"])
             with mock.patch.dict(os.environ, {"OPENCODE_API_KEY": "oc_sk_test"}):
-                with mock.patch.object(
-                    cli_mod, "fetch_live", return_value={"zen": {"m-live"}, "go": set()}
+                with (
+                    mock.patch.object(
+                        cli_mod,
+                        "fetch_served",
+                        return_value={"zen": {"m-live"}, "go": {"g-live"}},
+                    ),
+                    mock.patch.object(
+                        cli_mod,
+                        "fetch_live",
+                        return_value={
+                            "zen": {"m-live": True, "legacy": True},
+                            "go": {},
+                        },
+                    ),
                 ):
-                    self.assertEqual(self._offered(tmp), {"m-live"})
+                    # served only: the config-known-but-unserved "legacy"
+                    # model is recorded but never offered
+                    self.assertEqual(self._offered(tmp), {"m-live", "g-live"})
             saved = json.loads((Path(tmp) / "available" / "zen.json").read_text())[
                 "models"
             ]
-            self.assertEqual(saved, ["m-live"])
+            self.assertEqual(saved, {"m-live": True, "legacy": False})
+
+    def test_zero_go_models_raises_a_personal_token_warning(self):
+        import os
+
+        import opencode_models.cli as cli_mod
+
+        with tempfile.TemporaryDirectory() as tmp:
+            self._snapshot(tmp, "zen", ["m-doc"])
+            with mock.patch.dict(os.environ, {"OPENCODE_API_KEY": "oc_sk_test"}):
+                with (
+                    mock.patch.object(
+                        cli_mod,
+                        "fetch_served",
+                        return_value={"zen": {"m-live"}, "go": set()},
+                    ),
+                    mock.patch.object(
+                        cli_mod,
+                        "fetch_live",
+                        return_value={"zen": {}, "go": {}},
+                    ),
+                    mock.patch.object(cli_mod, "save_live", lambda *a: None),
+                ):
+                    buf = io.StringIO()
+                    with contextlib.redirect_stdout(buf):
+                        served = cli_mod._current_offered(Path(tmp))
+            out = buf.getvalue()
+        self.assertEqual(served, {"m-live"})
+        self.assertIn("returned no models", out)
+        self.assertIn("personal", out)
+        self.assertIn("enabled", out)
 
     def test_an_unreachable_api_falls_back_to_snapshots(self):
         import os
@@ -3245,7 +3321,7 @@ class CurrentOfferedTest(unittest.TestCase):
             self._snapshot(tmp, "zen", ["m-doc"])
             with mock.patch.dict(os.environ, {"OPENCODE_API_KEY": "oc_sk_test"}):
                 with mock.patch.object(
-                    cli_mod, "fetch_live", side_effect=OSError("down")
+                    cli_mod, "fetch_served", side_effect=OSError("down")
                 ):
                     self.assertEqual(self._offered(tmp), {"m-doc"})
 
@@ -3267,8 +3343,13 @@ class CurrentOfferedTest(unittest.TestCase):
             sources.load_source = lambda name: {f"m{i:02d}" for i in range(1, 11)}
             try:
                 with mock.patch.dict(os.environ, {"OPENCODE_API_KEY": "oc_sk_test"}):
-                    live = {"zen": {f"m{i:02d}" for i in range(1, 10)}, "go": set()}
-                    with mock.patch.object(cli_mod, "fetch_live", return_value=live):
+                    served = {"zen": {f"m{i:02d}" for i in range(1, 10)}, "go": set()}
+                    with (
+                        mock.patch.object(cli_mod, "fetch_served", return_value=served),
+                        mock.patch.object(
+                            cli_mod, "fetch_live", return_value={"zen": {}, "go": {}}
+                        ),
+                    ):
                         code, out = self._run("--data", tmp, "next", "--source", "zen")
             finally:
                 sources.load_source = orig
@@ -3299,7 +3380,9 @@ class AuthCommandTest(unittest.TestCase):
                     mock.patch.object(getpass, "getpass", return_value="oc_sk_new"),
                     mock.patch.object(cli_mod.sys.stdin, "isatty", return_value=True),
                     mock.patch.object(
-                        cli_mod, "fetch_live", return_value={"zen": {"m"}, "go": set()}
+                        cli_mod,
+                        "fetch_live",
+                        return_value={"zen": {"m": False}, "go": {}},
                     ) as live,
                 ):
                     code, out = self._run("--data", tmp, "auth")
@@ -3343,11 +3426,25 @@ class AuthCommandTest(unittest.TestCase):
         from opencode_models.auth import save_key
 
         with tempfile.TemporaryDirectory() as tmp:
+            import json as _json
+
             with mock.patch.dict(os.environ, self._home(tmp), clear=True):
                 save_key("oc_sk_file")
-                with mock.patch.object(
-                    cli_mod, "fetch_live", return_value={"zen": {"m-live"}, "go": set()}
-                ) as live:
+                (_models(Path(tmp)) / "l__m-live.json").write_text(
+                    _json.dumps({"model": {"id": "l/m-live", "name": "M-LIVE"}})
+                )
+                with (
+                    mock.patch.object(
+                        cli_mod,
+                        "fetch_served",
+                        return_value={"zen": {"m-live"}, "go": set()},
+                    ),
+                    mock.patch.object(
+                        cli_mod,
+                        "fetch_live",
+                        return_value={"zen": {"m-live": False}, "go": {}},
+                    ) as live,
+                ):
                     code, out = self._run("--data", tmp, "models")
         self.assertEqual(code, 0)
         self.assertTrue(live.called)
@@ -3394,10 +3491,15 @@ class NoKeyNoticeTest(unittest.TestCase):
             sources.load_source = lambda name: {f"m{i:02d}" for i in range(1, 11)}
             try:
                 with mock.patch.dict(os.environ, {"OPENCODE_API_KEY": "oc_sk_test"}):
-                    live = {
+                    served = {
                         t: {f"m{i:02d}" for i in range(1, 11)} for t in ("zen", "go")
                     }
-                    with mock.patch.object(cli_mod, "fetch_live", return_value=live):
+                    with (
+                        mock.patch.object(cli_mod, "fetch_served", return_value=served),
+                        mock.patch.object(
+                            cli_mod, "fetch_live", return_value={"zen": {}, "go": {}}
+                        ),
+                    ):
                         code, out = self._run("--data", tmp, "next", "--source", "zen")
             finally:
                 sources.load_source = orig
@@ -3497,23 +3599,97 @@ class ModelsTableTest(unittest.TestCase):
         self.assertIn("opencode-go/m-bravo", out)
         self.assertNotIn("opencode/m-bravo", out)
 
-    def test_models_marks_a_missing_display_name(self):
+    def test_models_offline_marks_unknown_status(self):
+        # no live record ever (docs snapshot only): --all marks the row
+        # [?], never an invented [x]/[ ]; the default view carries no
+        # status column at all
         with tempfile.TemporaryDirectory() as tmp:
-            self._snapshot(tmp, "zen", ["m-ghost"])
+            self._snapshot(tmp, "zen", ["m-known"])
+            self._catalog(tmp, {"l/m-known": "Known"})
             code, out = self._run("--data", tmp, "models")
+            code_all, out_all = self._run("--data", tmp, "models", "--all")
         self.assertEqual(code, 0)
-        # the endpoint carries the slug; the name column reads "—",
-        # not the slug twice
-        row = next(l for l in out.splitlines() if "m-ghost" in l)
-        self.assertIn("opencode/m-ghost", row)
-        self.assertTrue(row.rstrip().endswith("—"), row)
+        head = next(l for l in out.splitlines() if "ENDPOINT" in l)
+        self.assertNotIn("Avail", head)
+        row = next(l for l in out.splitlines() if "m-known" in l)
+        self.assertNotRegex(row, r"\[[ x?]\]")
+        self.assertEqual(code_all, 0)
+        row_all = next(l for l in out_all.splitlines() if "m-known" in l)
+        self.assertTrue(row_all.lstrip().startswith("[?]"), row_all)
 
+    def test_models_shows_served_status_markers(self):
+        import opencode_models.cli as cli_mod
 
-class ColumnLabelTest(unittest.TestCase):
-    def test_deepswe_drops_its_version_in_the_header(self):
-        from opencode_models.cli import _column_label
+        with tempfile.TemporaryDirectory() as tmp:
+            self._snapshot(tmp, "zen", ["m-live", "m-dead"])
+            self._catalog(tmp, {"l/m-live": "Live", "l/m-dead": "Dead"})
+            with mock.patch.dict(os.environ, {"OPENCODE_API_KEY": "oc_sk_test"}):
+                with (
+                    mock.patch.object(
+                        cli_mod,
+                        "fetch_served",
+                        return_value={"zen": {"m-live"}, "go": set()},
+                    ),
+                    mock.patch.object(
+                        cli_mod,
+                        "fetch_live",
+                        return_value={
+                            "zen": {"m-live": True, "m-dead": True},
+                            "go": {},
+                        },
+                    ),
+                ):
+                    code, out = self._run("--data", tmp, "models")
+                    code_all, out_all = self._run("--data", tmp, "models", "--all")
+        self.assertEqual(code, 0)
+        head = next(l for l in out.splitlines() if "ENDPOINT" in l)
+        self.assertRegex(head, r"ENDPOINT\s+MODEL\s*$")
+        self.assertNotIn("Avail", head)
+        # default: served rows only, endpoint first, no status marker
+        self.assertIn("m-live", out)
+        self.assertNotIn("m-dead", out)
+        row = next(l for l in out.splitlines() if "m-live" in l)
+        self.assertTrue(row.lstrip().startswith("opencode/"), row)
+        self.assertNotRegex(row, r"\[[ x?]\]")
+        # --all: marker-first layout plus the known-unserved rows
+        self.assertEqual(code_all, 0)
+        head_all = next(l for l in out_all.splitlines() if "ENDPOINT" in l)
+        self.assertRegex(head_all, r"Avail\s+ENDPOINT\s+MODEL\s*$")
+        self.assertTrue(
+            next(l for l in out_all.splitlines() if "m-live" in l)
+            .lstrip()
+            .startswith("[x]")
+        )
+        self.assertIn("m-dead", out_all)
+        self.assertTrue(
+            next(l for l in out_all.splitlines() if "m-dead" in l)
+            .lstrip()
+            .startswith("[ ]")
+        )
 
-        self.assertEqual(_column_label("DeepSWE 1.1"), "DeepSWE")
+    def test_models_hides_rows_the_catalog_does_not_know(self):
+        import opencode_models.cli as cli_mod
+
+        with tempfile.TemporaryDirectory() as tmp:
+            self._snapshot(tmp, "zen", ["m-ghost", "m-known"])
+            self._catalog(tmp, {"l/m-known": "Known"})
+            with mock.patch.dict(os.environ, {"OPENCODE_API_KEY": "oc_sk_test"}):
+                with (
+                    mock.patch.object(
+                        cli_mod,
+                        "fetch_served",
+                        return_value={"zen": {"m-ghost", "m-known"}, "go": set()},
+                    ),
+                    mock.patch.object(
+                        cli_mod, "fetch_live", return_value={"zen": {}, "go": {}}
+                    ),
+                ):
+                    code, out = self._run("--data", tmp, "models")
+                    code_all, out_all = self._run("--data", tmp, "models", "--all")
+        self.assertEqual(code, 0)
+        self.assertIn("m-known", out)
+        self.assertNotIn("m-ghost", out)  # junk like the served "test" id
+        self.assertNotIn("m-ghost", out_all)
 
     def test_deepswe_version_survives_in_the_legend(self):
         import json

@@ -286,3 +286,16 @@ as if they were known:
    That is why the list view should not rank Go's included models by
    score-per-list-price: the dollar it divides by is already spent, and the
    constraint that binds is the per-model allowance.
+6. **The config API is not the availability record (v2 migration).**
+   `GET /api/v2/config` now answers this workspace with a stale legacy set
+   (all models `disabled: true`, `opencode-go.models` empty) while the
+   inference gateway serves 37 models per flavor — verified 2026-10-21,
+   same result for personal and service keys. Availability therefore comes
+   from `GET /inference/{,go/}v1/models`; config only annotates.
+7. **Go allowance windows have an undocumented endpoint.**
+   `GET https://opencode.ai/zen/go/v1/usage` (Bearer key, not a stable
+   public API) returns plan-level `usage.{rolling,weekly,monthly}` each
+   with `status`, `percent` and `resetsAt` (monthly is
+   subscription-anchored). Probed 2026-10-21 with a personal key; per-model
+   usage stays the `usage/export` route. Displaying it is deliberately not
+   implemented — see README Limitations.

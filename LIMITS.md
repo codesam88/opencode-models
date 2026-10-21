@@ -253,6 +253,17 @@ failure, check same-moment other-vendor free models (works: per-model or
 vendor issue; all fail: global gate) and the same model via the other
 plan's route, with exact error text (vendor 429s mimic the gate).
 
+Live drift demo (2026-10-21): step-5-preview's Plus cap was $240 in the
+Oct-19 tier snapshot and $60 on the page today — absorbed silently by the
+ungated tier scraper, the exact failure the allowance gate exists to
+catch. Authority split: the allowance file (`data/plans/go.json` +
+shipped fallback) owns Go caps, token assumptions, estimates and tiered
+prices with validation; `data/tier_prices/go_prices.json` stays the
+ranking input in variant-row shape (same numbers, verified 33/33 on base
+tiers — apparent mismatches are peak/threshold variants stored as separate
+rows). Do not merge the two without the variant-selection logic; Zen has
+no v2-style limits page, so its prices stay scrape-only.
+
 ### Go limits live on the page, not in any API (verified 2026-10-21)
 
 Golden reference: `https://opencode.ai/v2/docs/console/go#usage-limits`. What it

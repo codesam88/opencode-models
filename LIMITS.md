@@ -136,6 +136,19 @@ free model, because cost per request varies enormously:
 | muse-spark-1.3-contributor-free | 2.3k / 375 / 55k | 0.10 / 0.20 / 0.002 | **$0.0004** |
 | space-bunny-free | 4.1k / 515 / 141k | (no list price; small-model proxy) | $0.0014 |
 
+Fresh 30d export (2026-10-21) adds big-pickle at 5.1k in / 756 out /
+79k cache per req (no catalog list price, so no $/req imputation for it).
+Quota attribution caveat: daily aggregates alone cannot identify the cap —
+starting balances are unknown (a model can fail at low daily use on a
+nearly-spent bucket), models share the bucket in parallel, and the export
+resolves days, not the 5h windows the gate likely uses. The two anchor days
+(space-bunny-free serving 2,809 req / 417M tokens on 2026-09-27, failing
+at 662 req / 175M tokens on 2026-10-12) rule out only a fixed daily request
+cap at or below ~3,000 — everything else needs paired quota+usage data
+(see the run-to-cap experiment below). There is no live free-tier meter,
+so the quota side of that pairing can only be observed at the failure
+moment itself (exact error text + retry hints).
+
 Token profiles are measured (this workspace, 30 trailing days, `/api/v2/usage/export`);
 rates are the catalog's list prices — retail, not serving cost, so read the
 rightmost column as ordinal, not exact. The spread is ~70× between Step-5-Free
@@ -215,6 +228,80 @@ is how it was found: `GET /console/api/billing/{status,account,details,ledger,in
 `BillingStatus` carries `balanceMicroCents`, `creditLimitMicroCents`,
 `availableMicroCents`, `canPurchaseCredits`, `canEnableAutoRecharge`. These
 routes are **person-only** (see below).
+
+### Go plan structure (agreed 2026-10-21; executable model: `/tmp/opencode/go_allowance.py`)
+
+Two plans, Go $10/mo and Go Plus $40/mo. Token prices identical across
+plans; per-model monthly dollar limits differ per plan (Go $15–$80, Plus
+$60–$240) and are NOT proportional to the plan price — same $10 plan spans
+$15 (kimi-k3) to $80 (deepseek-v4.1-flash), i.e. cheap models win twice
+(low $/req times high $ cap: 490 vs 226,600 req/month, a 462× spread).
+Windows are fractions of each model's monthly limit: 5h = 20%, weekly =
+50%, monthly = 100%. Overage ("Extra usage" toggle) falls back to Zen
+credits at the same token prices. Free rows are Unlimited: outside the
+dollar windows entirely, and the page confirms they keep working after
+priced limits are hit. `req/month = monthly_limit / $/req` with
+`$/req` from the page's token assumptions reproduces the page's own
+estimates (24/26 exact; kimi-k2.7-code deviates 26%, gemini-4-argon has no
+published assumptions). Credit-burn ranking is plan-invariant ($/req does
+not change with plan); only caps scale, non-uniformly (2–4×).
+Open, with discriminating tests: whether per-model caps are silos (page
+framing leans silo) or one shared pool — exhaust one model's monthly cap,
+then try another priced model (silos: works; pool: blocked); and whether
+the free throttle is global across models/vendors/plans — at a free
+failure, check same-moment other-vendor free models (works: per-model or
+vendor issue; all fail: global gate) and the same model via the other
+plan's route, with exact error text (vendor 429s mimic the gate).
+
+### Go limits live on the page, not in any API (verified 2026-10-21)
+
+Golden reference: `https://opencode.ai/v2/docs/console/go#usage-limits`. What it
+has that no API carries: **per-model monthly dollar limits** (Go: $15–$80,
+Plus: $60–$240, free rows Unlimited), the **window rule** (5h = 20% of the
+monthly limit, weekly = 50%, monthly = 100%), per-model estimated request
+counts, and the token-per-request assumptions behind them (heavy prompt
+caching: ~55–89k cached tokens/req — Go-typical traffic, not transferable
+to Zen, where we measure different profiles). Token prices are in both
+places (page is authoritative incl. context-tier and peak/off-peak
+variants); export `cost_micro_cents` verifies against page prices
+(spot-check: muse-spark-1.3-contributor $10.91 vs $10.90 computed).
+Per-model remaining therefore needs a snapshot of the page's limits table
+as the denominator: `remaining = limit × {0.2, 0.5, 1.0} − export spend in
+window`. The model list itself IS in an API (`/inference/go/v1/models`,
+which the page documents).
+The plan-level `percent` from `/zen/go/v1/usage` is opaque: with
+(monthly 2%, weekly 4%) live, export-derived candidates give max-model
+19.4%/47.1% and sum-of-Go-limits 1.0%/2.8% — neither reproduces it, so the
+headline number cannot be independently derived. Per-model math from
+page + export is more informative than the API percent. Workspace plan
+(Go vs Plus, limits differ 2–4×) is not exposed by any endpoint.
+
+### Exact metric shapes (verified live 2026-10-21, personal key, `https://opencode.ai` base)
+
+**Zen — spend and credit balance (pay-per-use, deducted from balance):**
+
+| endpoint | exact fields |
+|---|---|
+| `GET /console/api/v2/usage/export?range=7d\|30d\|90d` | CSV per UTC day × model: `day, user_type, user_id, user_name, provider, model, requests, input_tokens, output_tokens, cache_read_tokens, cache_write_5m_tokens, cache_write_1h_tokens, cost_micro_cents`. `provider` is `opencode` (Zen) or `opencode-go` (Go); free rows carry `cost_micro_cents = 0` |
+| `GET /console/api/usage/summary` | lifetime workspace totals: `totalRequests, totalInputTokens, totalOutputTokens, totalCacheReadTokens, totalCacheWrite5mTokens, totalCacheWrite1hTokens, totalCostMicroCents, services[]` |
+| `GET /console/api/usage/models` | per-model lifetime `items[]`: `model, provider, totalRequests, totalInputTokens, totalOutputTokens, totalCacheReadTokens, totalCacheWrite5mTokens, totalCacheWrite1hTokens, totalCostMicroCents` |
+| `GET /console/api/usage/cost-by-day` | spend history back to Aug 10: `[{date, totalCostMicroCents, totalTokens, totalRequests}]` |
+| `GET /console/api/billing/status` | the live credit meter: `billingMode, mode, balanceMicroCents, creditLimitMicroCents, availableMicroCents, canPurchaseCredits, canEnableAutoRecharge` (this workspace: ~$2,412 balance, no credit limit) |
+| `GET /console/api/billing/account` | `orgId, creditLimitMicroCents, createdAt, updatedAt` — no usage |
+| `GET /console/api/members` | `items[]`: `avatarUrl, createdAt, disabledAt, displayName, email, role, spentMicroCents, userId` — per-member spend (aggregate only; never persist emails) |
+
+**Go — included-usage allowance (monthly subscription, per-model included amounts):**
+
+| endpoint | exact fields |
+|---|---|
+| `GET /zen/go/v1/usage` | plan-level only: `{"usage": {rolling, weekly, monthly: {status, percent, resetsAt}}}`. No per-model split, no dollars, no free-tier dimension |
+| `GET /zen/go/v1/limits`, `/zen/v1/usage`, `/inference/v1/usage` | **404** — do not exist |
+
+Notes: budgets (`/api/v1|v2/budgets/members`, opt-in per-member caps — not the plan
+allowance) return **403** with a personal key today (200 with a service key on
+2026-10-12 — another token-class split). Go rows also appear inside the Zen
+history endpoints (`provider = opencode-go`); with "Use balance" on, Go draws
+past its included amounts from the Zen `balanceMicroCents` above.
 
 ### With a read-only service-account key (`oc_sk_…`, "All" permissions)
 
@@ -299,3 +386,11 @@ as if they were known:
    subscription-anchored). Probed 2026-10-21 with a personal key; per-model
    usage stays the `usage/export` route. Displaying it is deliberately not
    implemented — see README Limitations.
+   The response has **no per-model and no free-tier dimension** — it is a
+   single plan-level percent per window, so free-model runway cannot be
+   read off it (free rows carry an `Unlimited` monthly limit: they draw no
+   included usage and are gated by unpublished rate limits instead). There
+   is no `/zen/v1/usage` (404). Calls need a real client `User-Agent` —
+   bare-urllib requests die at Cloudflare (1010). Go's credit fallback pool
+   is separate: `GET /console/api/billing/status` (person-only) carries
+   `balanceMicroCents`/`availableMicroCents` (this workspace: ~$2,412).

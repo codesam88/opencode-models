@@ -484,7 +484,7 @@ class CliTest(unittest.TestCase):
             finally:
                 sources.load_source = orig
         self.assertEqual(code, 0)
-        self.assertIn("¢/1M", out)  # the column says what it counts
+        self.assertIn("¢/req", out)  # the column says what it counts
         line = next(l for l in out.splitlines() if l.rstrip().endswith("CHEAP"))
         # the calculated score (100, the best of the 40-88.8 range);
         # $0.0612 shows as 6 cents
@@ -527,7 +527,7 @@ class CliTest(unittest.TestCase):
                     "zen",
                     "--benchmark",
                     "TB",
-                    "--price",
+                    "--cost",
                     "output",
                 )
             finally:
@@ -563,8 +563,8 @@ class CliTest(unittest.TestCase):
             ),
         )
         self.assertNotIn("LIMITS.md", out)
-        self.assertIn("ENDPOINT", out)
-        self.assertIn("BAND", out)
+        self.assertIn("Endpoint", out)
+        self.assertIn("Band", out)
 
     def test_next_lists_the_endpoint_not_the_display_name(self):
         from opencode_models.cli import _endpoint
@@ -685,7 +685,7 @@ class CliTest(unittest.TestCase):
             code, out = self._run("--data", tmp, "next", "--source", "all")
         self.assertEqual(code, 0)
         # a BAND cell, not the headline prose (which no longer names one)
-        picks = out.split("BAND", 1)[1]
+        picks = out.split("Band", 1)[1]
         zfree = next(l for l in picks.splitlines() if "zfree" in l)
         self.assertRegex(zfree, r"\b(catalog|free|included|payg)\s*$")
 
@@ -728,10 +728,10 @@ class CliTest(unittest.TestCase):
                 entry=None,
             )
 
-        # a free line is metered at $0, so it reads "—" and sorts ahead
+        # a free line is metered at $0, so it reads "-" and sorts ahead
         # of every cost-based line instead of dividing by a nominal
-        self.assertEqual(_pick_value(row(0.0, 95.0, free=True)), "—")
-        self.assertEqual(_pick_value(row(0.0, 90.0, free=True)), "—")
+        self.assertEqual(_pick_value(row(0.0, 95.0, free=True)), "-")
+        self.assertEqual(_pick_value(row(0.0, 90.0, free=True)), "-")
         self.assertEqual(_pick_value(row(1.0, None)), "-")
         self.assertEqual(_pick_value(row(0.5, 50.0)), "100")
 
@@ -827,7 +827,7 @@ class CliTest(unittest.TestCase):
         for title in ("best value", "worst score", "highest cost"):
             self.assertRegex(out, rf"(?m)^── [^\n]*{title}")
         # one column header per table: score, cost, plan, in order
-        header = re.compile(r"(?m)^\s*SCORE\s+¢/1M\s+SCORE/\$\s+PROV\s+MODEL\s*$")
+        header = re.compile(r"(?m)^\s*Score\s+¢/req\s+Score/\$\s+Prov\s+Model\s*$")
         self.assertEqual(len(header.findall(out)), 3)
 
     def test_headers_are_bold_when_the_output_is_a_terminal(self):
@@ -961,7 +961,7 @@ class CliTest(unittest.TestCase):
         )
         self.assertTrue(any(line.endswith("go  DS") for line in lines))  # provider
         self.assertTrue(any(line.endswith("zen  DS") for line in lines))  # before name
-        self.assertIn("PROV  MODEL", out)  # column header
+        self.assertIn("Prov  Model", out)  # column header
         self.assertIn("included usage", out)  # go grants a monthly cap
         self.assertIn("pay-as-you-go", out)  # zen does not
 
@@ -1222,8 +1222,8 @@ class CliTest(unittest.TestCase):
                 sources.load_source = orig
         self.assertEqual(code, 0)
         lines = out.splitlines()
-        header = next(l for l in lines if l.strip().startswith("SCORE"))
-        model_col = header.index("MODEL")
+        header = next(l for l in lines if l.strip().startswith("Score"))
+        model_col = header.index("Model")
         # one row from each of the three tables, widest cells checked last
         for name in ("MID", "GIFT [free]", "TOP", "WIDE"):
             row = next(l for l in lines if l.rstrip().endswith(name))
@@ -1379,7 +1379,7 @@ class CliTest(unittest.TestCase):
             finally:
                 sources.load_source = orig
         self.assertEqual(code, 0)
-        self.assertEqual(out.count("PROV"), 3)  # one column header per table
+        self.assertEqual(out.count("Prov"), 3)  # one column header per table
         self.assertLess(out.index("best value"), out.index("worst score"))
         self.assertLess(out.index("worst score"), out.index("highest cost"))
 
@@ -1769,8 +1769,8 @@ class OverridesCommandTest(unittest.TestCase):
             d = self._data(tmp)
             code, out = self._run("--data", str(d), "overrides")
         self.assertEqual(code, 0)
-        header = next(l for l in out.splitlines() if "USED" in l)
-        for heading in ("MODEL", "BENCHMARK", "CATALOG", "REPORTED", "USED"):
+        header = next(l for l in out.splitlines() if "Used" in l)
+        for heading in ("Model", "Benchmark", "Catalog", "Reported", "Used"):
             self.assertIn(heading, header)
 
     def test_the_used_column_holds_the_value_the_console_keeps(self):
@@ -1779,8 +1779,8 @@ class OverridesCommandTest(unittest.TestCase):
             _code, out = self._run("--data", str(d), "overrides")
         row = self._row(out, "a/m1")
         self.assertIn("57.88", row)  # the board number
-        header = next(l for l in out.splitlines() if "USED" in l)
-        at = header.index("USED")
+        header = next(l for l in out.splitlines() if "Used" in l)
+        at = header.index("Used")
         self.assertEqual(row[at : at + 5].strip(), "57.88")
 
     def test_the_used_column_shows_the_kept_value_when_the_other_loses(self):
@@ -1788,8 +1788,8 @@ class OverridesCommandTest(unittest.TestCase):
             d = self._data_losing(tmp)  # a vendor claim cannot displace a board
             _code, out = self._run("--data", str(d), "overrides")
         row = self._row(out, "a/m2")
-        header = next(l for l in out.splitlines() if "USED" in l)
-        at = header.index("USED")
+        header = next(l for l in out.splitlines() if "Used" in l)
+        at = header.index("Used")
         self.assertEqual(row[at : at + 5].strip(), "58.18")  # upstream, kept
 
     def test_the_wording_does_not_say_a_value_was_overridden(self):
@@ -2305,7 +2305,7 @@ class AvailabilityTest(unittest.TestCase):
 
     def test_a_free_line_sorts_before_paid_lines(self):
         # free is metered at $0, so a free line outranks every paid line
-        # and reads "—" for score/$ instead of dividing by a nominal
+        # and reads "-" for score/$ instead of dividing by a nominal
         import json
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -2388,7 +2388,7 @@ class AvailabilityTest(unittest.TestCase):
         m1 = next(i for i, l in enumerate(lines) if l.rstrip().endswith("M1 [free]"))
         m2 = next(i for i, l in enumerate(lines) if l.rstrip().endswith("M2"))
         self.assertLess(m1, m2)
-        self.assertRegex(lines[m1], r"\s0\s+—\s+")
+        self.assertRegex(lines[m1], r"\s0\s+-\s+")
 
     def test_the_headline_states_availability_without_naming_names(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -2558,10 +2558,10 @@ class ScoresCommandTest(unittest.TestCase):
         """The header labels of the scores table, in order.
 
         Benchmark columns are separated by two spaces and their labels
-        contain single ones ("SWE Vrfd"), so the gap is what delimits
-        them; MODEL/GRADE/SCORE are single-spaced and come first.
+        contain single ones ("swe vrfd"), so the gap is what delimits
+        them; model/grade/score are single-spaced and come first.
         """
-        head = next(l for l in out.splitlines() if "SCORE" in l and "TB" in l)
+        head = next(l for l in out.splitlines() if "Score" in l and "Tb" in l)
         return re.split(r"\s{2,}", head.strip())[1:]
 
     def _row(self, out, name):
@@ -2574,7 +2574,7 @@ class ScoresCommandTest(unittest.TestCase):
             self._grid(tmp)
             code, out = self._run("--data", tmp, "scores")
         self.assertEqual(code, 0)
-        self.assertEqual(self._columns(out), ["TB 2.1", "SWE Vrfd"])
+        self.assertEqual(self._columns(out), ["Tb 2.1", "Swe vrfd"])
 
     def test_a_column_shows_the_raw_and_the_derived_number(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -2629,7 +2629,7 @@ class ScoresCommandTest(unittest.TestCase):
                 )
             code, out = self._run("--data", tmp, "scores")
         self.assertEqual(code, 0)
-        self.assertEqual(self._columns(out), ["TB 2.1", "SWE Vrfd", "SWE Pro"])
+        self.assertEqual(self._columns(out), ["Tb 2.1", "Swe vrfd", "Swe pro"])
 
     def test_a_benchmark_nobody_carries_gets_no_column(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -2673,7 +2673,7 @@ class ScoresCommandTest(unittest.TestCase):
         self.assertNotIn("TB 2.0", out)
         # M5 measured on nothing we score on: no score, no axes
         self.assertIn("M5", self._row(out, "M5"))
-        self.assertEqual(self._row(out, "M5").split()[:3], ["M5", "·", "—"])
+        self.assertEqual(self._row(out, "M5").split()[:3], ["M5", "·", "-"])
 
     def test_both_spellings_of_a_benchmark_share_one_column(self):
         import json
@@ -2710,15 +2710,15 @@ class ScoresCommandTest(unittest.TestCase):
         self.assertEqual(code, 0)
         # one column, and it is the same scale as the hyphenated spelling:
         # the five numbers run 10-90, so 70 lands at 75
-        self.assertEqual(self._columns(out).count("TB 2.1"), 1)
+        self.assertEqual(self._columns(out).count("Tb 2.1"), 1)
         self.assertIn("70→75", self._row(out, "M7"))
 
     def test_the_short_column_names_say_which_benchmark_they_are(self):
         with tempfile.TemporaryDirectory() as tmp:
             self._grid(tmp)
             _code, out = self._run("--data", tmp, "scores")
-        self.assertIn("TB 2.1 = Terminal-Bench 2.1", out)
-        self.assertIn("SWE Vrfd = SWE-Bench Verified", out)
+        self.assertIn("Tb 2.1 = Terminal-Bench 2.1", out)
+        self.assertIn("Swe vrfd = SWE-Bench Verified", out)
 
     def test_a_column_is_blank_where_the_model_was_not_measured(self):
         import json
@@ -2752,13 +2752,13 @@ class ScoresCommandTest(unittest.TestCase):
             )
             code, out = self._run("--data", tmp, "scores")
         self.assertEqual(code, 0)
-        head = next(l for l in out.splitlines() if "SCORE" in l and "TB 2.1" in l)
+        head = next(l for l in out.splitlines() if "Score" in l and "Tb 2.1" in l)
         row = self._row(out, "M8")
         self.assertIn("40→", row)
         # the SWE cell sits past the Terminal-Bench column, and that column
         # is blank for a model that was never measured on it
-        self.assertGreater(row.index("40→"), head.index("TB 2.1"))
-        self.assertEqual(row[head.index("TB 2.1") : row.index("40→")].strip(), "")
+        self.assertGreater(row.index("40→"), head.index("Tb 2.1"))
+        self.assertEqual(row[head.index("Tb 2.1") : row.index("40→")].strip(), "")
 
     def test_the_headline_counts_scores_not_benchmarks(self):
         # M9 has one benchmark and therefore no score; counting it as
@@ -2834,9 +2834,9 @@ class ScoresCommandTest(unittest.TestCase):
             self._grid(tmp)
             code, out = self._run("--data", tmp, "scores")
         self.assertEqual(code, 0)
-        head = next(l for l in out.splitlines() if "SCORE" in l and "TB 2.1" in l)
-        self.assertLess(head.index("MODEL"), head.index("GRADE"))
-        self.assertLess(head.index("GRADE"), head.index("SCORE"))
+        head = next(l for l in out.splitlines() if "Score" in l and "Tb 2.1" in l)
+        self.assertLess(head.index("Model"), head.index("Grade"))
+        self.assertLess(head.index("Grade"), head.index("Score"))
         grades = {}
         for line in out.splitlines():
             parts = line.split()
@@ -2919,9 +2919,9 @@ class ScoresCommandTest(unittest.TestCase):
         # the column legend is what a reader needs to decode the table, and
         # it belongs under it rather than above
         legend = next(
-            i for i, l in enumerate(lines) if "TB 2.1 = Terminal-Bench 2.1" in l
+            i for i, l in enumerate(lines) if "Tb 2.1 = Terminal-Bench 2.1" in l
         )
-        table = next(i for i, l in enumerate(lines) if "SCORE" in l and "TB 2.1" in l)
+        table = next(i for i, l in enumerate(lines) if "Score" in l and "Tb 2.1" in l)
         self.assertGreater(legend, table)
         self.assertLess(
             table, next(i for i, l in enumerate(lines) if "M1" in l.split())
@@ -2951,7 +2951,7 @@ class ScoresCommandTest(unittest.TestCase):
             code, out = self._run("--data", tmp, "scores")
         self.assertEqual(code, 0)
         self.assertIn("M1", out)
-        self.assertRegex(out, r"(?i)(no benchmarks|none|—)")
+        self.assertRegex(out, r"(?i)(no benchmarks|none)")
 
 
 class ModelsCommandTest(unittest.TestCase):
@@ -3464,8 +3464,8 @@ class ModelsTableTest(unittest.TestCase):
             self._catalog(tmp, {"l/m-alpha": "Alpha", "l/m-bravo": "Bravo"})
             code, out = self._run("--data", tmp, "models")
         self.assertEqual(code, 0)
-        self.assertIn("ENDPOINT", out)
-        self.assertIn("MODEL", out)
+        self.assertIn("Endpoint", out)
+        self.assertIn("Model", out)
         # no per-tier headlines: one sorted list instead
         self.assertIsNone(re.search(r"(?m)^(zen|go) · ", out))
         self.assertLess(out.index("Alpha"), out.index("Bravo"))
@@ -3484,7 +3484,7 @@ class ModelsTableTest(unittest.TestCase):
             code, out = self._run("--data", tmp, "models")
             code_all, out_all = self._run("--data", tmp, "models", "--all")
         self.assertEqual(code, 0)
-        head = next(l for l in out.splitlines() if "ENDPOINT" in l)
+        head = next(l for l in out.splitlines() if "Endpoint" in l)
         self.assertNotIn("Avail", head)
         row = next(l for l in out.splitlines() if "m-known" in l)
         self.assertNotRegex(row, r"\[[ x?]\]")
@@ -3517,8 +3517,8 @@ class ModelsTableTest(unittest.TestCase):
                     code, out = self._run("--data", tmp, "models")
                     code_all, out_all = self._run("--data", tmp, "models", "--all")
         self.assertEqual(code, 0)
-        head = next(l for l in out.splitlines() if "ENDPOINT" in l)
-        self.assertRegex(head, r"ENDPOINT\s+MODEL\s*$")
+        head = next(l for l in out.splitlines() if "Endpoint" in l)
+        self.assertRegex(head, r"Endpoint\s+Model\s*$")
         self.assertNotIn("Avail", head)
         # default: served rows only, endpoint first, no status marker
         self.assertIn("m-live", out)
@@ -3528,8 +3528,8 @@ class ModelsTableTest(unittest.TestCase):
         self.assertNotRegex(row, r"\[[ x?]\]")
         # --all: marker-first layout plus the known-unserved rows
         self.assertEqual(code_all, 0)
-        head_all = next(l for l in out_all.splitlines() if "ENDPOINT" in l)
-        self.assertRegex(head_all, r"Avail\s+ENDPOINT\s+MODEL\s*$")
+        head_all = next(l for l in out_all.splitlines() if "Endpoint" in l)
+        self.assertRegex(head_all, r"Avail\s+Endpoint\s+Model\s*$")
         self.assertTrue(
             next(l for l in out_all.splitlines() if "m-live" in l)
             .lstrip()
@@ -3608,10 +3608,10 @@ class ModelsTableTest(unittest.TestCase):
                 code = main(["--data", tmp, "scores"])
             text = out.getvalue()
         self.assertEqual(code, 0)
-        head = next(l for l in text.splitlines() if "SCORE" in l)
-        self.assertIn("DeepSWE", head.split())
+        head = next(l for l in text.splitlines() if "Model" in l and "Grade" in l)
+        self.assertIn("Deepswe", head.split())
         self.assertNotIn("DeepSWE 1.1", head)
-        self.assertIn("DeepSWE = DeepSWE 1.1", text)
+        self.assertIn("Deepswe = DeepSWE 1.1", text)
 
 
 class TransportHygieneTest(unittest.TestCase):
@@ -3680,10 +3680,10 @@ class VersionTest(unittest.TestCase):
 
 
 class PriceModeTest(unittest.TestCase):
-    """`--price mix` (renamed from `weighted`) and `--price est`.
+    """`--cost fix` (the fixed 20/60/20 blend) and `--cost est`.
 
     Fixture: one scored model, a Go tier entry at 1.0/5.0 in/out (no
-    cache discount, so mix = .2*1 + .6*1 + .2*5 = 1.8 $/1M -> 180c) and
+    cache discount, so fix = .2*1 + .6*1 + .2*5 = 1.8 $/1M -> 180c) and
     a Go snapshot whose tiers+assumptions give
     (1000*2 + 9000*.5 + 500*10)/1e6 = 0.0115 $/req -> 1c.
     """
@@ -3785,25 +3785,67 @@ class PriceModeTest(unittest.TestCase):
             sources.load_source = orig
         return code, buf.getvalue()
 
-    def test_mix_is_accepted(self):
+    def test_fix_is_accepted(self):
         with tempfile.TemporaryDirectory() as tmp:
             self._data(Path(tmp))
-            code, out = self._run_list(tmp, "--source", "go", "--price", "mix")
+            code, out = self._run_list(tmp, "--source", "go", "--cost", "fix")
         self.assertEqual(code, 0)
-        self.assertIn("180", out)  # mix 1.8 $/1M
+        self.assertIn("180", out)  # fix 1.8 $/1M
 
-    def test_weighted_is_gone(self):
+    def test_pricing_note_has_its_own_line(self):
+        from opencode_models.cli import EST_NOTE, FIX_NOTE
+
         with tempfile.TemporaryDirectory() as tmp:
             self._data(Path(tmp))
-            with self.assertRaises(SystemExit):
-                self._run_list(tmp, "--source", "go", "--price", "weighted")
+            for args, note in (
+                (["--source", "go", "--cost", "fix"], FIX_NOTE),
+                (["--source", "go", "--cost", "est"], EST_NOTE),
+            ):
+                code, out = self._run_list(tmp, *args)
+                self.assertEqual(code, 0)
+                lines = out.splitlines()
+                head = next(l for l in lines if "lines ·" in l)
+                self.assertNotIn(note, head)
+                self.assertIn(note, [ln.strip() for ln in lines])
+
+    def test_default_price_is_est(self):
+        from opencode_models.cli import EST_NOTE
+
+        with tempfile.TemporaryDirectory() as tmp:
+            self._data(Path(tmp))
+            code, out = self._run_list(tmp, "--source", "go")
+        self.assertEqual(code, 0)
+        lines = out.splitlines()
+        head = next(l for l in lines if "lines ·" in l)
+        self.assertNotIn(EST_NOTE, head)
+        self.assertIn(EST_NOTE, [ln.strip() for ln in lines])
+
+    def test_cost_line_names_the_ranking_basis(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._data(Path(tmp))
+            cases = (
+                (
+                    ["--source", "go", "--cost", "fix"],
+                    "fixed 20/60/20 tokens per request",
+                ),
+                (["--source", "go", "--cost", "est"], "page-estimated"),
+            )
+            for args, basis in cases:
+                code, out = self._run_list(tmp, *args)
+                self.assertEqual(code, 0)
+                line = next(l for l in out.splitlines() if "score/$ rank based on" in l)
+                self.assertIn(basis, line)
+                header = next(
+                    l for l in out.splitlines() if "Score" in l and "Prov" in l
+                )
+                self.assertIn("¢/req", header)
 
     def test_est_uses_snapshot_cpr_on_go(self):
         with tempfile.TemporaryDirectory() as tmp:
             self._data(Path(tmp))
-            code, out = self._run_list(tmp, "--source", "go", "--price", "est")
+            code, out = self._run_list(tmp, "--source", "go", "--cost", "est")
         self.assertEqual(code, 0)
-        self.assertIn("¢/REQ", out)
+        self.assertIn("¢/req", out)
         line = next(l for l in out.splitlines() if l.rstrip().endswith("M1"))
         self.assertRegex(line, r"\s1\s+.*M1$")  # 1.15c -> 1
 
@@ -3829,7 +3871,7 @@ class PriceModeTest(unittest.TestCase):
                     ]
                 )
             )
-            code, out = self._run_list(tmp, "--source", "zen", "--price", "est")
+            code, out = self._run_list(tmp, "--source", "zen", "--cost", "est")
         self.assertEqual(code, 0)
         line = next(l for l in out.splitlines() if l.rstrip().endswith("M1"))
-        self.assertRegex(line, r"\s180\s+.*M1$")  # mix fallback
+        self.assertRegex(line, r"\s180\s+.*M1$")  # fix fallback

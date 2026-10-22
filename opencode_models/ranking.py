@@ -155,7 +155,7 @@ def build_rows(
     models: list[Model],
     entries=(),
     free_ids=frozenset(),
-    axis: str = "mix",
+    axis: str = "est",
     provider: str = "-",
     table: dict | None = None,
     est_rates: dict[str, float] | None = None,
@@ -167,14 +167,14 @@ def build_rows(
     model can produce several rows — one per priced variant. Free rows are
     really free: the export meters them at $0 and the throttle lives
     elsewhere (unpublished rate limits, not the dollar math), so they
-    carry price 0, read "—" for score/$, and sort ahead of every
+    carry price 0, read "-" for score/$, and sort ahead of every
     cost-based line.
 
-    *axis* picks what a line costs: ``mix`` (20/60/20 in/cached/out),
+    *axis* picks what a line costs: ``fix`` (20/60/20 in/cached/out),
     a single ``input`` / ``output`` rate, or ``est`` (the Go snapshot's
     page-estimated $/req, plan-invariant like the page prices). ``est``
     applies to Go and catalog lines; Zen lines and models missing from
-    the snapshot fall back to ``mix``.
+    the snapshot fall back to ``fix``.
     """
     by_model: dict[str, list] = {}
     for entry in entries:

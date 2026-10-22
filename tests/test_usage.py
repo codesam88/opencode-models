@@ -320,6 +320,18 @@ class UsageCase(unittest.TestCase):
 
 
 class HeaderTest(UsageCase):
+    def test_sections_have_ruled_headers(self):
+        code, out = self._run()
+        self.assertEqual(code, 0)
+        self.assertRegex(out, r"(?m)^── Week \(")
+        self.assertRegex(out, r"(?m)^── Month \(")
+
+    def test_footnotes_explain_avg_and_est_columns(self):
+        code, out = self._run()
+        self.assertEqual(code, 0)
+        self.assertIn("¢/req: measured average from reported usage", out)
+        self.assertIn("Est.: estimated average ¢/req from opencode.ai", out)
+
     def test_windows_resets_plan_and_balance(self):
         code, out = self._run()
         self.assertEqual(code, 0)
@@ -374,9 +386,9 @@ class ModelTableTest(UsageCase):
         self.assertIn("45%", out)
         # token mix present (headers carry no %; body cells do)
         self.assertNotIn("%IN", out.splitlines()[3])
-        header = next(l for l in out.splitlines() if "REQS" in l)
-        self.assertLess(header.index("IN"), header.index("OUT"))
-        self.assertLess(header.index("OUT"), header.index("CACHED"))
+        header = next(l for l in out.splitlines() if "Reqs" in l)
+        self.assertLess(header.index("In"), header.index("Out"))
+        self.assertLess(header.index("Out"), header.index("Cached"))
         # avg
         self.assertIn("3.60", out)
         # free model appears as a $0.00 row with no cap to use
@@ -418,12 +430,12 @@ class ModelTableTest(UsageCase):
         self.assertEqual(code, 0)
         self.assertIn("Week", out)
         self.assertIn("Month", out)
-        self.assertIn("MODEL", out)
-        self.assertIn("REQS", out)
-        self.assertIn("¢/REQ", out)
-        self.assertIn("SPENT", out)
-        self.assertIn("LIMIT", out)
-        self.assertIn("(est.)", out)
+        self.assertIn("Model", out)
+        self.assertIn("Reqs", out)
+        self.assertIn("¢/req", out)
+        self.assertIn("Spent", out)
+        self.assertIn("Limit", out)
+        self.assertIn("Est.", out)
         self.assertNotIn("USAGE", out)
         self.assertNotIn("AVAIL", out)
 
@@ -470,7 +482,7 @@ class DegradedSourceTest(UsageCase):
         code, out = self._run(get=get)
         self.assertEqual(code, 0)
         self.assertIn("Month", out)  # the header still prints
-        self.assertIn("MODEL", out)
+        self.assertIn("Model", out)
         self.assertNotIn("muse-spark-1.3", out)
 
     def test_billing_403_shows_balance_na_not_a_failure(self):

@@ -80,6 +80,7 @@ maintenance:
 | `models` | endpoint + display name for every model the plans list (`--all` adds an `Avail` column: `[x]` served, `[ ]` known-unserved, `[?]` unknown) |
 | `overrides` | benchmark numbers more than one source reports, and which value the tool keeps |
 | `fetch` | refresh everything: benchmarks, tier prices, official boards, availability |
+| `usage` | Go allowance: Week/Month sections per model — SPENT/LIMIT, reqs, token mix, measured vs page-estimated ¢/req; credit balance in the header |
 | `auth` | store the Console token for live views (owner-only file) |
 
 ### Live views and the token

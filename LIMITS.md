@@ -297,7 +297,7 @@ page + export is more informative than the API percent. Workspace plan
 | `GET /console/api/usage/summary` | lifetime workspace totals: `totalRequests, totalInputTokens, totalOutputTokens, totalCacheReadTokens, totalCacheWrite5mTokens, totalCacheWrite1hTokens, totalCostMicroCents, services[]` |
 | `GET /console/api/usage/models` | per-model lifetime `items[]`: `model, provider, totalRequests, totalInputTokens, totalOutputTokens, totalCacheReadTokens, totalCacheWrite5mTokens, totalCacheWrite1hTokens, totalCostMicroCents` |
 | `GET /console/api/usage/cost-by-day` | spend history back to Aug 10: `[{date, totalCostMicroCents, totalTokens, totalRequests}]` |
-| `GET /console/api/billing/status` | the live credit meter: `billingMode, mode, balanceMicroCents, creditLimitMicroCents, availableMicroCents, canPurchaseCredits, canEnableAutoRecharge` (this workspace: ~$2,412 balance, no credit limit) |
+| `GET /console/api/billing/status` | the live credit meter: `billingMode, mode, balanceMicroCents, creditLimitMicroCents, availableMicroCents, canPurchaseCredits, canEnableAutoRecharge` (this workspace: ~$2.41 balance, no credit limit) |
 | `GET /console/api/billing/account` | `orgId, creditLimitMicroCents, createdAt, updatedAt` — no usage |
 | `GET /console/api/members` | `items[]`: `avatarUrl, createdAt, disabledAt, displayName, email, role, spentMicroCents, userId` — per-member spend (aggregate only; never persist emails) |
 
@@ -404,4 +404,4 @@ as if they were known:
    is no `/zen/v1/usage` (404). Calls need a real client `User-Agent` —
    bare-urllib requests die at Cloudflare (1010). Go's credit fallback pool
    is separate: `GET /console/api/billing/status` (person-only) carries
-   `balanceMicroCents`/`availableMicroCents` (this workspace: ~$2,412).
+   `balanceMicroCents`/`availableMicroCents` (this workspace: ~$2.41).

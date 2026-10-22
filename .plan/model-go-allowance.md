@@ -64,12 +64,11 @@ page parsing is `html.parser`, with a maintainer-paste fallback).
 
 ## Steps
 
-- [ ] 1. Functional core + frozen-fixture tests (RED first): `cpr`,
+- [x] 1. Functional core + frozen-fixture tests: `opencode_models/allowance.py` (pure: cpr, caps, remaining, ranking, gate, merge) + 19 fixture tests. Done 2026-10-21; cross-checked vs script gate (26.4% kimi).
   caps, remaining, ranking, reproduction check, expand-merge.
-- [ ] 2. Snapshot schema + seed from the current page tables (Go + Plus,
+- [x] 2. Snapshot schema + seed (shipped 2026-10-21: local `data/plans/go.json` + fallback `opencode_models/data/plans/go.json`, script + gate + recipes) from the current page tables (Go + Plus,
   with tier variants), stored where the maintainer decides below.
-- [ ] 3. `usage` command (RED first): pollers, local % history,
-  per-model table with footnote flags, invariant checks.
+- [x] 3. `usage` command (read-only spot-check: pollers, history, per-model table, footnotes, invariants; `--go-pro` selects Plus). Done 2026-10-22; review caught a /1e5→/1e8 credit-scale slip in LIMITS (fixed).
 - [ ] 4. Refresh flow (RED first where pure): scrape/parse, consistency
   gate, expand-not-replace publish to the release asset; staleness
   display in views. Manual workflow today: `just plans-update`

@@ -68,6 +68,36 @@ def format_row(
     ).rstrip()
 
 
+def format_group_row(
+    labels: Sequence[tuple[int, str]],
+    widths: Sequence[int],
+    gap: str = "  ",
+) -> str:
+    """One group-header line above the column headers.
+
+    *labels* pairs each label with the span of columns it covers; the
+    label is centered over its span and the spans must cover the grid
+    exactly. A label wider than its span would break the grid, so it
+    raises like a too-wide row.
+    """
+    covered = sum(span for span, _ in labels)
+    if covered != len(widths):
+        raise ValueError(
+            f"group spans cover {covered} columns for {len(widths)}: {labels!r}"
+        )
+    parts = []
+    column = 0
+    for span, label in labels:
+        span_width = sum(widths[column : column + span]) + len(gap) * (span - 1)
+        if len(label) > span_width:
+            raise ValueError(
+                f"group label {label!r} wider than its {span_width}-column span"
+            )
+        parts.append(label.center(span_width))
+        column += span
+    return gap.join(parts).rstrip()
+
+
 def render(
     headers: Sequence[str],
     rows: Sequence[Sequence[str]],
@@ -76,19 +106,25 @@ def render(
     min_widths: Sequence[int] = (),
     indent: str = "",
     gap: str = "  ",
+    group: Sequence[tuple[int, str]] | None = None,
 ) -> str:
     """Headers plus rows as aligned text, one line each, no trailing newline.
 
     Columns measure across the headers and every row, so a wide cell
     widens its column instead of breaking the grid; *min_widths* holds
     narrow columns open where a fixed layout is wanted. Short rows pad
-    out with blanks. Every line is *indent*ed and right-stripped.
+    out with blanks. *group*, when given, adds a centered group-header
+    row above the headers (see format_group_row). Every line is
+    *indent*ed and right-stripped.
     """
     widths = column_widths(headers, rows, min_widths)
-    lines = [
+    lines = []
+    if group is not None:
+        lines.append(format_group_row(group, widths, gap))
+    lines.append(
         format_row(
             headers, widths, header_aligns if header_aligns is not None else aligns, gap
         )
-    ]
+    )
     lines += [format_row(row, widths, aligns, gap) for row in rows]
     return "\n".join(indent + line for line in lines)

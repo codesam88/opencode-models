@@ -80,7 +80,7 @@ maintenance:
 | `models` | endpoint + display name for every model the plans list (`--all` adds an `Avail` column: `[x]` served, `[ ]` known-unserved, `[?]` unknown) |
 | `overrides` | benchmark numbers more than one source reports, and which value the tool keeps |
 | `fetch` | refresh everything: benchmarks, tier prices, official boards, availability |
-| `usage` | Go allowance: Week/Month sections per model — SPENT/LIMIT, reqs, token mix, measured vs page-estimated ¢/req; credit balance in the header |
+| `usage` | Go allowance: Week/Month sections per model — Spent/Limit, Reqs, token mix, measured vs page-estimated ¢/req; credit balance in the header |
 | `auth` | store the Console token for live views (owner-only file) |
 
 ### Live views and the token
@@ -113,10 +113,9 @@ snapshots with a 401 warning.
 - `--benchmark NAME` — rank `list` on one benchmark instead of the
   combined score
 - `--count N` — how many picks `next` recommends (default 6)
-- `--price mix|input|output|est` — cost base: the 20/60/20
-  input-cached-output mix (default), a single rate, or `est`
-  page-estimated ¢/req from the Go snapshot (Zen + missing fall back
-  to mix)
+- `--cost est|fix|input|output` — cost base for the score/$ rank (default: `est`):
+  est page-estimated ¢/req from the Go snapshot (zen + missing fall back
+  to fix); fix 20/60/20 input-cached-output mix; input/output rate only
 - `--data DIR` — point at a different data directory (checkout: `--data data`)
 
 ```sh
@@ -218,7 +217,7 @@ number beside where it lands, so the arithmetic is checkable:
 ```
 476 models · 5 benchmarks scored on · 45 with scores · 21 on one benchmark · 12 without any
 
-  MODEL                     SCORE  TB 2.1    TB 4.0     SWE Vrfd  SWE Pro   DeepSWE
+  Model                     Score  Tb 2.1    Tb 4.0     Swe vrfd  Swe pro   Deepswe
   Muse Spark 1.3 Contributor     99  88.8→98                                      75.4→100
   Claude Fable 5                 99  88→97     44.55→62   95→100        80.3→100
 ```
@@ -253,7 +252,7 @@ still scores near 100.
 
 The console prints what it measured and points here for the arithmetic;
 `scoring.py` carries the reasoning next to the functions that do it. The
-column headers are short (`TB 2.1`, `SWE Vrfd`) and the legend under the
+column headers are short (`Tb 2.1`, `Swe vrfd`) and the legend under the
 table spells out which benchmark each one is.
 
 Each row shows the model's **calculated score**, its cost, and which plan
@@ -299,7 +298,7 @@ but both culls are shown worst-scoring first.
 
 By default both providers are merged into one view. Rows that agree on model,
 score and cost are collapsed to a single line *before* ranking and culling —
-they are one offer, not two — with the providers enumerated in the `PROV`
+they are one offer, not two — with the providers enumerated in the `Prov`
 column immediately before the model name (`go,zen`, `zen`, `go`, or `-` for
 catalog models in neither tier; those only appear with `--source all`). When
 only some of the named providers fund a line from a monthly allowance, the
@@ -311,12 +310,12 @@ narrows the view to a single provider.
 Best value splits into bands — **free** (use first), **included usage**
 (lines the tier grants a monthly allowance for), **pay-as-you-go** — and is
 ranked by score per dollar *inside* each band. A line's cost is 20% input +
-60% cached read + 20% output; `--price input|output` picks a single rate
-instead, `--price est` the Go snapshot's page-estimated ¢/req (Zen lines
-and snapshot-missing models fall back to the mix). The numbers are all rounded integers: the score is the model's
+60% cached read + 20% output; `--cost input|output` picks a single rate
+instead, `--cost est` (the default) the Go snapshot's page-estimated ¢/req (Zen lines
+and snapshot-missing models fall back to the fix). The numbers are all rounded integers: the score is the model's
 calculated 0–100 number, score per dollar explains the best-value order —
-free lines read `—` and sort before every paid line — and the cost column counts cents (`¢/1M`, `¢/REQ` under
-`--price est` = round(price·100)), so a $0.0612 line reads as `6`, not `0.0612`. Free lines
+free lines read `-` and sort before every paid line — and the cost column counts cents (`¢/req` under
+`est`/`fix`, `¢/1m` under `input`/`output`), so a $0.0612 line reads as `6`, not `0.0612`. Free lines
 still show a `0` cost. Columns are measured from the lines actually being shown
 (header included), so nothing shifts when a price or a provider list
 outgrows the rest.

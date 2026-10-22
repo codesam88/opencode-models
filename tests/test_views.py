@@ -61,7 +61,7 @@ def _run(*argv):
 
 
 def _header(out):
-    return next(l for l in out.splitlines() if "MODEL" in l and "SCORE" in l)
+    return next(l for l in out.splitlines() if "Prov" in l and "Score" in l)
 
 
 def _section_parts(out, title):
@@ -113,7 +113,7 @@ def _grid(tmp):
 
 class ListViewContract(unittest.TestCase):
     # grade rides as an unheaded prefix, MODEL closes the row
-    COLUMNS = ["SCORE", "¢/1M", "SCORE/$", "PROV", "MODEL"]
+    COLUMNS = ["Score", "¢/req", "Score/$", "Prov", "Model"]
 
     def test_columns(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -221,7 +221,7 @@ class ListViewContract(unittest.TestCase):
         self.assertEqual(set(grades), {"M3", "M4"})
         # M3 derives 100, M4 75; M2 (50, "-") fills the worst-score table
         self.assertEqual(grades, {"M3": "++", "M4": "+"})
-        self.assertIn("SCORE/$", _header(out))
+        self.assertIn("Score/$", _header(out))
 
 
 class ListBenchmarkViewContract(unittest.TestCase):
@@ -239,7 +239,9 @@ class ListBenchmarkViewContract(unittest.TestCase):
             )
         self.assertEqual(code, 0)
         tokens = _header(out).split()
-        self.assertEqual(tokens, ["SCORE", "BENCH", "¢/1M", "SCORE/$", "PROV", "MODEL"])
+        self.assertEqual(
+            tokens, ["Score", "Bench", "¢/req", "Score/$", "Prov", "Model"]
+        )
 
     def test_rows_carry_the_benchmark_tag(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -263,11 +265,11 @@ class ScoresViewContract(unittest.TestCase):
             _grid(tmp)
             code, out = _run("--data", tmp, "scores")
         self.assertEqual(code, 0)
-        head = next(l for l in out.splitlines() if "SCORE" in l and "TB 2.1" in l)
+        head = next(l for l in out.splitlines() if "Score" in l and "Tb 2.1" in l)
         tokens = head.strip().split("  ")[0].split()
-        self.assertEqual(tokens, ["MODEL", "GRADE", "SCORE"])
+        self.assertEqual(tokens, ["Model", "Grade", "Score"])
         self.assertNotIn("AXES", head)
-        self.assertIn("TB 2.1", head)
+        self.assertIn("Tb 2.1", head)
         for name, grade in (("M3", "++"), ("M2", "-"), ("M1", "--")):
             row = next(l for l in out.splitlines() if l.split()[:2] == [name, grade])
             self.assertIn(name, row)
@@ -336,7 +338,7 @@ class ScoresViewContract(unittest.TestCase):
 
 
 class NextViewContract(unittest.TestCase):
-    COLUMNS = ["#", "PLAN", "SCORE", "¢/1M", "SCORE/$", "ENDPOINT", "BAND"]
+    COLUMNS = ["#", "Plan", "Score", "¢/req", "Score/$", "Endpoint", "Band"]
 
     def test_columns(self):
         import opencode_models.sources as sources
@@ -350,7 +352,7 @@ class NextViewContract(unittest.TestCase):
             finally:
                 sources.load_source = orig
         self.assertEqual(code, 0)
-        head = next(l for l in out.splitlines() if "ENDPOINT" in l and "SCORE" in l)
+        head = next(l for l in out.splitlines() if "Endpoint" in l and "Score" in l)
         self.assertEqual(head.split(), self.COLUMNS)
 
     def test_picks_stay_within_a_quarter_of_the_best(self):
@@ -368,12 +370,12 @@ class NextViewContract(unittest.TestCase):
                 sources.load_source = orig
         self.assertEqual(code, 0)
         # floor is 75% of 100: M1 at 0 never appears
-        self.assertNotIn("m1", out.split("BAND")[1].lower())
+        self.assertNotIn("m1", out.split("Band")[1].lower())
         self.assertIn("opencode-go/m3", out)
 
 
 class OverridesViewContract(unittest.TestCase):
-    COLUMNS = ["MODEL", "BENCHMARK", "CATALOG", "REPORTED", "USED", "NOTE"]
+    COLUMNS = ["Model", "Benchmark", "Catalog", "Reported", "Used", "Note"]
 
     def test_columns_and_the_used_value(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -401,7 +403,7 @@ class OverridesViewContract(unittest.TestCase):
             )
             code, out = _run("--data", str(d), "overrides")
         self.assertEqual(code, 0)
-        head = next(l for l in out.splitlines() if "USED" in l)
+        head = next(l for l in out.splitlines() if "Used" in l)
         self.assertEqual(head.split(), self.COLUMNS)
         row = next(l for l in out.splitlines() if "a/m1" in l)
         # same tier counts as at least as good: the pin applies, and USED
@@ -416,7 +418,7 @@ if __name__ == "__main__":
 
 
 class NextTableContract(unittest.TestCase):
-    COLUMNS = ["#", "PLAN", "SCORE", "¢/1M", "SCORE/$", "ENDPOINT", "BAND"]
+    COLUMNS = ["#", "Plan", "Score", "¢/req", "Score/$", "Endpoint", "Band"]
 
     def _row(self, name, provider, score, price, free=False):
         from opencode_models.models import Model
@@ -469,12 +471,12 @@ class NextTableContract(unittest.TestCase):
         lines = self._table(picks).splitlines()
         head, first, second = lines[0], lines[1], lines[2]
         self.assertEqual(head.split(), self.COLUMNS)
-        self.assertEqual(first.index("go,zen"), head.index("PLAN"))
-        self.assertEqual(second.index("zen"), head.index("PLAN"))
-        self.assertEqual(first.index("opencode-go/aaa"), head.index("ENDPOINT"))
-        self.assertEqual(second.index("opencode/bb"), head.index("ENDPOINT"))
-        self.assertEqual(first.index("free"), head.index("BAND"))
-        self.assertEqual(second.index("included"), head.index("BAND"))
+        self.assertEqual(first.index("go,zen"), head.index("Plan"))
+        self.assertEqual(second.index("zen"), head.index("Plan"))
+        self.assertEqual(first.index("opencode-go/aaa"), head.index("Endpoint"))
+        self.assertEqual(second.index("opencode/bb"), head.index("Endpoint"))
+        self.assertEqual(first.index("free"), head.index("Band"))
+        self.assertEqual(second.index("included"), head.index("Band"))
 
     def test_right_aligned_values_share_a_right_edge(self):
         picks = [
@@ -484,12 +486,18 @@ class NextTableContract(unittest.TestCase):
         lines = self._table(picks).splitlines()
         head, first, second = lines[0], lines[1], lines[2]
         for header, value, other in (
-            ("SCORE/$", "—", "5"),
-            ("¢/1M", "0", "1500"),
-            ("SCORE", "95", "82"),
+            ("¢/req", "0", "1500"),
+            ("Score", "95", "82"),
         ):
             edge = head.index(header) + len(header)
             first_end = first.rindex(value) + len(value)
             second_end = second.rindex(other) + len(other)
             self.assertEqual(first_end, second_end)
             self.assertEqual(first_end, edge)
+        # "-" would rindex-match the dash in "opencode-go", so the SCORE/$
+        # value is located as the cell right before ENDPOINT instead
+        edge = head.index("Score/$") + len("Score/$")
+        for row, endpoint in ((first, "opencode-go/aaa"), (second, "opencode/bb")):
+            value_end = row.index(endpoint) - 1
+            self.assertEqual(value_end, edge)
+            self.assertIn(row[value_end - 1 : value_end], ("-", "5"))

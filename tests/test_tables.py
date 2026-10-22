@@ -129,5 +129,59 @@ class GroupRowTest(unittest.TestCase):
             render(["A", "B"], [["x", "y"]], group=((2, "TOO WIDE"),))
 
 
+class CompositionTest(unittest.TestCase):
+    """The measure → format → join composition, on ragged inputs.
+
+    Property, not snapshot: whatever the content widths, every declared
+    cell lands once, in its own column span, padded to the column width —
+    so columns share edges across lines and nothing is ever truncated.
+    Widths come from the module's own measurer; what is asserted is that
+    the rendered text honors them.
+    """
+
+    def _spans(self, text, widths, gap, indent):
+        """(start, end) of every column in one rendered line."""
+        spans = []
+        pos = len(indent)
+        for _i, w in enumerate(widths):
+            spans.append((pos, pos + w))
+            pos += w + len(gap)
+        self.assertTrue(text.startswith(indent))
+        return spans, text
+
+    def _check_grid(self, headers, rows, aligns=">", gap="  ", indent=""):
+        from opencode_models.tables import column_widths, render
+
+        widths = column_widths(headers, rows)
+        out = render(headers, rows, aligns=aligns, gap=gap, indent=indent)
+        lines = out.splitlines()
+        self.assertEqual(len(lines), len(rows) + 1)
+        # every line is exactly the grid: no more, no less, no truncation
+        self.assertFalse(any("…" in line for line in lines))
+        for line, cells in zip(lines, [headers, *rows], strict=True):
+            spans, _ = self._spans(line, widths, gap, indent)
+            self.assertEqual(len(spans), max(len(headers), len(cells)))
+            for (start, end), cell in zip(spans, cells, strict=False):
+                self.assertEqual(line[start:end].strip(), cell)
+
+    def test_ragged_rows_share_column_spans(self):
+        self._check_grid(
+            ["Model", "Score"],
+            [["a-very-long-model-slug", "1"], ["m", "100"], ["mid", "22"]],
+            aligns=("<", ">"),
+        )
+
+    def test_right_aligned_columns_pad_left(self):
+        self._check_grid(["N"], [["1"], ["22"], ["333"]])
+
+    def test_short_rows_and_empty_cells(self):
+        self._check_grid(["A", "B", "C"], [["x"], ["", "yy"]], aligns="<")
+
+    def test_gap_and_indent_hold_everywhere(self):
+        self._check_grid(
+            ["H1", "H2"], [["a", "b"], ["ccccc", "d"]], gap="   ", indent="  "
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

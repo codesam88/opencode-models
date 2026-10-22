@@ -88,5 +88,46 @@ class TableTest(unittest.TestCase):
         self.assertEqual(render(["A", "B"], []), "A  B")
 
 
+class GroupRowTest(unittest.TestCase):
+    def test_the_group_row_sits_above_the_headers(self):
+        from opencode_models.tables import render
+
+        out = render(["A", "B"], [["x", "y"]], aligns="<", group=((2, "AB"),))
+        # "AB" centered over the 3-column span (extra space to the right)
+        self.assertEqual(out.splitlines(), [" AB", "A  B", "x  y"])
+
+    def test_labels_center_over_their_column_spans(self):
+        from opencode_models.tables import render
+
+        out = render(
+            ["MODEL", "$", "%", "LEFT"],
+            [["muse", "10.80", "36%", "19.20/72.5k"]],
+            aligns=("<",) + (">",) * 3,
+            group=((1, ""), (3, "WEEKLY LIMIT (50%)")),
+            gap=" ",
+        )
+        self.assertEqual(out.splitlines()[0], " " * 8 + "WEEKLY LIMIT (50%)")
+
+    def test_indent_applies_to_the_group_row_too(self):
+        from opencode_models.tables import render
+
+        out = render(["A"], [["x"]], indent="  ", group=((1, "G"),))
+        self.assertEqual(out.splitlines(), ["  G", "  A", "  x"])
+
+    def test_spans_that_miss_the_grid_are_a_caller_bug(self):
+        from opencode_models.tables import render
+
+        with self.assertRaises(ValueError):
+            render(["A", "B"], [["x", "y"]], group=((1, "G"),))
+        with self.assertRaises(ValueError):
+            render(["A", "B"], [["x", "y"]], group=((2, "G"), (1, "H")))
+
+    def test_a_label_wider_than_its_span_is_a_caller_bug(self):
+        from opencode_models.tables import render
+
+        with self.assertRaises(ValueError):
+            render(["A", "B"], [["x", "y"]], group=((2, "TOO WIDE"),))
+
+
 if __name__ == "__main__":
     unittest.main()

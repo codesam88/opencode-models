@@ -10,7 +10,7 @@ from dataclasses import dataclass, replace
 
 from .identity import canonical_id
 from .models import Model
-from .pricing import nominal_free_rate, variant_of, weighted_cost
+from .pricing import variant_of, weighted_cost
 from .scoring import combined, derived_scores, scales, tracked
 
 _PRICE_FIELDS = ("price_input", "price_output")
@@ -91,7 +91,7 @@ class Row:
 
     model: Model
     name: str  # display label: variant and [free] applied
-    price: float  # representative cost, $/1M (nominal if free)
+    price: float  # representative cost, $/1M (0 if free)
     free: bool
     band: str
     score: float | None  # primary family score, else secondary
@@ -155,24 +155,26 @@ def build_rows(
     models: list[Model],
     entries=(),
     free_ids=frozenset(),
-    axis: str = "weighted",
+    axis: str = "mix",
     provider: str = "-",
     table: dict | None = None,
-    free_rates: dict[str, float] | None = None,
+    est_rates: dict[str, float] | None = None,
 ) -> list[Row]:
     """Price every line of the console list.
 
     A documented line replaces the catalog price (the catalog has no notion
     of tier: it carries the Zen rate for a model Go sells cheaper), and one
-    model can produce several rows — one per priced variant. Free rows carry
-    their model's nominal free-tier rate (pricing.FREE_TIER_NOMINAL_RATES):
-    free models are not equally expensive to serve — Step-5-Free burns ~70x
-    what Muse-Spark-Contributor-Free does per request — so sharing one price
-    would rank them as equals. Every nominal sits below the cheapest paid
-    rate, so free still beats paid on value, just not all alike.
+    model can produce several rows — one per priced variant. Free rows are
+    really free: the export meters them at $0 and the throttle lives
+    elsewhere (unpublished rate limits, not the dollar math), so they
+    carry price 0, read "—" for score/$, and sort ahead of every
+    cost-based line.
 
-    *axis* picks what a line costs: ``weighted`` (20/60/20 in/cached/out),
-    or a single ``input`` / ``output`` rate.
+    *axis* picks what a line costs: ``mix`` (20/60/20 in/cached/out),
+    a single ``input`` / ``output`` rate, or ``est`` (the Go snapshot's
+    page-estimated $/req, plan-invariant like the page prices). ``est``
+    applies to Go and catalog lines; Zen lines and models missing from
+    the snapshot fall back to ``mix``.
     """
     by_model: dict[str, list] = {}
     for entry in entries:
@@ -184,6 +186,10 @@ def build_rows(
             return entry.input if entry else model.price_input
         if axis == "output":
             return entry.output if entry else model.price_output
+        if axis == "est" and provider != "zen" and est_rates:
+            est = est_rates.get(model.model_id.split("/")[-1])
+            if est is not None:
+                return est
         if entry:
             return weighted_cost(entry.input, entry.output, entry.cached_read)
         return weighted_cost(
@@ -223,7 +229,7 @@ def build_rows(
     rows = []
     for model, entry, name, cost, free, limit in staged:
         if free:
-            price, band = nominal_free_rate(model.model_id, free_rates), BAND_FREE
+            price, band = 0.0, BAND_FREE
             if "free" not in name.lower():
                 name = f"{name} [free]"
         else:
@@ -255,10 +261,9 @@ def build_rows(
 def merge_rows(*groups: list[Row]) -> list[Row]:
     """Concatenate provider groups onto one free-price scale.
 
-    Free rows already carry their model's nominal rate from build_rows,
-    which is per-model rather than per-group, so there is nothing to
-    re-price: the whole view agrees by construction. Provider tags and order
-    are kept.
+    Free rows already carry price 0 from build_rows, so there is nothing
+    to re-price: the whole view agrees by construction. Provider tags
+    and order are kept.
     """
     return [row for group in groups for row in group]
 

@@ -169,27 +169,13 @@ Two caveats, both load-bearing:
   small-model proxy rates. Their traffic profiles are measured; their rates
   are assumed.
 
-From the anchor, the tool derives nominal $/1M rates by normalising the
-daily budget to **X = $0.10/day**: one Space-Bunny request ≈ $0.00015, and
-every other free model scales by relative cost. Step-5-Free lands at
-$0.019/1M (1.9¢), Muse-Spark-Contributor-Free at $0.0013/1M (0.13¢). All of
-them sit below the cheapest paid rate ($0.034/1M), so free still ranks first
-on value in the list view — but free tiers now get different score/$ instead
-of sharing one price. The display still shows `0`, since the nominal is a
-rationing estimate, not a bill.
-
-The rates are **recomputed on every `fetch`, not committed**. `fetch` pulls
-the trailing-30d usage export, aggregates per-model requests and token
-volumes, prices each request at catalog rates, and writes
-`data/usage/free_tier_nominals.json` — per-model traffic only, no user
-columns ever reach the file. Models with fewer than 20 requests are left out
-as noise and fall back to the anchor rate at load. The export needs a
-read-only service-account key (`OPENCODE_API_KEY` in the environment); without
-one, `fetch` says so and keeps the existing snapshot, and offline runs fall
-back to the committed table in `pricing.py`, which is only ever the stale
-stand-in. Re-running the derivation against the live export reproduces the
-committed values to the digit, which is how you know the fallback is honest
-rather than hand-tuned.
+From the anchor, the tool used to derive nominal $/1M rates by normalising
+the daily budget to **X = $0.10/day** — retired 2026-10-22. The metered
+evidence since (the export bills free traffic exactly $0, the Oct-9
+contradiction, per-model/vendor throttling) says free is really $0 with a
+separately-gated throttle, so the list view prices free lines at $0 and
+the value column reads `—`. The derivation is kept here as the research
+record; no nominal table ships anymore and `fetch` no longer writes one.
 
 Why limits differ per model: *"For most models, we make this work through
 bulk discounts and reserved GPU capacity… For some models, we haven't had

@@ -14,7 +14,6 @@ from opencode_models.ranking import (
     merge_rows,
     order_rows,
     partition_rows,
-    ratio,
 )
 
 TB = "Terminal-Bench 2.1"
@@ -97,30 +96,25 @@ class RowBuildingTest(unittest.TestCase):
         self.assertEqual(rows[0].band, "included")  # Go grants $15/month
         self.assertIn("Off-Peak", rows[0].name)
 
-    def test_a_free_line_carries_its_models_nominal_rate(self):
-        # not a tenth of the cheapest real price: free models are not equally
-        # expensive to serve, so each carries its own nominal rate instead of
-        # sharing one. Unknown models get the anchor rate.
-        from opencode_models.pricing import FREE_TIER_DEFAULT_RATE
-
+    def test_a_free_line_is_priced_at_zero(self):
+        # free is metered at $0 (the throttle lives elsewhere), so every
+        # free line carries price 0 whatever its traffic profile
         models = [_m("lab/paid", 1.0, tb=50.0), _m("lab/gift", 5.0, tb=40.0)]
         entries = [
             _entry("paid", 1.0, 1.0, cached=1.0),  # costs 1.0
             _entry("gift", 0.0, 0.0, cached=0.0, free=True),  # free tier
         ]
         rows = {r.model.model_id: r for r in build_rows(models, entries)}
-        self.assertEqual(rows["lab/gift"].price, FREE_TIER_DEFAULT_RATE)
+        self.assertEqual(rows["lab/gift"].price, 0.0)
         self.assertEqual(rows["lab/gift"].band, "free")
         self.assertTrue(rows["lab/gift"].name.endswith("[free]"))
         self.assertEqual(rows["lab/paid"].price, 1.0)
         self.assertEqual(rows["lab/paid"].band, "payg")
 
-    def test_two_free_tiers_get_different_score_per_dollar(self):
+    def test_free_lines_price_zero_whatever_their_traffic(self):
         # Step-5-Free burns ~70x what Muse-Spark-Contributor-Free does per
-        # request, so at equal scores its line must divide worse
-        # mirrored pairs, so both score a median of 50 and differ only
-        # in what they cost (identical numbers would leave no spread and
-        # neither with a score at all)
+        # request, but both are metered at $0 — the throttle is not the
+        # dollar math, so both lines cost the same nothing
         models = [
             _m("stepfun/step-5-preview", 0.959, tb=50.0, swe=30.0),
             _m("meta/muse-spark-1.3-contributor", 0.1, tb=30.0, swe=50.0),
@@ -130,12 +124,8 @@ class RowBuildingTest(unittest.TestCase):
             _entry("muse-spark-1.3-contributor-free", 0.0, 0.0, free=True),
         ]
         rows = {r.model.model_id: r for r in build_rows(models, entries)}
-        pricey = rows["stepfun/step-5-preview"]
-        cheap = rows["meta/muse-spark-1.3-contributor"]
-        self.assertGreater(pricey.price, cheap.price)
-        self.assertGreater(
-            ratio(cheap.score, cheap.price), ratio(pricey.score, pricey.price)
-        )
+        self.assertEqual(rows["stepfun/step-5-preview"].price, 0.0)
+        self.assertEqual(rows["meta/muse-spark-1.3-contributor"].price, 0.0)
 
     def test_free_tag_is_not_added_when_the_name_already_says_free(self):
         models = [_m("lab/ling", 1.0, tb=40.0, name="Ling 3.1 Flash Free")]
@@ -345,21 +335,9 @@ class MergeTest(unittest.TestCase):
             build_rows([_m("l/a", 1.0, tb=50.0)], provider="go")[0].provider, "go"
         )
 
-    def test_a_fetched_snapshot_overrides_the_committed_table(self):
-        # the committed rates are the offline fallback; a snapshot from
-        # fetch wins per model, or recomputing on fetch would change nothing
-        models = [_m("lab/gift", 5.0, tb=50.0, swe=30.0)]
-        entries = [_entry("gift", 0.0, 0.0, free=True)]
-        plain = build_rows(models, entries)[0]
-        fetched = build_rows(models, entries, free_rates={"gift": 0.5})[0]
-        self.assertNotEqual(plain.price, fetched.price)
-        self.assertEqual(fetched.price, 0.5)
-
-    def test_a_free_line_keeps_its_nominal_rate_across_providers(self):
-        # the nominal rate is per-model rather than per-group, so merging
+    def test_a_free_line_keeps_price_zero_across_providers(self):
+        # price 0 is per-model rather than per-group, so merging
         # zen and go changes nothing about what a free line costs
-        from opencode_models.pricing import FREE_TIER_DEFAULT_RATE
-
         zen = build_rows(
             [_m("l/zfree", 5.0, tb=40.0)],
             [_entry("zfree", 0.0, 0.0, free=True)],
@@ -371,7 +349,7 @@ class MergeTest(unittest.TestCase):
         free = [r for r in merged if r.free]
         paid = [r for r in merged if not r.free]
         self.assertEqual(len(free), 1)
-        self.assertAlmostEqual(free[0].price, FREE_TIER_DEFAULT_RATE)
+        self.assertEqual(free[0].price, 0.0)
         self.assertEqual(len(paid), 1)
         self.assertAlmostEqual(paid[0].price, 0.2)
 

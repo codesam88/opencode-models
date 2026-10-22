@@ -478,13 +478,13 @@ class NextTableContract(unittest.TestCase):
 
     def test_right_aligned_values_share_a_right_edge(self):
         picks = [
-            self._row("aaa", "go,zen", 95.0545, 0.0013, free=True),
+            self._row("aaa", "go,zen", 95.0545, 0.0, free=True),
             self._row("bb", "zen", 81.5, 15.0),
         ]
         lines = self._table(picks).splitlines()
         head, first, second = lines[0], lines[1], lines[2]
         for header, value, other in (
-            ("SCORE/$", "73119", "5"),
+            ("SCORE/$", "—", "5"),
             ("¢/1M", "0", "1500"),
             ("SCORE", "95", "82"),
         ):

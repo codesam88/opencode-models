@@ -275,125 +275,6 @@ class CliTest(unittest.TestCase):
         self.assertIn("arena", out.lower())
         self.assertIn("warning", out.lower())
 
-    def test_fetch_refreshes_free_nominals_when_a_key_is_present(self):
-        import os
-
-        import opencode_models.cli as cli
-
-        calls = {}
-
-        def fake_refresh(usage_dir, catalog_dir, get, free_slugs):
-            calls["slugs"] = set(free_slugs)
-            return {"space-bunny-free": 0.0018}
-
-        with tempfile.TemporaryDirectory() as tmp:
-            d = Path(tmp)
-            _write_sample(d)
-            orig_get, orig_fn = cli.http_get, cli.refresh_free_nominals
-            orig_live = cli.fetch_live
-            orig_key = os.environ.get("OPENCODE_API_KEY")
-            os.environ["OPENCODE_API_KEY"] = "oc_sk_test"
-            cli.http_get = _offline_get
-            cli.refresh_free_nominals = fake_refresh
-            # live config is a separate keyed call: stub it so this unit
-            # test performs no real network I/O at all
-            cli.fetch_live = lambda get: {"zen": {"m1": False}, "go": {}}
-            try:
-                code, out = self._run("--data", str(d), "fetch")
-            finally:
-                cli.http_get = orig_get
-                cli.refresh_free_nominals = orig_fn
-                cli.fetch_live = orig_live
-                if orig_key is None:
-                    del os.environ["OPENCODE_API_KEY"]
-                else:
-                    os.environ["OPENCODE_API_KEY"] = orig_key
-        self.assertEqual(code, 0)
-        self.assertTrue(calls, "fetch never asked for nominals")
-        self.assertIn("free-tier nominals", out)
-
-    def test_fetch_skips_free_nominals_without_a_key(self):
-        import os
-
-        import opencode_models.cli as cli
-
-        with tempfile.TemporaryDirectory() as tmp:
-            d = Path(tmp)
-            _write_sample(d)
-            orig_get, orig_fn = cli.http_get, cli.refresh_free_nominals
-            orig_key = os.environ.pop("OPENCODE_API_KEY", None)
-
-            def boom(*a, **k):
-                raise AssertionError("no key, no refresh")
-
-            cli.http_get = _offline_get
-            cli.refresh_free_nominals = boom
-            try:
-                code, out = self._run("--data", str(d), "fetch")
-            finally:
-                cli.http_get = orig_get
-                cli.refresh_free_nominals = orig_fn
-                if orig_key is not None:
-                    os.environ["OPENCODE_API_KEY"] = orig_key
-        self.assertEqual(code, 0)
-        self.assertIn("no OPENCODE_API_KEY", out)
-
-    def test_fetch_keyed_free_slugs_use_attribute_access(self):
-        import os
-
-        import opencode_models.cli as cli
-
-        sitemap = (
-            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
-            "<url><loc>https://opencode.ai/data/x/y</loc></url></urlset>"
-        )
-        endpoints = (
-            "<table><tr><th>Model</th><th>Model ID</th></tr>"
-            "<tr><td>M1</td><td>m1</td></tr></table>"
-        )
-        pricing = (
-            "<table><tr><th>Model</th><th>Input</th><th>Output</th></tr>"
-            "<tr><td>M1</td><td>Free</td><td>Free</td></tr></table>"
-        )
-
-        def fake_get(url):
-            if url.endswith("/sitemap.xml"):
-                return sitemap
-            if "/docs/" in url:
-                return endpoints + pricing
-            return "{}"
-
-        calls = {}
-
-        def fake_refresh(usage_dir, catalog_dir, get, free_slugs):
-            calls["slugs"] = set(free_slugs)
-            return {"m1": 0.0018}
-
-        orig_get = cli.http_get
-        orig_fn = cli.refresh_free_nominals
-        orig_live = cli.fetch_live
-        orig_key = os.environ.get("OPENCODE_API_KEY")
-        os.environ["OPENCODE_API_KEY"] = "oc_sk_test"
-        cli.http_get = fake_get
-        cli.refresh_free_nominals = fake_refresh
-        cli.fetch_live = lambda get: {"zen": {"m1": False}, "go": {}}
-        try:
-            with tempfile.TemporaryDirectory() as tmp:
-                d = Path(tmp)
-                _write_sample(d)
-                code, out = self._run("--data", str(d), "fetch")
-        finally:
-            cli.http_get = orig_get
-            cli.refresh_free_nominals = orig_fn
-            cli.fetch_live = orig_live
-            if orig_key is None:
-                os.environ.pop("OPENCODE_API_KEY", None)
-            else:
-                os.environ["OPENCODE_API_KEY"] = orig_key
-        self.assertEqual(code, 0)
-        self.assertIn("free-tier nominals", out)
-        self.assertEqual(calls.get("slugs"), {"m1"})
-
     def test_scores_reads_the_cache_and_never_the_network(self):
         import opencode_models.arena as arena
 
@@ -819,7 +700,7 @@ class CliTest(unittest.TestCase):
         head = next(l for l in out.splitlines() if l.startswith("Next "))
         self.assertIn("Zen/Go", head)
 
-    def test_next_shows_the_nominal_ratio_for_free_lines(self):
+    def test_next_shows_a_dash_for_free_lines(self):
         from opencode_models.cli import _pick_value
         from opencode_models.models import Model
         from opencode_models.ranking import Row
@@ -847,11 +728,10 @@ class CliTest(unittest.TestCase):
                 entry=None,
             )
 
-        # a free line carries its nominal rate, so it divides like any
-        # other cost: 95 at $0.0013/1M is 73077, directly comparable with
-        # the paid ratios beside it
-        self.assertEqual(_pick_value(row(0.0013, 95.0, free=True)), "73077")
-        self.assertEqual(_pick_value(row(0.0, 90.0, free=True)), "free")
+        # a free line is metered at $0, so it reads "—" and sorts ahead
+        # of every cost-based line instead of dividing by a nominal
+        self.assertEqual(_pick_value(row(0.0, 95.0, free=True)), "—")
+        self.assertEqual(_pick_value(row(0.0, 90.0, free=True)), "—")
         self.assertEqual(_pick_value(row(1.0, None)), "-")
         self.assertEqual(_pick_value(row(0.5, 50.0)), "100")
 
@@ -1245,7 +1125,7 @@ class CliTest(unittest.TestCase):
         self.assertEqual(code, 0)
         gift = [l for l in out.splitlines() if "GIFT [free]" in l]
         self.assertEqual(len(gift), 1, out)
-        self.assertNotIn("0.1", gift[0])  # the nominal price stays hidden
+        self.assertNotIn("0.1", gift[0])  # price is 0, not a catalog rate
         self.assertRegex(gift[0], r"-\s+0\s+-\s+go\s+GIFT \[free\]$")
 
     def test_columns_stay_aligned_whatever_the_cell_widths(self):
@@ -2423,12 +2303,9 @@ class AvailabilityTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("GONE", out)
 
-    def test_a_fetched_snapshot_sets_the_free_price(self):
-        # the committed table is the offline fallback: a snapshot from fetch
-        # wins, or recomputing on fetch would change nothing in the view.
-        # At the snapshot's $50/1M nominal, M1's score-per-dollar (50/50 = 1)
-        # loses to M2's paid line (50/1 = 50), while the $0.0018 fallback
-        # would keep M1 first.
+    def test_a_free_line_sorts_before_paid_lines(self):
+        # free is metered at $0, so a free line outranks every paid line
+        # and reads "—" for score/$ instead of dividing by a nominal
         import json
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -2496,9 +2373,6 @@ class AvailabilityTest(unittest.TestCase):
             )
             usage = d / "usage"
             usage.mkdir(parents=True, exist_ok=True)
-            (usage / "free_tier_nominals.json").write_text(
-                json.dumps({"meta": {}, "rates": {"m1": 50.0}})
-            )
             import opencode_models.sources as sources
 
             orig = sources.load_source
@@ -2513,7 +2387,8 @@ class AvailabilityTest(unittest.TestCase):
         lines = out.splitlines()
         m1 = next(i for i, l in enumerate(lines) if l.rstrip().endswith("M1 [free]"))
         m2 = next(i for i, l in enumerate(lines) if l.rstrip().endswith("M2"))
-        self.assertLess(m2, m1)
+        self.assertLess(m1, m2)
+        self.assertRegex(lines[m1], r"\s0\s+—\s+")
 
     def test_the_headline_states_availability_without_naming_names(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -3802,3 +3677,159 @@ class VersionTest(unittest.TestCase):
                 get("https://example.invalid/console/api/v2/config")
         ua = next(v for k, v in seen["req"].header_items() if k.lower() == "user-agent")
         self.assertEqual(ua, f"opencode-models/{pkg_version('opencode-models')}")
+
+
+class PriceModeTest(unittest.TestCase):
+    """`--price mix` (renamed from `weighted`) and `--price est`.
+
+    Fixture: one scored model, a Go tier entry at 1.0/5.0 in/out (no
+    cache discount, so mix = .2*1 + .6*1 + .2*5 = 1.8 $/1M -> 180c) and
+    a Go snapshot whose tiers+assumptions give
+    (1000*2 + 9000*.5 + 500*10)/1e6 = 0.0115 $/req -> 1c.
+    """
+
+    def _data(self, d):
+        import json
+
+        (d / "opencode").mkdir(parents=True, exist_ok=True)
+        (d / "opencode" / "a__m1.json").write_text(
+            json.dumps(
+                {
+                    "model": {
+                        "id": "a/m1",
+                        "name": "M1",
+                        "lab": "a",
+                        "priceUsdPer1M": {
+                            "input": 1.0,
+                            "output": 5.0,
+                            "cachedInput": None,
+                        },
+                        "benchmarks": [
+                            {
+                                "name": "TB",
+                                "score": 50.0,
+                                "metric": "acc",
+                                "source": "",
+                            },
+                            {
+                                "name": "SWE-Bench Verified",
+                                "score": 60.0,
+                                "metric": "acc",
+                                "source": "",
+                            },
+                        ],
+                    }
+                }
+            )
+        )
+        (d / "tier_prices").mkdir(parents=True, exist_ok=True)
+        (d / "tier_prices" / "go_prices.json").write_text(
+            json.dumps(
+                [
+                    {
+                        "tier": "go",
+                        "model_id": "m1",
+                        "name": "M1",
+                        "input": 1.0,
+                        "output": 5.0,
+                        "cached_read": None,
+                        "limit": 60.0,
+                        "free": False,
+                    }
+                ]
+            )
+        )
+        (d / "plans").mkdir(parents=True, exist_ok=True)
+        (d / "plans" / "go.json").write_text(
+            json.dumps(
+                {
+                    "meta": {
+                        "source": "test",
+                        "fetched_at": "2026-10-22T00:00:00+00:00",
+                    },
+                    "models": {
+                        "m1": {
+                            "name": "M1",
+                            "free": False,
+                            "tiers": [
+                                {
+                                    "label": None,
+                                    "in": 2.0,
+                                    "out": 10.0,
+                                    "cached": 0.5,
+                                    "cached_write": None,
+                                }
+                            ],
+                            "limits": {"go": 60.0, "go_plus": 120.0},
+                            "assumptions": {
+                                "in": 1000,
+                                "cached": 9000,
+                                "out": 500,
+                            },
+                        }
+                    },
+                }
+            )
+        )
+
+    def _run_list(self, tmp, *extra):
+        import opencode_models.sources as sources
+
+        buf = io.StringIO()
+        orig = sources.load_source
+        sources.load_source = lambda name: {"m1"}
+        try:
+            with contextlib.redirect_stdout(buf):
+                code = main(["--data", tmp, "list", *extra])
+        finally:
+            sources.load_source = orig
+        return code, buf.getvalue()
+
+    def test_mix_is_accepted(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._data(Path(tmp))
+            code, out = self._run_list(tmp, "--source", "go", "--price", "mix")
+        self.assertEqual(code, 0)
+        self.assertIn("180", out)  # mix 1.8 $/1M
+
+    def test_weighted_is_gone(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._data(Path(tmp))
+            with self.assertRaises(SystemExit):
+                self._run_list(tmp, "--source", "go", "--price", "weighted")
+
+    def test_est_uses_snapshot_cpr_on_go(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._data(Path(tmp))
+            code, out = self._run_list(tmp, "--source", "go", "--price", "est")
+        self.assertEqual(code, 0)
+        self.assertIn("¢/REQ", out)
+        line = next(l for l in out.splitlines() if l.rstrip().endswith("M1"))
+        self.assertRegex(line, r"\s1\s+.*M1$")  # 1.15c -> 1
+
+    def test_est_falls_back_to_mix_on_zen(self):
+        import json
+
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            self._data(d)
+            (d / "tier_prices" / "zen_prices.json").write_text(
+                json.dumps(
+                    [
+                        {
+                            "tier": "zen",
+                            "model_id": "m1",
+                            "name": "M1",
+                            "input": 1.0,
+                            "output": 5.0,
+                            "cached_read": None,
+                            "limit": None,
+                            "free": False,
+                        }
+                    ]
+                )
+            )
+            code, out = self._run_list(tmp, "--source", "zen", "--price", "est")
+        self.assertEqual(code, 0)
+        line = next(l for l in out.splitlines() if l.rstrip().endswith("M1"))
+        self.assertRegex(line, r"\s180\s+.*M1$")  # mix fallback

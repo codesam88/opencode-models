@@ -113,8 +113,10 @@ snapshots with a 401 warning.
 - `--benchmark NAME` — rank `list` on one benchmark instead of the
   combined score
 - `--count N` — how many picks `next` recommends (default 6)
-- `--price input|output` — cost on a single rate instead of the
-  20/60/20 input-cached-output mix
+- `--price mix|input|output|est` — cost base: the 20/60/20
+  input-cached-output mix (default), a single rate, or `est`
+  page-estimated ¢/req from the Go snapshot (Zen + missing fall back
+  to mix)
 - `--data DIR` — point at a different data directory (checkout: `--data data`)
 
 ```sh
@@ -278,12 +280,10 @@ they only indicate relative performance.
 Pricing comes from the tier docs rather than the catalog, which carries one
 Zen-style price per model: documented rates replace it, and every priced
 variant (peak/off-peak, token window) gets its own line. Free lines — `-free`
-tier slugs and zero-priced models — are *ranked* at their model's nominal
-free-tier rate (`pricing.FREE_TIER_NOMINAL_RATES`, recomputed on every
-`fetch` from the usage export; see LIMITS.md), so "free" sorts and divides
-like any other cost instead of going infinite, and the value column prints
-that division — the cheapest free models read highest. They are *shown*
-with an actual `0` price: the nominal price never reaches the cost column.
+tier slugs and zero-priced models — are metered at $0 (the export bills
+them nothing; the throttle is unpublished rate limits, not the dollar
+math), so they sort ahead of every paid line and the value column reads
+`—` instead of dividing. They are *shown* with an actual `0` price.
 
 ### The `list` views
 
@@ -312,13 +312,12 @@ Best value splits into bands — **free** (use first), **included usage**
 (lines the tier grants a monthly allowance for), **pay-as-you-go** — and is
 ranked by score per dollar *inside* each band. A line's cost is 20% input +
 60% cached read + 20% output; `--price input|output` picks a single rate
-instead. The numbers are all rounded integers: the score is the model's
+instead, `--price est` the Go snapshot's page-estimated ¢/req (Zen lines
+and snapshot-missing models fall back to the mix). The numbers are all rounded integers: the score is the model's
 calculated 0–100 number, score per dollar explains the best-value order —
-free lines divide by their nominal rate, so the cheapest free models read
-highest — and the cost column counts cents (`¢/1M` =
-round(price·100)), so a $0.0612 line reads as `6`, not `0.0612`. Free lines
-still show a `0` cost: the nominal never reaches the price column, only
-the value one. Columns are measured from the lines actually being shown
+free lines read `—` and sort before every paid line — and the cost column counts cents (`¢/1M`, `¢/REQ` under
+`--price est` = round(price·100)), so a $0.0612 line reads as `6`, not `0.0612`. Free lines
+still show a `0` cost. Columns are measured from the lines actually being shown
 (header included), so nothing shifts when a price or a provider list
 outgrows the rest.
 
@@ -369,17 +368,14 @@ committed**. They are third-party records, they go stale, and they are large;
 | `available/` | the live model set per tier from the inference gateway lists (served = callable), annotated with the Console config API's known set | keyed `fetch` / `models` | no — `.gitignore`d |
 | `plans/` | validated plan allowance snapshots: per-model token prices, monthly limits per plan, token/req assumptions, request estimates (`update_go_pricing.py` + gate) | `just plans-update` on cadence | no — `.gitignore`d |
 | `boards/` | official benchmark boards, fetched from whoever runs them (see below) | `fetch` | no — `.gitignore`d |
-| `usage/` | free-tier nominal rates derived from the workspace usage export (per-model traffic only, no user columns) | keyed `fetch` (needs `OPENCODE_API_KEY`) | no — `.gitignore`d |
+| `usage/` | Go window poll history (`go_windows.jsonl`, appended by keyed `usage` runs for the offline fallback) | keyed `usage` | no — `.gitignore`d |
 | `overrides/` | hand-pinned benchmark values (see `data/overrides/README.md`) | nobody — `overrides` reports disagreements | **yes** (the directory, no data) |
 
 Shipped fallbacks (committed, versioned deliberately, validated — the
 offline copy when no snapshot exists): `opencode_models/data/plans/go.json`
 (promoted from `data/plans/` via `just plans-freeze`, pinned by
-test), `opencode_models/sources/*.txt` (hand-maintained tier membership —
-`zen` curated, `go` open), and the nominal free-tier rates at the top of
-`opencode_models/pricing.py` (overridden at runtime by
-`data/usage/free_tier_nominals.json` when `fetch` has derived it from the
-usage export). Rule of thumb: mutability decides the home — refreshable
+test) and `opencode_models/sources/*.txt` (hand-maintained tier membership —
+`zen` curated, `go` open). Rule of thumb: mutability decides the home — refreshable
 state lives in `data/`, frozen seeds ship in the package.
 
 `fetch` downloads only the models the plans offer (use `--all` for the
@@ -515,8 +511,8 @@ for every reader. The metric is not universally available either — no
 catalog, board, or Console endpoint publishes typical per-request token
 volumes (the docs' estimated-request tables imply one, but disagree with
 measured traffic by 10–100× on heavy agent use) — so there is nothing
-stable to divide by. `list` and `next` rank on list price and on the
-nominal free-tier rate instead: comparable across workspaces, even where
+stable to divide by. `list` and `next` rank on list price, with free
+lines at $0: comparable across workspaces, even where
 they are less precise for any single one.
 
 **Allowances and per-request spend are not shown.** For the same reason,

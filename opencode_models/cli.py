@@ -35,12 +35,8 @@ from .live import LIVE_CONFIG_URL, fetch_live, fetch_served, merge_served, save_
 from .models import load_models
 from .overrides import load_curated, off_band_models, source_tier
 from .pricing import (
-    FREE_TIER_NOMINAL_RATES,
-    FREE_TIER_SNAPSHOT_NAME,
     USAGE_EXPORT_URL,
-    load_free_nominals,
     load_prices,
-    refresh_free_nominals,
     refresh_prices,
 )
 from .ranking import (
@@ -90,20 +86,32 @@ DEFAULT_DATA = default_data_dir()
 
 #: Representative cost: 20% input, 60% cached read, 20% output.
 COST_NOTE = "cost 20% in / 60% cached / 20% out"
+#: `est` cost base: the Go snapshot's page-estimated ¢/req; Zen lines and
+#: snapshot-missing models fall back to the mix.
+EST_NOTE = "est ¢/req from Go page assumptions (zen + missing fall back to mix)"
+
+
+def _price_note(price: str) -> str:
+    """The cost-basis note for the headline line, per `--price` mode."""
+    if price == "est":
+        return EST_NOTE
+    if price == "input":
+        return "cost input $/1M"
+    if price == "output":
+        return "cost output $/1M"
+    return COST_NOTE
+
+
 BAND_LABELS = (
     (BAND_FREE, "free — use first"),
     (BAND_INCLUDED, "included usage"),
     (BAND_PAYG, "pay-as-you-go"),
 )
-#: Fixed columns, right-aligned; the model name takes the rest of the line.
-#: Costs count cents ($/100) so a cheap line is a readable number.
-#:
 #: Two layouts, both built around the one score: the default shows the
 #: model's score beside its cost and plan, and ``--benchmark X`` ranks on
 #: one benchmark and adds that benchmark's tag. The per-axis raw numbers
-#: live in `scores`, not here.
-AXIS_HEADERS = ("SCORE", "¢/1M", "SCORE/$", "PROV")
-SINGLE_HEADERS = ("SCORE", "BENCH", "¢/1M", "SCORE/$", "PROV")
+#: live in `scores`, not here. Header units follow the `--price` mode
+#: (``¢/1M`` for mix/input/output, ``¢/REQ`` for est); see `_header`.
 
 #: Every row is prefixed by its rank marker, outside the column grid and
 #: without a header of its own: ++ at 90+, + at 75+, o at 60+, - at 50+,
@@ -122,16 +130,28 @@ def _row_line(cells: tuple[str, ...], widths: tuple[int, ...]) -> str:
     return format_row(cells, widths)
 
 
-def _header(widths: tuple[int, ...], axis: bool = True) -> str:
-    headings = AXIS_HEADERS if axis else SINGLE_HEADERS
+def _cost_unit(price: str) -> str:
+    """The cost column's unit: ``est`` counts cents per request, not per 1M."""
+    return "¢/REQ" if price == "est" else "¢/1M"
+
+
+def _header(widths: tuple[int, ...], axis: bool = True, price: str = "mix") -> str:
+    unit = _cost_unit(price)
+    headings = (
+        ("SCORE", unit, "SCORE/$", "PROV")
+        if axis
+        else ("SCORE", "BENCH", unit, "SCORE/$", "PROV")
+    )
     return _style(format_row(headings, widths) + "  MODEL")
 
 
-def _section(title: str, widths: tuple[int, ...], axis: bool = True) -> None:
+def _section(
+    title: str, widths: tuple[int, ...], axis: bool = True, price: str = "mix"
+) -> None:
     """Open a table: blank line, rule-wrapped title, highlighted header."""
     print()
     print(f"── {title} " + "─" * max(4, RULE_WIDTH - len(title)))
-    print(" " * GRADE_WIDTH + _header(widths, axis))
+    print(" " * GRADE_WIDTH + _header(widths, axis, price))
 
 
 def _fail(msg: str) -> int:
@@ -488,33 +508,6 @@ def _cmd_fetch(args: argparse.Namespace) -> int:
             f"saved {len(elo)} arena Elo scores to "
             f"{data_dir / 'aiarena' / arena_mod.CACHE_NAME}"
         )
-    if not key:
-        print(
-            "free-tier nominals not refreshed (no OPENCODE_API_KEY) — "
-            "keeping the existing snapshot"
-        )
-    else:
-        try:
-            free_slugs = {
-                e.model_id
-                for prices in load_prices(data_dir / "tier_prices").values()
-                for e in prices
-                if e.free and e.model_id
-            }
-            print("fetch usage export from opencode.ai/console ...")
-            nominals = refresh_free_nominals(
-                data_dir / "usage", data_dir / "opencode", _api_get(key), free_slugs
-            )
-        except (OSError, ValueError) as exc:
-            print(f"warning: free-tier nominals not refreshed ({exc})")
-        else:
-            print(
-                f"saved {len(nominals)} free-tier nominals to "
-                f"{data_dir / 'usage' / FREE_TIER_SNAPSHOT_NAME}"
-                if nominals is not None
-                else "warning: free-tier nominals not refreshed "
-                "(anchor model absent from the export)"
-            )
     curated = load_curated(data_dir / "opencode", data_dir / "overrides")
     n = _print_conflicts(curated.conflicts, curated.orphans)
     if n:
@@ -714,11 +707,12 @@ def _cells(row, axis: bool = True) -> tuple[str, ...]:
     """The fixed columns of one row, as text: score, cost, value, plan.
 
     The score is the model's combined 0-100 number, rounded for the column;
-    the value is score per dollar — free lines divide by their nominal
-    rate, so the cheapest free models read highest ("free" only where the
-    price is exactly zero, "-" with no score). The best-value table orders
-    on it, so the column that explains the order stays printed. *axis* is
-    kept for the single-benchmark layout, which adds that benchmark's tag.
+    the value is score per dollar — free lines are metered at $0 and read
+    "—", sorting ahead of every cost-based line ("free" only where a
+    non-free line prices exactly zero, "-" with no score). The best-value
+    table orders on it, so the column that explains the order stays
+    printed. *axis* is kept for the single-benchmark layout, which adds
+    that benchmark's tag.
     Prices are cents, as elsewhere.
     """
     no_cost = row.free or row.price == 0
@@ -729,9 +723,14 @@ def _cells(row, axis: bool = True) -> tuple[str, ...]:
     return (score, _bench_tag(row.benchmark), price, _pick_value(row), row.provider)
 
 
-def _widths(rows, axis: bool = True) -> tuple[int, ...]:
+def _widths(rows, axis: bool = True, price: str = "mix") -> tuple[int, ...]:
     """Widest cell per column across the whole view, header included."""
-    headings = AXIS_HEADERS if axis else SINGLE_HEADERS
+    unit = _cost_unit(price)
+    headings = (
+        ("SCORE", unit, "SCORE/$", "PROV")
+        if axis
+        else ("SCORE", "BENCH", unit, "SCORE/$", "PROV")
+    )
     return tuple(column_widths(headings, [_cells(r, axis) for r in rows]))
 
 
@@ -746,7 +745,7 @@ def _print_row(
     )
 
 
-def _select(data_dir: Path, source: str | None, price: str = "weighted"):
+def _select(data_dir: Path, source: str | None, price: str = "mix"):
     """Which providers a view covers, or None if the name is not one.
 
     Providers are zen and go, plus ``-`` for catalog models in neither tier.
@@ -844,10 +843,19 @@ def _rows_for(
     """
     models, curated, _ = _load(data_dir)
     on_offer = _current_offered(data_dir, bypass=all_models)
-    # the fetched free-tier nominals win per model; the committed table is
-    # only the offline fallback for whatever the snapshot does not cover
-    snapshot = load_free_nominals(data_dir)
-    free_rates = {**FREE_TIER_NOMINAL_RATES, **snapshot} if snapshot else None
+    # page-estimated $/req per snapshot slug (the `est` cost base);
+    # Zen lines and snapshot-missing models fall back to the mix
+    est_rates = None
+    if price == "est":
+        try:
+            plan_snapshot, _origin = _load_plan_snapshot(data_dir)
+        except (OSError, ValueError):
+            plan_snapshot = {}
+        est_rates = {}
+        for slug, rec in (plan_snapshot.get("models") or {}).items():
+            cpr = cost_per_request(rec.get("tiers") or [], rec.get("assumptions"))
+            if cpr is not None and cpr > 0:
+                est_rates[slug] = cpr
     # one scale for the whole catalog: per-tier scales would make the same
     # score mean two different things in the merged view
     table = scales(models)
@@ -887,7 +895,7 @@ def _rows_for(
                 axis=price,
                 provider=provider,
                 table=table,
-                free_rates=free_rates,
+                est_rates=est_rates,
             )
         )
     rows = dedupe_providers(merge_rows(*groups))
@@ -945,7 +953,7 @@ def _cmd_list(args: argparse.Namespace) -> int:
         head = f"{source}: {counts[source]}/{len(tier_slugs[source])} models in catalog"
     else:
         head = f"all: {len(models)} models in catalog"
-    print(f"{head} · {len(rows)} lines · {order_note} · {COST_NOTE}")
+    print(f"{head} · {len(rows)} lines · {order_note} · {_price_note(args.price)}")
     if not getattr(args, "all_models", False):
         plans = "Go/Zen plans" if source in (None, "all") else f"{source} plan"
         print(
@@ -959,9 +967,9 @@ def _cmd_list(args: argparse.Namespace) -> int:
     main, worst, pricey = partition_rows(rows)
     # one set of column widths for the whole view, so the three tables line
     # up with each other too
-    widths = _widths(rows, axis)
+    widths = _widths(rows, axis, args.price)
 
-    _section(f"best value · {len(main)} lines", widths, axis)
+    _section(f"best value · {len(main)} lines", widths, axis, args.price)
     for band, label in BAND_LABELS:
         group = [r for r in main if r.band == band]
         if group:
@@ -970,11 +978,15 @@ def _cmd_list(args: argparse.Namespace) -> int:
                 _print_row(row, widths, curated.curated, axis)
 
     if args.tables == "all":
-        _section(f"worst score (bottom 30%) · {len(worst)} lines", widths, axis)
+        _section(
+            f"worst score (bottom 30%) · {len(worst)} lines", widths, axis, args.price
+        )
         for row in worst:
             _print_row(row, widths, curated.curated, axis)
 
-        _section(f"highest cost (top 30%) · {len(pricey)} lines", widths, axis)
+        _section(
+            f"highest cost (top 30%) · {len(pricey)} lines", widths, axis, args.price
+        )
         for row in pricey:
             _print_row(row, widths, curated.curated, axis)
     return 0
@@ -995,12 +1007,14 @@ NEXT_BANDS = {
 def _pick_value(row) -> str:
     """A pick's score per dollar, free lines included.
 
-    Free lines carry their nominal rate, so they divide like any other
-    cost — the cheapest free models read highest. "free" is only the
-    degenerate zero-price fallback; "-" means there is no score to value.
+    Free lines are really free (metered $0, throttled separately), so
+    they read "—" and sort ahead of every cost-based line ($0 is cheaper
+    than any price). "-" means there is no score to value.
     """
     if row.score is None:
         return "-"
+    if row.free:
+        return "—"
     if row.price == 0:
         return "free"
     return f"{round(ratio(row.score, row.price))}"
@@ -1034,31 +1048,40 @@ def _next_band(row) -> str:
 
 #: The `next` grid, declared: one text column per field, measured at
 #: print time so a wide provider (`go,zen`) or a long score widens its
-#: column instead of shifting the rest of the row.
-NEXT_HEADERS = ("#", "PLAN", "SCORE", "¢/1M", "SCORE/$", "ENDPOINT", "BAND")
+#: column instead of shifting the rest of the row. The cost header comes
+#: from `_cost_unit` (``¢/1M``, ``¢/REQ`` under `--price est`).
 NEXT_ALIGNS = ("<", "<", ">", ">", ">", "<", "<")
 NEXT_MIN_WIDTHS = (2, 5, 6, 5, 7, 0, 0)
 
 
-def _next_table(picks: list) -> str:
+def _next_table(picks: list, price: str = "mix") -> str:
     """The picks as an aligned grid: position, plan, score, cost, value,
-    endpoint, band."""
+    endpoint, band. The cost unit follows the `--price` mode."""
+    headers = (
+        "#",
+        "PLAN",
+        "SCORE",
+        _cost_unit(price),
+        "SCORE/$",
+        "ENDPOINT",
+        "BAND",
+    )
     rows = []
     for i, row in enumerate(picks, 1):
-        _score, price, value, _prov = _cells(row)
+        _score, cost, value, _prov = _cells(row)
         rows.append(
             [
                 str(i),
                 row.provider,
                 f"{round(row.score)}",
-                price,
+                cost,
                 value,
                 _endpoint(row),
                 _next_band(row),
             ]
         )
     return render(
-        NEXT_HEADERS,
+        headers,
         rows,
         aligns=NEXT_ALIGNS,
         min_widths=NEXT_MIN_WIDTHS,
@@ -1100,7 +1123,7 @@ def _cmd_next(args: argparse.Namespace) -> int:
         f"interleaved, alternating Zen/Go plans."
     )
     print()
-    print(_next_table(picks))
+    print(_next_table(picks, args.price))
     return 0
 
 
@@ -1595,9 +1618,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_list.add_argument(
         "--price",
-        choices=("weighted", "input", "output"),
-        default="weighted",
-        help="cost of a line (default: weighted 20%% in, 60%% cached, 20%% out)",
+        choices=("mix", "input", "output", "est"),
+        default="mix",
+        help="cost of a line: mix 20%% in, 60%% cached, 20%% out "
+        "(default); input/output rate only; est page-estimated "
+        "¢/req, Go only, else mix (default: %(default)s)",
     )
     p_list.add_argument(
         "--tables",
@@ -1639,9 +1664,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_next.add_argument(
         "--price",
-        choices=("weighted", "input", "output"),
-        default="weighted",
-        help="cost of a line (default: weighted 20%% in, 60%% cached, 20%% out)",
+        choices=("mix", "input", "output", "est"),
+        default="mix",
+        help="cost of a line: mix 20%% in, 60%% cached, 20%% out "
+        "(default); input/output rate only; est page-estimated "
+        "¢/req, Go only, else mix (default: %(default)s)",
     )
     p_next.add_argument(
         "--all-models",

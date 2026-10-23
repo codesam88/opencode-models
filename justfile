@@ -29,6 +29,18 @@ plans-check:
 plans-freeze: plans-check
     cp data/plans/go.json opencode_models/data/plans/go.json
 
+# Refresh data/plans/zen.json from the Zen docs page (gate fails shut)
+plans-update-zen:
+    uv run --no-sync python scripts/update_zen_pricing.py
+
+# Validate a zen snapshot offline (default: the local copy)
+plans-check-zen:
+    uv run --no-sync python scripts/update_zen_pricing.py --check
+
+# Promote the validated local zen snapshot to the shipped fallback
+plans-freeze-zen: plans-check-zen
+    cp data/plans/zen.json opencode_models/data/plans/zen.json
+
 # Unit tests
 test:
     uv run --no-sync python -m unittest discover -s tests

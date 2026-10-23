@@ -99,6 +99,7 @@ class Row:
     grade: str = "o"  # rank marker: ++ / + / o / -- / ·
     provider: str = "-"  # zen / go, "-" when in neither tier
     entry: object | None = None  # pricing.PriceEntry when doc-priced
+    synthetic: bool = False  # roster-only row: offered, so always listed
 
 
 def _best(
@@ -159,6 +160,7 @@ def build_rows(
     provider: str = "-",
     table: dict | None = None,
     est_rates: dict[str, float] | None = None,
+    reach_variants: bool = True,
 ) -> list[Row]:
     """Price every line of the console list.
 
@@ -199,13 +201,13 @@ def build_rows(
     staged = []  # (model, entry, display name, cost, free, monthly limit)
     for m in models:
         slug = m.model_id.split("/")[-1]
-        documented = sorted(
-            by_model.get(slug, []) + by_model.get(f"{slug}-free", []),
-            # first tier in *entries* owns a variant; within one variant
-            # the free entry wins, so the row's endpoint is the callable
-            # free id rather than the priced twin
-            key=lambda e: (variant_of(e.name), not e.free),
-        )
+        documented = list(by_model.get(slug, []))
+        if reach_variants:
+            # a free designation reaches the catalog base record, which
+            # carries no variant of its own: the free offering still stages
+            # a row with the callable free id. Synthetic roster models name
+            # their own exact offering, so they need no reach.
+            documented += by_model.get(f"{slug}-free", [])
         cost = cost_of(m, None)
         if not documented:
             if cost is None:
@@ -214,12 +216,13 @@ def build_rows(
                 (m, None, m.name, cost, m.model_id in free_ids or cost == 0, None)
             )
             continue
-        variants = set()
-        for entry in documented:  # first tier in *entries* owns a variant
+        seen = set()
+        for entry in documented:  # one row per documented offering
+            key = (entry.model_id, variant_of(entry.name))
+            if key in seen:
+                continue  # the same variant from a second tier is one line
+            seen.add(key)
             suffix = variant_of(entry.name)
-            if suffix in variants:
-                continue
-            variants.add(suffix)
             label = f"{m.name} {suffix}" if suffix else m.name
             staged.append(
                 (
@@ -227,7 +230,7 @@ def build_rows(
                     entry,
                     label,
                     cost_of(m, entry),
-                    entry.free or m.model_id in free_ids,
+                    entry.free,
                     entry.limit,
                 )
             )
@@ -325,7 +328,9 @@ def order_rows(rows: list[Row]) -> list[Row]:
     tail = [
         r
         for r in rows
-        if r.score is None and id(r) not in listed and (r.free or _measured(r))
+        if r.score is None
+        and id(r) not in listed
+        and (r.free or _measured(r) or r.synthetic)
     ]
     free = [r for r in tail if r.free]
     paid = [r for r in tail if not r.free]
@@ -378,8 +383,9 @@ def grade_rows(rows: list[Row]) -> list[Row]:
     should not be graded "middle" for costing money, and a cheap model
     should not be graded "top" for being cheap.
 
-    Rows with no score are unranked rather than last: they show ``·``, so a
-    free model nobody benchmarks is not mistaken for the bottom.
+    Rows with no score are unranked rather than last: they show ``·`` for
+    insufficient benchmark data, so a model nobody benchmarks is not
+    mistaken for the bottom — whether the catalog knows it or not.
     """
     return [replace(r, grade=grade_for(r.score)) for r in rows]
 

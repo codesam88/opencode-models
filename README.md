@@ -460,8 +460,7 @@ when its source is at least as good as upstream's — sources are tiered:
 independent evaluators that run every model on one harness (Artificial
 Analysis) beat official benchmark boards (tbench.ai), which beat vendor
 model cards and launch posts. Everything a disagreement touches is printed
-by `overrides`; to accept the catalog value, delete the entry. Rows whose
-model carries an overlay are marked `*` in `list`. See
+by `overrides`; to accept the catalog value, delete the entry. See
 `data/overrides/README.md` for the entry format and rules.
 
 Parsing is tolerant: models without pricing or without the selected

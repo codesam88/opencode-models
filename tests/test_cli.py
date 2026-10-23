@@ -1321,9 +1321,16 @@ class CliTest(unittest.TestCase):
     def test_best_value_alone_still_culls_the_weak_and_dear(self):
         # hiding the side tables must not re-admit their rows: the cull is
         # what keeps the worst-scoring and priciest models out of the view
+        import opencode_models.availability as _avail
+
         with tempfile.TemporaryDirectory() as tmp:
             _write_grid(Path(tmp))
-            code, out = self._run("--data", tmp, "list", "--source", "all")
+            orig = _avail.load_roster
+            _avail.load_roster = lambda _d, name: {f"m{i:02d}" for i in range(1, 11)}
+            try:
+                code, out = self._run("--data", tmp, "list", "--source", "all")
+            finally:
+                _avail.load_roster = orig
         self.assertEqual(code, 0)
         self.assertNotIn("worst score", out)
         self.assertNotIn("highest cost", out)
@@ -3552,11 +3559,13 @@ class ModelsTableTest(unittest.TestCase):
             .startswith("[ ]")
         )
 
-    def test_models_hides_rows_the_catalog_does_not_know(self):
+    def test_models_hides_live_only_rows_the_docs_do_not_name(self):
+        # m-ghost is served but documented nowhere (like the live "test"
+        # id): with no catalog record and no docs name it stays hidden.
         import opencode_models.cli as cli_mod
 
         with tempfile.TemporaryDirectory() as tmp:
-            self._snapshot(tmp, "zen", ["m-ghost", "m-known"])
+            self._snapshot(tmp, "zen", ["m-known"])
             self._catalog(tmp, {"l/m-known": "Known"})
             with mock.patch.dict(os.environ, {"OPENCODE_API_KEY": "oc_sk_test"}):
                 with (

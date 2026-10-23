@@ -97,20 +97,20 @@ class RowBuildingTest(unittest.TestCase):
         self.assertEqual(rows[0].band, "included")  # Go grants $15/month
         self.assertIn("Off-Peak", rows[0].name)
 
-    def test_free_entry_wins_the_endpoint_when_both_are_documented(self):
+    def test_priced_base_and_free_variant_stage_separate_rows(self):
         # the docs list glm-5.3-flash priced and glm-5.3-flash-free free:
-        # the row is free either way, but the callable endpoint must be
-        # the free variant's id, not the priced one's.
+        # distinct documented offerings, distinct endpoints, one row each.
         models = [_m("lab/m", 1.0, tb=50.0)]
         entries = [
             _entry("m", 0.15, 0.5, cached=0.03, name="M"),
             _entry("m-free", 0.0, 0.0, cached=0.0, free=True, name="M Free"),
         ]
         rows = build_rows(models, entries)
-        self.assertEqual(len(rows), 1)
-        self.assertEqual(rows[0].entry.model_id, "m-free")
-        self.assertEqual(rows[0].price, 0.0)
-        self.assertEqual(rows[0].band, "free")
+        self.assertEqual(len(rows), 2)
+        by_endpoint = {r.entry.model_id: r for r in rows}
+        self.assertEqual(by_endpoint["m"].band, "payg")
+        self.assertEqual(by_endpoint["m-free"].band, "free")
+        self.assertEqual(by_endpoint["m-free"].price, 0.0)
 
     def test_a_free_line_is_priced_at_zero(
         self,
@@ -493,6 +493,10 @@ class GradeTest(unittest.TestCase):
 
     def test_no_score_is_unranked(self):
         self.assertEqual(grade_for(None), "·")
+
+    def test_unscored_rows_share_the_insufficient_data_marker(self):
+        rows = _rows([(None, 0.0), (None, 1.0)])
+        self.assertEqual([r.grade for r in grade_rows(rows)], ["·", "·"])
 
     def test_every_row_in_a_list_can_share_one_band(self):
         # absolute bands, not deciles: nothing forces a loser into existence

@@ -15,7 +15,7 @@ model, the score is computed once, and each plan's price stays its own line.
 import unittest
 
 from opencode_models.identity import (
-    MODEL_ALIASES,
+    VARIANT_SUFFIXES,
     canonical_id,
     merge_aliases,
     plan_ids,
@@ -42,10 +42,31 @@ class IdentityTest(unittest.TestCase):
         )
         self.assertEqual(canonical_id("meta/muse-spark-1.3"), "meta/muse-spark-1.3")
 
-    def test_the_plans_of_a_model_include_its_designations(self):
+    def test_a_free_designation_is_the_same_model(self):
         self.assertEqual(
-            plan_ids("meta/muse-spark-1.3"),
-            {"meta/muse-spark-1.3", "meta/muse-spark-1.3-contributor"},
+            canonical_id("lab/mimo-v2.6-flash-free"), "lab/mimo-v2.6-flash"
+        )
+        self.assertEqual(canonical_id("lab/mimo-v2.6-flash"), "lab/mimo-v2.6-flash")
+
+    def test_a_double_suffix_folds_to_the_base(self):
+        self.assertEqual(
+            canonical_id("meta/muse-spark-1.3-contributor-free"),
+            "meta/muse-spark-1.3",
+        )
+        self.assertEqual(
+            canonical_id("meta/muse-spark-1.3-free-contributor"),
+            "meta/muse-spark-1.3",
+        )
+
+    def test_plain_ids_are_unchanged(self):
+        self.assertEqual(canonical_id("openai/gpt-6.1-sol"), "openai/gpt-6.1-sol")
+        self.assertEqual(canonical_id("lab/mimo-v2.6-flash"), "lab/mimo-v2.6-flash")
+        self.assertEqual(canonical_id("meta/muse-spark-1.3"), "meta/muse-spark-1.3")
+
+    def test_the_plans_of_a_model_include_its_canonical(self):
+        self.assertEqual(
+            plan_ids("meta/muse-spark-1.3-contributor"),
+            {"meta/muse-spark-1.3-contributor", "meta/muse-spark-1.3"},
         )
 
     def test_a_model_with_no_designation_is_its_own_plans(self):
@@ -112,11 +133,32 @@ class IdentityTest(unittest.TestCase):
             [m.model_id for m in merged], ["meta/muse-spark-1.4-contributor"]
         )
 
-    def test_every_alias_points_at_a_model_we_can_justify(self):
-        for alias, canonical in MODEL_ALIASES.items():
-            with self.subTest(alias=alias):
-                self.assertTrue(alias.endswith("-contributor"))
-                self.assertEqual(canonical_id(canonical), canonical)
+    def test_a_free_designation_with_no_twin_keeps_its_own_identity(self):
+        models = [
+            _model("lab/mimo-v2.6-flash-free", 0.0, **{"Terminal-Bench 2.1": 90.0})
+        ]
+        merged = merge_aliases(models)
+        self.assertEqual([m.model_id for m in merged], ["lab/mimo-v2.6-flash-free"])
+
+    def test_variant_suffixes_are_the_plan_option_suffixes(self):
+        self.assertEqual(VARIANT_SUFFIXES, ("-free", "-contributor"))
+
+    def test_a_free_pair_folds_and_unions(self):
+        models = [
+            _model("lab/mimo-v2.6-flash", 1.25, **{"Terminal-Bench 2.1": 80.0}),
+            _model("lab/mimo-v2.6-flash-free", 0.0, **{"Terminal-Bench 2.1": 80.0}),
+        ]
+        merged = merge_aliases(models)
+        self.assertEqual([m.model_id for m in merged], ["lab/mimo-v2.6-flash"])
+        self.assertEqual(merged[0].price_input, 0.0)
+
+    def test_benchmark_union_prefers_plain_on_disagreement(self):
+        models = [
+            _model("lab/mimo-v2.6-flash", 1.25, **{"Terminal-Bench 2.1": 80.0}),
+            _model("lab/mimo-v2.6-flash-free", 0.0, **{"Terminal-Bench 2.1": 70.0}),
+        ]
+        merged = merge_aliases(models)
+        self.assertEqual(merged[0].scores["Terminal-Bench 2.1"], 80.0)
 
 
 if __name__ == "__main__":

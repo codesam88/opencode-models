@@ -333,10 +333,32 @@ def current_offered(data_dir, bypass=False):
     )
 
 
+def load_plan_snapshot(data_dir) -> tuple[dict, str]:
+    """The Go plan snapshot (limits, prices, assumptions) and its origin.
+
+    Resolution order: the data dir's ``plans/go.json`` first -- that is
+    the copy ``plans-update`` refreshes -- then the snapshot shipped
+    inside the package, so an installed tool with no data dir still
+    resolves. A corrupt local file falls through to the shipped one.
+    """
+    from importlib import resources
+
+    data_dir = Path(data_dir)
+    local = data_dir / "plans" / "go.json"
+    if local.is_file():
+        try:
+            return json.loads(local.read_text()), "local"
+        except (json.JSONDecodeError, OSError):
+            pass
+    shipped = resources.files("opencode_models") / "data" / "plans" / "go.json"
+    return json.loads(shipped.read_text()), "shipped"
+
+
 # Public surface of this module.
 __all__ = [
     "available_ids",
     "free_slugs",
+    "load_plan_snapshot",
     "load_available",
     "load_aliases",
     "load_roster",

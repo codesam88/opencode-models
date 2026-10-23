@@ -10,8 +10,6 @@ frozen HTML fixture mirroring the real page structure; no test touches
 the network.
 """
 
-import contextlib
-import io
 import json
 import tempfile
 import unittest
@@ -230,41 +228,7 @@ class GateTest(unittest.TestCase):
         self.assertTrue(any("model-a" in e for e in errors))
 
 
-class CliTest(unittest.TestCase):
-    def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.tmp.cleanup)
-        self.page = Path(self.tmp.name) / "page.html"
-        self.page.write_text(FIXTURE_HTML)
-        self.out = Path(self.tmp.name) / "limits" / "zen.json"
-
-    def _run(self, *argv):
-        buf = io.StringIO()
-        with contextlib.redirect_stdout(buf):
-            code = zen_pricing.main(list(argv))
-        return code, buf.getvalue()
-
-    def test_generate_then_check_roundtrip(self):
-        code, out = self._run("--from", str(self.page), "--out", str(self.out))
-        self.assertEqual(code, 0, out)
-        self.assertIn("added=4", out)
-        doc = json.loads(self.out.read_text())
-        self.assertEqual(doc["meta"]["plans"], ["zen"])
-        self.assertNotIn("windows", doc)
-        self.assertIn("model-a", doc["models"])
-        code, out = self._run("--check", "--out", str(self.out))
-        self.assertEqual(code, 0, out)
-
-    def test_gate_failure_writes_nothing(self):
-        bad = FIXTURE_HTML.replace(
-            "<tr><td>Model A</td><td>$0.15</td><td>$0.50</td><td>$0.03</td><td>-</td></tr>",
-            "<tr><td>Model Z</td><td>$0.15</td><td>$0.50</td><td>$0.03</td><td>-</td></tr>",
-        )
-        self.page.write_text(bad)
-        code, out = self._run("--from", str(self.page), "--out", str(self.out))
-        self.assertEqual(code, 2)
-        self.assertFalse(self.out.exists())
-
+class ShippedGateTest(unittest.TestCase):
     def test_shipped_fallback_passes_the_gate(self):
         fallback = (
             Path(__file__).resolve().parent.parent
@@ -276,16 +240,6 @@ class CliTest(unittest.TestCase):
         models = zen_pricing._read_models(fallback)
         errors, _, _ = zen_pricing.validate(models)
         self.assertEqual(errors, [], errors)
-
-    def test_check_fails_on_corrupted_file(self):
-        code, _ = self._run("--from", str(self.page), "--out", str(self.out))
-        self.assertEqual(code, 0)
-        doc = json.loads(self.out.read_text())
-        doc["models"]["model-a"]["limits"] = 600
-        self.out.write_text(json.dumps(doc))
-        code, out = self._run("--check", "--out", str(self.out))
-        self.assertEqual(code, 1)
-        self.assertIn("model-a", out)
 
     def test_user_agent_is_derived_from_package_metadata(self):
         from unittest import mock

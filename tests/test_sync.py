@@ -149,5 +149,81 @@ class SyncT1UntouchedTest(unittest.TestCase):
         self.assertEqual(before, after)
 
 
+class SyncForceCheckTest(unittest.TestCase):
+    def _cli(self, *argv):
+        import io as _io
+
+        from opencode_models.cli import main
+
+        buf = _io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            code = main(list(argv))
+        return code, buf.getvalue()
+
+    def _fixture_get(self, url):
+        if "console/go" in url:
+            return go_fixture.FIXTURE_HTML
+        if url.endswith("/docs/zen/"):
+            return zen_fixture.FIXTURE_HTML
+        raise OSError(f"unexpected url: {url}")
+
+    def test_force_refreshes_fresh_sources(self):
+        import opencode_models.cli as cli
+
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_snapshot(tmp, "go", hours_old=1)
+            _write_snapshot(tmp, "zen", hours_old=1)
+            _write_available(tmp, "go", hours_old=1)
+            _write_available(tmp, "zen", hours_old=1)
+            orig = cli.http_get
+            cli.http_get = self._fixture_get
+            try:
+                code, out = self._cli("--data", tmp, "sync", "--force")
+            finally:
+                cli.http_get = orig
+            models = json.loads((Path(tmp) / "plans" / "go.json").read_text())["models"]
+        self.assertEqual(code, 0)
+        self.assertIn("plans/go: refreshed", out)
+        self.assertIn("model-a", models)
+
+    def test_check_passes_on_freshly_synced_snapshots(self):
+        import opencode_models.cli as cli
+
+        with tempfile.TemporaryDirectory() as tmp:
+            orig = cli.http_get
+            cli.http_get = self._fixture_get
+            try:
+                code, _ = self._cli("--data", tmp, "sync", "--force")
+                self.assertEqual(code, 0)
+                code, _ = self._cli("--data", tmp, "sync", "--check")
+            finally:
+                cli.http_get = orig
+        self.assertEqual(code, 0)
+
+    def test_check_fails_on_corrupted_snapshot(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_snapshot(tmp, "go", hours_old=1)
+            _write_snapshot(tmp, "zen", hours_old=1)
+            path = Path(tmp) / "plans" / "go.json"
+            doc = json.loads(path.read_text())
+            doc["models"]["m"] = {
+                "name": "M",
+                "free": False,
+                "tiers": [{"label": None, "in": 1.0, "out": 1.0, "cached": 1.0}],
+                "limits": {"go": 600, "go_plus": 600},
+                "requests_per_month": {"go": 1, "go_plus": 1},
+                "assumptions": {"in": 1, "cached": 1, "out": 1},
+            }
+            path.write_text(json.dumps(doc))
+            code, out = self._cli("--data", tmp, "sync", "--check")
+        self.assertEqual(code, 1)
+        self.assertIn("gate error", out)
+
+    def test_check_fails_on_missing_snapshot(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            code, _ = self._cli("--data", tmp, "sync", "--check")
+        self.assertEqual(code, 1)
+
+
 if __name__ == "__main__":
     unittest.main()

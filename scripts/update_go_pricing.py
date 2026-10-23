@@ -41,10 +41,21 @@ import sys
 import urllib.request
 from datetime import datetime, timezone
 from html.parser import HTMLParser
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 PAGE_URL = "https://opencode.ai/v2/docs/console/go"
-USER_AGENT = "opencode-models/0.1.0"
+
+
+def _user_agent():
+    """This tool's User-Agent, versioned from the installed package."""
+    try:
+        return f"opencode-models/{version('opencode-models')}"
+    except PackageNotFoundError:  # bare checkout without an install
+        return "opencode-models/0.0.0+unknown"
+
+
+USER_AGENT = _user_agent()
 DEFAULT_OUT = "data/plans/go.json"
 PLANS = ("go", "go_plus")
 PANEL_PLAN = {"go": "go", "go-plus": "go_plus"}

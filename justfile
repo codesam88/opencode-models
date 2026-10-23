@@ -17,28 +17,23 @@ install:
 run *args:
     uv run --no-sync opencode-models --data data {{args}}
 
-# Refresh data/plans/go.json from the Go docs page (gate fails shut)
-plans-update:
-    uv run --no-sync python scripts/update_go_pricing.py
+# Refresh stale sources in your data dir (age-gated; warnings, never fails)
+sync:
+    uv run --no-sync opencode-models sync
 
-# Validate a limits snapshot offline (default: the local copy)
+# Refresh data/plans/*.json from the docs pages (gate fails shut)
+plans-sync:
+    uv run --no-sync python -m opencode_models.go_pricing
+    uv run --no-sync python -m opencode_models.zen_pricing
+
+# Validate the local snapshots offline (default: data/plans)
 plans-check:
-    uv run --no-sync python scripts/update_go_pricing.py --check
+    uv run --no-sync python -m opencode_models.go_pricing --check
+    uv run --no-sync python -m opencode_models.zen_pricing --check
 
-# Promote the validated local snapshot to the shipped fallback
+# Promote validated snapshots to the shipped fallback (curation: review, then PR)
 plans-freeze: plans-check
     cp data/plans/go.json opencode_models/data/plans/go.json
-
-# Refresh data/plans/zen.json from the Zen docs page (gate fails shut)
-plans-update-zen:
-    uv run --no-sync python scripts/update_zen_pricing.py
-
-# Validate a zen snapshot offline (default: the local copy)
-plans-check-zen:
-    uv run --no-sync python scripts/update_zen_pricing.py --check
-
-# Promote the validated local zen snapshot to the shipped fallback
-plans-freeze-zen: plans-check-zen
     cp data/plans/zen.json opencode_models/data/plans/zen.json
 
 # Unit tests
@@ -47,8 +42,8 @@ test:
 
 # Lint: ruff check/format/complexity + offline zizmor
 lint:
-    uv run --no-sync ruff check opencode_models tests scripts
-    uv run --no-sync ruff format --check opencode_models tests scripts
+    uv run --no-sync ruff check opencode_models tests
+    uv run --no-sync ruff format --check opencode_models tests
     uvx zizmor --no-online-audits .github/workflows/
 
 # Full check: tests + entry point resolving + wheel build

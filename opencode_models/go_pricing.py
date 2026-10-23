@@ -434,14 +434,16 @@ def merge(existing, parsed):
     for slug, rec in parsed.items():
         new_rec = dict(rec)
         if slug not in merged:
-            new_rec.setdefault("first_seen", now)
+            new_rec["first_seen"] = new_rec.get("first_seen") or now
             merged[slug] = new_rec
             counts["added"] += 1
             continue
         old_cmp = {
             k: v for k, v in merged[slug].items() if k not in ("dropped", "first_seen")
         }
-        new_cmp = {k: v for k, v in new_rec.items() if k != "first_seen"}
+        new_cmp = {
+            k: v for k, v in new_rec.items() if k not in ("dropped", "first_seen")
+        }
         if old_cmp != new_cmp:
             new_rec["first_seen"] = merged[slug].get("first_seen") or now
             merged[slug] = new_rec

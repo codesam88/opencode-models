@@ -1,10 +1,8 @@
 """Which models the plans actually offer, as the provider's own snapshot says.
 
-The shipped slug lists under ``opencode_models/sources/`` are hand-maintained
-and drift: providers unlist models and move them between plans, and a model
-that is no longer offered is still displayed, scored and recommended as if it
-were. The tier pricing snapshot that ``fetch`` writes is the provider's own
-list, so it is the record these operations should be limited to.
+Availability resolves a tier's offered slugs along the chain live snapshot ->
+docs snapshot -> runtime plan snapshot -> shipped plan fallback. These tests
+cover that resolution and the helpers that filter the catalog to it.
 """
 
 import json
@@ -16,7 +14,6 @@ from opencode_models.availability import (
     _snapshot_ids,
     available_ids,
     load_available,
-    unlisted,
 )
 
 
@@ -113,25 +110,6 @@ class AvailabilityTest(unittest.TestCase):
             self.assertEqual(load_available(d)["zen"], {"m1"})
             self.assertEqual(_snapshot_ids(d, "zen"), {"m1"})
 
-    def test_it_reports_what_the_provider_has_dropped(self):
-        from opencode_models import sources
-
-        real = sources.load_source
-        sources.load_source = lambda tier: {"m1", "m2"}
-        try:
-            with tempfile.TemporaryDirectory() as tmp:
-                d = Path(tmp)
-                _snapshot(d, "go", ["m1"])
-                dropped = unlisted(d)
-        finally:
-            sources.load_source = real
-        # the shipped list still carries m2, which the provider dropped
-        self.assertEqual(dropped["go"], {"m2"})
-
-    def test_nothing_is_reported_dropped_without_a_snapshot(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            self.assertEqual(unlisted(Path(tmp)), {})
-
     def test_a_model_offered_only_through_a_free_slug_counts_as_offered(self):
         # the tier pages list free variants under their own slug
         # ("step-5-preview-free") while the catalog carries one model under
@@ -165,3 +143,102 @@ class LivePrecedenceTest(unittest.TestCase):
             d = Path(tmp)
             _snapshot(d, "zen", ["doc-model"])
             self.assertEqual(load_available(d)["zen"], {"doc-model"})
+
+
+class LoadRosterPrecedenceTest(unittest.TestCase):
+    def test_live_beats_tier_prices_beats_plans_beats_shipped(self):
+        import json
+        from pathlib import Path
+
+        from opencode_models.availability import load_roster
+        from opencode_models.live import save_live
+
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            # shipped fallback always present for zen; add the other layers
+            (d / "plans").mkdir()
+            (d / "plans" / "zen.json").write_text(
+                json.dumps({"models": {"runtime-only": {"free": False}}})
+            )
+            _snapshot(d, "zen", ["docs-only"])
+            save_live(d, {"zen": {"live-only": False}})
+
+            self.assertEqual(load_roster(d, "zen"), {"live-only"})
+
+            (d / "available" / "zen.json").unlink()
+            self.assertEqual(load_roster(d, "zen"), {"docs-only"})
+
+            (d / "tier_prices" / "zen_prices.json").unlink()
+            self.assertEqual(load_roster(d, "zen"), {"runtime-only"})
+
+            (d / "plans" / "zen.json").unlink()
+            shipped = load_roster(d, "zen")
+            self.assertIn("claude-opus-4-5", shipped)
+
+    def test_unknown_tier_raises_keyerror(self):
+        from opencode_models.availability import load_roster
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(KeyError):
+                load_roster(Path(tmp), "nope")
+
+
+class FreeSlugsTest(unittest.TestCase):
+    def test_tier_prices_and_plans_flags_union(self):
+        import json
+        from pathlib import Path
+
+        from opencode_models.availability import free_slugs
+
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            _snapshot(d, "zen", [])
+            # tier_prices free flag
+            out = d / "tier_prices"
+            out.mkdir(parents=True, exist_ok=True)
+            (out / "zen_prices.json").write_text(
+                json.dumps(
+                    [
+                        {
+                            "tier": "zen",
+                            "model_id": "doc-free",
+                            "name": "Doc Free",
+                            "free": True,
+                        },
+                        {
+                            "tier": "zen",
+                            "model_id": "doc-paid",
+                            "name": "Doc Paid",
+                            "free": False,
+                        },
+                    ]
+                )
+            )
+            (d / "plans").mkdir()
+            (d / "plans" / "zen.json").write_text(
+                json.dumps(
+                    {
+                        "models": {
+                            "plan-free": {"free": True},
+                            "plan-paid": {"free": False},
+                        }
+                    }
+                )
+            )
+            self.assertEqual(free_slugs(d, "zen"), {"doc-free", "plan-free"})
+
+
+class OfferedCanonicalTest(unittest.TestCase):
+    def test_variant_and_base_cross_match(self):
+        from opencode_models.availability import offered
+
+        self.assertTrue(offered("lab/base", {"base-contributor"}))
+        self.assertTrue(offered("lab/base-contributor", {"base"}))
+        self.assertFalse(offered("lab/absent", {"base"}))
+
+    def test_dict_ids_are_supported(self):
+        from opencode_models.availability import offered
+
+        ids = {"m1": True, "m2": False}
+        self.assertTrue(offered("a/m1", ids))
+        self.assertFalse(offered("a/gone", ids))

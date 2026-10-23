@@ -8,6 +8,7 @@ from opencode_models.ranking import (
     Row,
     axis_scores,
     build_rows,
+    by_score_per_price,
     dedupe_providers,
     grade_for,
     grade_rows,
@@ -662,6 +663,70 @@ class PartitionTest(unittest.TestCase):
         self.assertEqual(len(main), 1)
         self.assertEqual(worst, [])
         self.assertEqual(pricey, [])
+
+
+class ScorePerPriceRankingTest(unittest.TestCase):
+    BENCH = "TB"
+
+    def _m(self, model_id, price, score, output=None):
+        from opencode_models.models import Model
+
+        return Model(
+            model_id=model_id,
+            name=model_id,
+            lab="x",
+            price_input=price,
+            price_output=output,
+            price_cached_input=None,
+            scores={} if score is None else {"TB": score},
+        )
+
+    def test_sorted_by_score_over_price_descending(self):
+        out = by_score_per_price(
+            [
+                self._m("a", 2.0, 80.0),
+                self._m("b", 10.0, 90.0),
+                self._m("c", 1.0, 40.0),
+            ],
+            self.BENCH,
+        )
+        self.assertEqual([m.model_id for m in out], ["a", "c", "b"])
+
+    def test_free_models_rank_by_score(self):
+        out = by_score_per_price(
+            [
+                self._m("paid", 1.0, 50.0),
+                self._m("free", 0.0, 30.0),
+                self._m("free2", 0.0, 60.0),
+            ],
+            self.BENCH,
+        )
+        self.assertEqual([m.model_id for m in out], ["free2", "free", "paid"])
+
+    def test_excludes_models_missing_price_or_score(self):
+        out = by_score_per_price(
+            [
+                self._m("ok", 1.0, 50.0),
+                self._m("np", None, 90.0),
+                self._m("ns", 1.0, None),
+            ],
+            self.BENCH,
+        )
+        self.assertEqual([m.model_id for m in out], ["ok"])
+
+    def test_output_price_axis_changes_ratio(self):
+        models = [
+            self._m("a", 2.0, 80.0, output=5.0),
+            self._m("b", 2.0, 90.0, output=10.0),
+        ]
+        out = by_score_per_price(models, self.BENCH, price_field="price_output")
+        self.assertEqual([m.model_id for m in out], ["a", "b"])
+
+    def test_unknown_price_field_raises(self):
+        with self.assertRaises(ValueError):
+            by_score_per_price(
+                [self._m("a", 1.0, 50.0)], self.BENCH, price_field="price_cache_write"
+            )
 
 
 if __name__ == "__main__":

@@ -402,6 +402,13 @@ class CliTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("model-a", out)
 
+    def test_user_agent_is_derived_from_package_metadata(self):
+        from unittest import mock
+
+        with mock.patch.object(go_pricing, "version", return_value="9.9.9"):
+            self.assertEqual(go_pricing._user_agent(), "opencode-models/9.9.9")
+        self.assertTrue(go_pricing.USER_AGENT.startswith("opencode-models/"))
+
 
 if __name__ == "__main__":
     unittest.main()

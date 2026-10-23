@@ -32,6 +32,7 @@ import json
 import sys
 import urllib.request
 from datetime import datetime, timezone
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 # Reuse the Go script's table parser and helpers rather than duplicating.
@@ -41,7 +42,17 @@ go_pricing = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(go_pricing)
 
 PAGE_URL = "https://opencode.ai/docs/zen/"
-USER_AGENT = "opencode-models/0.1.0"
+
+
+def _user_agent():
+    """This tool's User-Agent, versioned from the installed package."""
+    try:
+        return f"opencode-models/{version('opencode-models')}"
+    except PackageNotFoundError:  # bare checkout without an install
+        return "opencode-models/0.0.0+unknown"
+
+
+USER_AGENT = _user_agent()
 DEFAULT_OUT = "data/plans/zen.json"
 PLANS = ("zen",)
 

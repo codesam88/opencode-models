@@ -363,7 +363,6 @@ committed**. They are third-party records, they go stale, and they are large;
 |---|---|---|---|
 | `opencode/` | upstream records, one JSON per model, verbatim from `https://opencode.ai/data/<lab>/<model>.json` | `fetch` only | no — `.gitignore`d |
 | `aiarena/` | arena.ai (LMArena) Elo cache, `{slug: elo}` | `fetch` | no — `.gitignore`d |
-| `tier_prices/` | snapshots of the Console tier pricing tables (see below for what counts as offered) | `fetch` | no — `.gitignore`d |
 | `available/` | the live model set per tier from the inference gateway lists (served = callable), annotated with the Console config API's known set | keyed `fetch` / `models` | no — `.gitignore`d |
 | `plans/` | validated plan allowance snapshots: per-model token prices, monthly limits per plan, token/req assumptions, request estimates (`update_go_pricing.py` + gate) | `just plans-update` on cadence | no — `.gitignore`d |
 | `boards/` | official benchmark boards, fetched from whoever runs them (see below) | `fetch` | no — `.gitignore`d |
@@ -386,7 +385,7 @@ model keeps its place in the scales rather than moving every score.
 Providers unlist models and move them between plans, so "which models can I
 use" is a fact about today, not a property of the codebase. Tier membership
 now comes from the same snapshots `fetch` writes — the live `available/` set,
-then `tier_prices/`, then the runtime `plans/` copy, then the shipped plan
+then the runtime `plans/` copy, then the shipped plan
 fallback — so there is no hand-maintained roster to drift. In the live data 13
 Go models were still being listed, scored and recommended after the provider's
 own documentation had stopped listing them, among them `hy3-preview` and
@@ -488,7 +487,7 @@ correct or remove it.
 ## Caveats
 
 - Prices are list prices from one catalog (OpenCode's); they can lag provider
-  price changes. Tier pricing is snapshotted offline (`data/tier_prices/`),
+  price changes. Tier pricing is snapshotted offline (`data/plans/`),
   so a stale snapshot is stale prices until the next `fetch`.
 - Benchmarks are heterogeneous (metric, harness, conditions differ per source).
   `list` orders Terminal-Bench rows and SWE-Bench rows separately rather than

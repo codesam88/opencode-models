@@ -97,8 +97,24 @@ class RowBuildingTest(unittest.TestCase):
         self.assertEqual(rows[0].band, "included")  # Go grants $15/month
         self.assertIn("Off-Peak", rows[0].name)
 
-    def test_a_free_line_is_priced_at_zero(self):
-        # free is metered at $0 (the throttle lives elsewhere), so every
+    def test_free_entry_wins_the_endpoint_when_both_are_documented(self):
+        # the docs list glm-5.3-flash priced and glm-5.3-flash-free free:
+        # the row is free either way, but the callable endpoint must be
+        # the free variant's id, not the priced one's.
+        models = [_m("lab/m", 1.0, tb=50.0)]
+        entries = [
+            _entry("m", 0.15, 0.5, cached=0.03, name="M"),
+            _entry("m-free", 0.0, 0.0, cached=0.0, free=True, name="M Free"),
+        ]
+        rows = build_rows(models, entries)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0].entry.model_id, "m-free")
+        self.assertEqual(rows[0].price, 0.0)
+        self.assertEqual(rows[0].band, "free")
+
+    def test_a_free_line_is_priced_at_zero(
+        self,
+    ):  # free is metered at $0 (the throttle lives elsewhere), so every
         # free line carries price 0 whatever its traffic profile
         models = [_m("lab/paid", 1.0, tb=50.0), _m("lab/gift", 5.0, tb=40.0)]
         entries = [

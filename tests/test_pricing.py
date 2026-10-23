@@ -1,39 +1,10 @@
-"""Tier price snapshots scraped from the OpenCode Zen/Go docs pages.
-
-The docs are the authority on what a model actually costs inside a Console
-tier: the catalog carries one provider list price with no notion of tier,
-while Zen and Go bill different rates for the same model (DeepSeek V4 Pro is
-$1.74 on Zen, $0.66 off-peak on Go).
-"""
+"""Representative per-token cost: the fixed 20/60/20 blend."""
 
 import unittest
 
 from opencode_models.pricing import (
     weighted_cost,
 )
-
-ENDPOINTS = """
-<table>
-<thead><tr><th>Model</th><th>Model ID</th><th>Endpoint</th></tr></thead>
-<tbody>
-<tr><td>DeepSeek V4 Pro</td><td>deepseek-v4-pro</td><td>https://x/v1</td></tr>
-<tr><td>Step 5 Preview Free</td><td>step-5-preview-free</td><td>https://x/v1</td></tr>
-<tr><td>Mistral Large 4</td><td>mistral-large-4</td><td>https://x/v1</td></tr>
-</tbody>
-</table>
-"""
-
-PRICING = """
-<table>
-<thead><tr><th>Model</th><th>Input</th><th>Output</th><th>Cached Read</th><th>Monthly limit</th></tr></thead>
-<tbody>
-<tr><td>DeepSeek V4 Pro (Off-Peak)</td><td>$0.66</td><td>$1.98</td><td>$0.022</td><td><strong>$15</strong></td></tr>
-<tr><td>DeepSeek V4 Pro (Peak)</td><td>$1.32</td><td>$3.96</td><td>$0.044</td><td><strong>$15</strong></td></tr>
-<tr><td>Step 5 Preview Free</td><td>Free</td><td>Free</td><td>Free</td><td><strong>Unlimited</strong></td></tr>
-<tr><td>Mistral Large 4 (50% off)</td><td><del>$1.36</del> $0.68</td><td><del>$4.18</del> $2.09</td><td><del>$0.14</del> $0.07</td><td><strong>$60</strong></td></tr>
-</tbody>
-</table>
-"""
 
 
 class WeightedCostTest(unittest.TestCase):

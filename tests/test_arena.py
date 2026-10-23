@@ -1,5 +1,6 @@
 """Arena.ai Elo cache/merge layer, tested offline."""
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -50,6 +51,23 @@ class ArenaCacheTest(unittest.TestCase):
             c = ArenaCache(Path(tmp))
             c.save({"deepseek-v4-pro": 1400.0})
             self.assertEqual(c.load(), {"deepseek-v4-pro": 1400.0})
+
+    def test_save_writes_meta_envelope(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            c = ArenaCache(Path(tmp))
+            c.save({"x": 1.0})
+            raw = json.loads((Path(tmp) / "scores.json").read_text())
+            self.assertIn("meta", raw)
+            self.assertEqual(raw["scores"], {"x": 1.0})
+            self.assertIn("source", raw["meta"])
+            self.assertIn("fetched_at", raw["meta"])
+            self.assertEqual(raw["meta"]["schema_rev"], 1)
+            self.assertEqual(c.load(), {"x": 1.0})
+
+    def test_legacy_bare_dict_loads(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "scores.json").write_text(json.dumps({"x": 1.0}))
+            self.assertEqual(ArenaCache(Path(tmp)).load(), {"x": 1.0})
 
     def test_save_creates_data_dir(self):
         with tempfile.TemporaryDirectory() as tmp:

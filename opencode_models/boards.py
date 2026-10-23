@@ -32,6 +32,7 @@ import json
 import re
 from collections import Counter
 from dataclasses import asdict, dataclass, replace
+from datetime import datetime, timezone
 from pathlib import Path
 
 from .fetch import http_get
@@ -489,8 +490,25 @@ def save_boards(directory, boards: dict[str, list[BoardRow]]) -> list[str]:
     directory.mkdir(parents=True, exist_ok=True)
     saved = []
     for name, rows in boards.items():
+        if rows is None:
+            continue
         path = directory / f"{name}.json"
-        path.write_text(json.dumps([asdict(r) for r in rows], indent=1))
+        source = rows[0].source if rows else None
+        path.write_text(
+            json.dumps(
+                {
+                    "meta": {
+                        "source": source,
+                        "fetched_at": datetime.now(timezone.utc).isoformat(
+                            timespec="seconds"
+                        ),
+                        "schema_rev": 1,
+                    },
+                    "rows": [asdict(r) for r in rows],
+                },
+                indent=1,
+            )
+        )
         saved.append(path.name)
     return saved
 
@@ -503,7 +521,19 @@ def load_boards(directory) -> list[BoardRow]:
             payload = json.loads(path.read_text())
         except (json.JSONDecodeError, OSError):
             continue
-        for row in payload if isinstance(payload, list) else []:
+        if isinstance(payload, dict):
+            if "meta" in payload:
+                rows_payload = payload.get("rows")
+                payload = rows_payload if isinstance(rows_payload, list) else []
+            else:
+                # Legacy bare list is the only other supported shape; a dict
+                # without ``meta`` is not a boards cache.
+                payload = []
+        if not isinstance(payload, list):
+            continue
+        for row in payload:
+            if not isinstance(row, dict):
+                continue
             try:
                 rows.append(BoardRow(**row))
             except TypeError:

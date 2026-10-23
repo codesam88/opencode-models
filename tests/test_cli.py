@@ -124,6 +124,34 @@ class CliTest(unittest.TestCase):
             code = main(list(argv))
         return code, out.getvalue()
 
+    def test_fetch_sitemap_failure_warns_and_keeps_records(self):
+        import opencode_models.cli as cli
+
+        with tempfile.TemporaryDirectory() as tmp:
+            models_dir = Path(tmp) / "opencode"
+            models_dir.mkdir()
+            kept = models_dir / "old__m.json"
+            kept.write_text("{}")
+            orig = cli.http_get
+
+            def fake_get(url):
+                if url.endswith("/sitemap.xml"):
+                    raise OSError("sitemap down")
+                return "{}"
+
+            cli.http_get = fake_get
+            try:
+                with mock.patch.dict("os.environ"):
+                    import os
+
+                    os.environ.pop("OPENCODE_API_KEY", None)
+                    code, out = self._run("--data", tmp, "fetch")
+            finally:
+                cli.http_get = orig
+            self.assertEqual(code, 0)
+            self.assertIn("keeping existing records", out)
+            self.assertTrue(kept.exists())
+
     def test_fetch_uses_injected_fetcher_for_tests(self):
         calls = []
 

@@ -81,7 +81,10 @@ def refresh(
     out = Path(data_dir) / "opencode"
     out.mkdir(parents=True, exist_ok=True)
     saved: list[str] = []
-    urls = urls_from_sitemap(get(SITEMAP_URL))
+    try:
+        urls = urls_from_sitemap(get(SITEMAP_URL))
+    except (OSError, ValueError, SyntaxError):
+        return saved
     if only is not None:
         urls = [u for u in urls if offered(u[len(_BASE) :], only)]
     total = len(urls)

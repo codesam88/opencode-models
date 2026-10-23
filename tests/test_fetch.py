@@ -141,6 +141,23 @@ class RefreshTest(unittest.TestCase):
             ],
         )
 
+    def test_sitemap_failure_returns_empty_and_keeps_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            data_dir = Path(tmp)
+            out = data_dir / "opencode"
+            out.mkdir(parents=True)
+            kept = out / "old.json"
+            kept.write_text('{"old":true}')
+
+            def get(url):
+                if url == SITEMAP_URL:
+                    raise OSError("sitemap down")
+                return "{}"
+
+            saved = refresh(data_dir, get)
+            self.assertEqual(saved, [])
+            self.assertEqual(kept.read_text(), '{"old":true}')
+
 
 if __name__ == "__main__":
     unittest.main()

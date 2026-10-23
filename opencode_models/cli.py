@@ -19,21 +19,21 @@ import urllib.error
 import urllib.request
 from dataclasses import replace
 from datetime import date, datetime, timedelta, timezone
-from importlib import resources
 from pathlib import Path
 
 from . import __version__, availability
 from . import arena as arena_mod
 from .allowance import WINDOW_FRACTIONS, cost_per_request
-from .arena import ArenaCache, merge_from_file
+from .arena import ArenaCache
 from .auth import load_key, save_key
 from .benchmarks import available
-from .boards import fetch_boards, load_boards, merge_boards, save_boards
+from .boards import fetch_boards, save_boards
+from .catalog import load_catalog
 from .fetch import SITEMAP_URL, http_get, refresh, urls_from_sitemap
 from .identity import canonical_id
 from .live import api_get as _api_get
 from .live import fetch_live, fetch_served, merge_served, save_live
-from .models import Model, load_models
+from .models import load_models
 from .overrides import load_curated, off_band_models, source_tier
 from .pricing import (
     USAGE_EXPORT_URL,
@@ -45,18 +45,16 @@ from .ranking import (
     BAND_INCLUDED,
     BAND_PAYG,
     RECOMMEND_FLOOR,
-    build_rows,
     by_score_per_price,
-    dedupe_providers,
     grade_for,
     grade_rows,
-    merge_rows,
     next_up,
     order_rows,
     partition_rows,
     plans_of,
     ratio,
 )
+from .rows import rows_for
 from .scoring import (
     _TRACKED,
     MIN_AXES,
@@ -211,21 +209,6 @@ def _fail(msg: str) -> int:
     return 1
 
 
-def _load(data_dir: Path):
-    """Upstream records, arena scores, curated overlays and official boards.
-
-    Returns the models, the curated layer (which models carry overrides), and
-    the board-vs-registry disagreements — so `overrides` can report the
-    boards' numbers replacing self-reports.
-    """
-    curated = load_curated(
-        data_dir / "opencode", data_dir / "overrides", data_dir / "manual"
-    )
-    models = merge_from_file(curated.models, data_dir / "aiarena")
-    models, board_conflicts = merge_boards(models, load_boards(data_dir / "boards"))
-    return models, curated, board_conflicts
-
-
 #: How much of a board row's provenance the NOTE column carries.
 _NOTE_WIDTH = 52
 
@@ -297,7 +280,7 @@ def _cmd_conflicts(args: argparse.Namespace) -> int:
     data_dir = Path(args.data)
     if not data_dir.is_dir():
         return _fail(f"no data directory at {data_dir} — run `fetch` first")
-    models, curated, board_conflicts = _load(data_dir)
+    models, curated, board_conflicts = load_catalog(data_dir)
     n = _print_conflicts(curated.conflicts, curated.orphans, curated.manual_orphans)
     if board_conflicts:
         print("— official boards —")
@@ -654,7 +637,7 @@ def _cmd_scores(args: argparse.Namespace) -> int:
     including the arena Elo cache.
     """
     data_dir = Path(args.data)
-    models, _curated, _boards = _load(data_dir)
+    models, _curated, _boards = load_catalog(data_dir)
     table = scales(models)
     on_offer = availability.available_ids(data_dir)
     shown = (
@@ -737,17 +720,6 @@ def _cmd_scores(args: argparse.Namespace) -> int:
     return 0
 
 
-def _entries_for(source: str, data_dir: Path):
-    """Documented pricing lines for a tier (Go first: interchangeable, and
-    its rates are the ones with included usage attached)."""
-    prices = load_prices(data_dir / "tier_prices")
-    if source in prices:
-        return prices[source]
-    if source == "all":
-        return prices.get("go", []) + prices.get("zen", [])
-    return []
-
-
 def _bench_tag(benchmark: str | None) -> str:
     if not benchmark:
         return "-"
@@ -826,204 +798,6 @@ def _current_offered(
     return result.offered
 
 
-def _docs_known_slugs(data_dir: Path, tier: str) -> set[str]:
-    """Slugs a tier's documentation knows about (tier_prices or plans)."""
-    out: set[str] = set()
-    snap = availability._snapshot_ids(data_dir, tier)
-    if snap:
-        out |= set(snap)
-    out |= set(availability._plan_models(data_dir, tier))
-    return out
-
-
-def _synthesize_roster_models(
-    data_dir: Path, tier: str, roster: set[str], models: list
-) -> list:
-    """Scoreless catalog records for docs-documented roster slugs with no catalog match.
-
-    The roster is the source of truth for what is offered; the catalog only
-    identifies and extends. A slug the plans offer and the docs describe but
-    the catalog never carried (e.g. ``beam-free``) still renders, as an
-    unscored row. Live-only or internal slugs with no docs record are
-    excluded here — that is the junk filter.
-    """
-    plan_models = availability._plan_models(data_dir, tier)
-    entries = load_prices(data_dir / "tier_prices").get(tier, [])
-    entry_by_slug: dict[str, object] = {}
-    for entry in entries:
-        if entry.model_id and entry.model_id not in entry_by_slug:
-            entry_by_slug[entry.model_id] = entry
-    catalog_canonical = {canonical_id(m.model_id.split("/")[-1]) for m in models}
-    aliases = availability.load_aliases(data_dir)
-    catalog_by_id = {m.model_id: m for m in models}
-    out: list[Model] = []
-    for slug in sorted(roster):
-        if slug not in _docs_known_slugs(data_dir, tier):
-            continue
-        if canonical_id(slug.split("/")[-1]) in catalog_canonical:
-            continue
-        rec = plan_models.get(slug)
-        name = rec.get("name") if isinstance(rec, dict) else None
-        entry = entry_by_slug.get(slug)
-        if not name and entry is not None:
-            name = entry.name
-        if not name:
-            name = slug
-        if entry is not None:
-            price_input = entry.input
-            price_output = entry.output
-            price_cached_input = entry.cached_read
-        else:
-            price_input = 0.0
-            price_output = 0.0
-            price_cached_input = 0.0
-        lab = slug.split("/")[0] if "/" in slug else slug
-        # aliases are an explicit mapping layer consulted only here: the
-        # roster slug's own snapshot name/prices are kept, and the target
-        # catalog model's scores and sources are unioned in (synthetic
-        # records start scoreless, so the target provides all of them).
-        # A missing target leaves the row scoreless.
-        scores: dict = {}
-        sources: dict = {}
-        alias = aliases.get(slug)
-        if isinstance(alias, dict):
-            target_id = alias.get("model_id")
-            target = catalog_by_id.get(target_id) if target_id else None
-            if target is not None:
-                scores = {**target.scores, **scores}
-                sources = {**target.sources, **sources}
-        out.append(
-            Model(
-                model_id=slug,
-                name=name,
-                lab=lab,
-                price_input=price_input,
-                price_output=price_output,
-                price_cached_input=price_cached_input,
-                scores=scores,
-                sources=sources,
-            )
-        )
-    return out
-
-
-def _rows_for(
-    data_dir: Path, selected: list[str], price: str, all_models: bool = False
-):
-    """Build, merge and dedupe the rows for *selected* providers.
-
-    Shared by `list` and `next` so a recommendation can never disagree with
-    the ranking it was drawn from.
-
-    Unless *all_models*, a row is a model the plans actually offer: the
-    live config API is the record when keyed, else the snapshots. A model
-    the plans dropped is neither listed nor scored. The scales are still
-    built over the whole catalog, so a score does not move when a plan
-    changes what it sells.
-    """
-    models, curated, _ = _load(data_dir)
-    on_offer = _current_offered(data_dir, bypass=all_models)
-    # page-estimated $/req per snapshot slug (the `est` cost base);
-    # Zen lines and snapshot-missing models fall back to the fix
-    est_rates = None
-    if price == "est":
-        try:
-            plan_snapshot, _origin = _load_plan_snapshot(data_dir)
-        except (OSError, ValueError):
-            plan_snapshot = {}
-        est_rates = {}
-        for slug, rec in (plan_snapshot.get("models") or {}).items():
-            cpr = cost_per_request(rec.get("tiers") or [], rec.get("assumptions"))
-            if cpr is not None and cpr > 0:
-                est_rates[slug] = cpr
-    # one scale for the whole catalog: per-tier scales would make the same
-    # score mean two different things in the merged view
-    table = scales(models)
-    groups, listed, counts, tier_slugs = [], [], {}, {}
-    covered: set[str] = set()
-    synthetic_ids: set[int] = set()
-    # slugs served/documented for every selected tier: a model listed by any
-    # of them belongs to that tier (or is dropped by availability) and must
-    # not be routed to the catalog-only "-" pool, even when the tier dropped it
-    selected_tier_slugs: set[str] = set()
-    for provider in selected:
-        if provider != "-":
-            selected_tier_slugs |= availability.load_roster(data_dir, provider)
-    for provider in selected:
-        if provider == "-":
-            pool = [
-                m
-                for m in models
-                if m.model_id not in covered
-                and not any(
-                    availability.slug_matches(m.model_id, s)
-                    for s in selected_tier_slugs
-                )
-            ]
-            free_ids = {m.model_id for m in pool if m.price_input == 0}
-            provider_listed = list(pool)
-        else:
-            tier_slugs[provider] = availability.load_roster(data_dir, provider)
-            pool, base_free = availability.members(models, tier_slugs[provider])
-            catalog_pool = list(pool)
-            catalog_ids = {id(m) for m in catalog_pool}
-            pool = catalog_pool + _synthesize_roster_models(
-                data_dir, provider, tier_slugs[provider], models
-            )
-            free_candidate_slugs = availability.free_slugs(data_dir, provider)
-            free_ids = set(base_free) | {
-                m.model_id
-                for m in pool
-                if any(
-                    availability.slug_matches(m.model_id, s)
-                    for s in free_candidate_slugs
-                )
-            }
-            if on_offer is not None:
-                pool = [m for m in pool if availability.offered(m.model_id, on_offer)]
-                free_ids &= {m.model_id for m in pool}
-            counts[provider] = sum(1 for m in pool if id(m) in catalog_ids)
-            covered |= {m.model_id for m in pool}
-            free_ids &= {m.model_id for m in pool}
-            provider_listed = [m for m in pool if id(m) in catalog_ids]
-            synthetic_ids |= {id(m) for m in pool if id(m) not in catalog_ids}
-        listed += provider_listed
-        provider_entries = _entries_for(provider, data_dir)
-        catalog_rows = [m for m in pool if id(m) not in synthetic_ids]
-        groups.append(
-            build_rows(
-                catalog_rows,
-                provider_entries,
-                free_ids,
-                axis=price,
-                provider=provider,
-                table=table,
-                est_rates=est_rates,
-            )
-        )
-        synth_rows = [m for m in pool if id(m) in synthetic_ids]
-        if synth_rows:
-            # synthetic models name their own exact offering: no variant
-            # reach, or a free twin would stage twice under two names.
-            groups.append(
-                build_rows(
-                    synth_rows,
-                    provider_entries,
-                    free_ids,
-                    axis=price,
-                    provider=provider,
-                    table=table,
-                    est_rates=est_rates,
-                    reach_variants=False,
-                )
-            )
-    rows = dedupe_providers(merge_rows(*groups))
-    rows = [
-        replace(r, synthetic=True) if id(r.model) in synthetic_ids else r for r in rows
-    ]
-    return rows, listed, curated, counts, tier_slugs, models
-
-
 def _cmd_list(args: argparse.Namespace) -> int:
     data_dir = Path(args.data)
     if not data_dir.is_dir():
@@ -1035,8 +809,18 @@ def _cmd_list(args: argparse.Namespace) -> int:
         return _fail(f"unknown source {source!r} — available: go, zen, all")
     selected, scope = chosen
 
-    rows, listed, _curated, counts, tier_slugs, models = _rows_for(
+    _result = rows_for(
         data_dir, selected, args.cost, getattr(args, "all_models", False)
+    )
+    for _w in _result.warnings:
+        print(_w)
+    rows, listed, _curated, counts, tier_slugs, models = (
+        _result.rows,
+        _result.listed,
+        _result.curated,
+        _result.counts,
+        _result.tier_slugs,
+        _result.models,
     )
     if not listed:
         return _fail(f"no model of {source or 'zen+go'} is in {data_dir} — run `fetch`")
@@ -1220,8 +1004,18 @@ def _cmd_next(args: argparse.Namespace) -> int:
     chosen = _select(data_dir, args.source)
     if chosen is None:
         return _fail(f"unknown source {args.source!r} — available: go, zen, all")
-    rows, listed, _curated, _counts, _slugs, _models = _rows_for(
+    _result = rows_for(
         data_dir, chosen[0], args.cost, getattr(args, "all_models", False)
+    )
+    for _w in _result.warnings:
+        print(_w)
+    rows, listed, _curated, _counts, _slugs, _models = (
+        _result.rows,
+        _result.listed,
+        _result.curated,
+        _result.counts,
+        _result.tier_slugs,
+        _result.models,
     )
     if not listed:
         return _fail(
@@ -1287,24 +1081,6 @@ def _age_text(past: datetime, now: datetime) -> str:
     if seconds < 86400:
         return f"{int(seconds // 3600)}h"
     return f"{int(seconds // 86400)}d"
-
-
-def _load_plan_snapshot(data_dir: Path) -> tuple[dict, str]:
-    """The Go plan snapshot (limits, prices, assumptions) and its origin.
-
-    Resolution order: the data dir's ``plans/go.json`` first — that is
-    the copy ``plans-update`` refreshes — then the snapshot shipped
-    inside the package, so an installed tool with no data dir still
-    resolves. A corrupt local file falls through to the shipped one.
-    """
-    local = Path(data_dir) / "plans" / "go.json"
-    if local.is_file():
-        try:
-            return json.loads(local.read_text()), "local"
-        except (json.JSONDecodeError, OSError):
-            pass
-    shipped = resources.files("opencode_models") / "data" / "plans" / "go.json"
-    return json.loads(shipped.read_text()), "shipped"
 
 
 def _poll_reason(exc: BaseException) -> str:
@@ -1585,7 +1361,7 @@ def _cmd_usage(args: argparse.Namespace) -> int:
     data_dir = Path(args.data)
     plan = "go_plus" if args.go_pro else "go"
     try:
-        snapshot, origin = _load_plan_snapshot(data_dir)
+        snapshot, origin = availability.load_plan_snapshot(data_dir)
     except (OSError, ValueError) as exc:
         return _fail(f"plan snapshot unreadable ({exc})")
     models = snapshot.get("models") or {}

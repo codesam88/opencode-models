@@ -608,7 +608,9 @@ class HistoryTest(UsageCase):
 
 class SnapshotResolutionTest(unittest.TestCase):
     def test_local_snapshot_wins(self):
-        from opencode_models.cli import _load_plan_snapshot
+        from opencode_models.availability import (
+            load_plan_snapshot as _load_plan_snapshot,
+        )
 
         with tempfile.TemporaryDirectory() as tmp:
             _write_plan(tmp, datetime.now(timezone.utc))
@@ -617,7 +619,9 @@ class SnapshotResolutionTest(unittest.TestCase):
         self.assertIn("muse-spark-1.3", snapshot["models"])
 
     def test_shipped_fallback_when_local_is_absent(self):
-        from opencode_models.cli import _load_plan_snapshot
+        from opencode_models.availability import (
+            load_plan_snapshot as _load_plan_snapshot,
+        )
 
         with tempfile.TemporaryDirectory() as tmp:
             snapshot, origin = _load_plan_snapshot(Path(tmp))

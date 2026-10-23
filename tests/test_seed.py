@@ -65,7 +65,7 @@ class CopyMissingTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             src, dst = Path(tmp) / "src", Path(tmp) / "dst"
             _write(src, "opencode/a.json", '{"a": 1}')
-            _write(src, "tier_prices/z.json", "[]")
+            _write(src, "plans/z.json", "[]")
             copied, skipped = copy_missing(src, dst)
             self.assertEqual((copied, skipped), (2, 0))
             self.assertEqual((dst / "opencode/a.json").read_text(), '{"a": 1}')

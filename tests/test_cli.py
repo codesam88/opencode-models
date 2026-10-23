@@ -64,6 +64,58 @@ def _models(d: Path) -> Path:
     return models
 
 
+def _plan_doc(entries, tier):
+    """PriceEntry-style rows -> unified plans snapshot document.
+
+    Same slugs, rates, free flags and limits, in the `plans/<tier>.json`
+    shape production readers consume.
+    """
+    models = {}
+    for e in entries:
+        slug = e["model_id"]
+        label = None
+        m = re.search(r"\(([^)]*)\)\s*$", e.get("name") or "")
+        if m:
+            label = m.group(1)
+        rec = models.setdefault(
+            slug,
+            {
+                "name": e.get("name") or slug,
+                "free": False,
+                "tiers": [],
+                "limits": None,
+                "requests_per_month": None,
+                "assumptions": None,
+            },
+        )
+        if e.get("free"):
+            rec["free"] = True
+        else:
+            rec["tiers"].append(
+                {
+                    "label": label,
+                    "in": e.get("input"),
+                    "out": e.get("output"),
+                    "cached": e.get("cached_read"),
+                    "cached_write": None,
+                }
+            )
+        if e.get("limit") is not None:
+            if tier == "go":
+                rec["limits"] = {"go": e["limit"], "go_plus": e["limit"]}
+            else:
+                rec["limits"] = {tier: e["limit"]}
+    return {
+        "meta": {
+            "source": "test",
+            "fetched_at": "2026-01-01T00:00:00+00:00",
+            "schema_rev": 1,
+            "plans": [tier],
+        },
+        "models": models,
+    }
+
+
 def _offline_get(url: str) -> str:
     """A transport that never leaves the machine, for `fetch` tests."""
     if url.endswith("/sitemap.xml"):
@@ -183,31 +235,25 @@ class CliTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertTrue(saved)
 
-    def test_fetch_snapshots_tier_pricing(self):
+    def test_fetch_snapshots_unified_pricing(self):
         import json
+
+        from tests import test_go_pricing as go_fixture
+        from tests import test_zen_pricing as zen_fixture
 
         sitemap = (
             '<urlset xmlns="http://www.sitemaps.org/schemas/'
             'sitemap/0.9"><url><loc>https://opencode.ai/data/'
             "x/y</loc></url></urlset>"
         )
-        endpoints = (
-            "<table><tr><th>Model</th><th>Model ID</th>"
-            "<th>Endpoint</th></tr>"
-            "<tr><td>M1</td><td>m1</td><td>x</td></tr></table>"
-        )
-        pricing = (
-            "<table><tr><th>Model</th><th>Input</th><th>Output</th>"
-            "<th>Cached Read</th></tr>"
-            "<tr><td>M1</td><td>$1.50</td><td>$7.50</td>"
-            "<td>$0.15</td></tr></table>"
-        )
 
         def fake_get(url):
             if url.endswith("/sitemap.xml"):
                 return sitemap
-            if "/docs/" in url:
-                return endpoints + pricing
+            if "console/go" in url:
+                return go_fixture.FIXTURE_HTML
+            if url.endswith("/docs/zen/"):
+                return zen_fixture.FIXTURE_HTML
             return "{}"
 
         import opencode_models.cli as cli
@@ -219,10 +265,15 @@ class CliTest(unittest.TestCase):
                 code, _ = self._run("--data", tmp, "fetch")
             finally:
                 cli.http_get = orig
-            snapshot = Path(tmp) / "tier_prices" / "go_prices.json"
-            entries = json.loads(snapshot.read_text()) if snapshot.exists() else []
+            go_models = json.loads((Path(tmp) / "plans" / "go.json").read_text())[
+                "models"
+            ]
+            zen_models = json.loads((Path(tmp) / "plans" / "zen.json").read_text())[
+                "models"
+            ]
         self.assertEqual(code, 0)
-        self.assertEqual([e["model_id"] for e in entries], ["m1"])
+        self.assertIn("model-a", go_models)
+        self.assertIn("model-a", zen_models)
 
     def test_default_data_dir_honours_the_environment(self):
         import os
@@ -596,12 +647,13 @@ class CliTest(unittest.TestCase):
         self.assertIn("Band", out)
 
     def test_next_lists_the_endpoint_not_the_display_name(self):
+        from types import SimpleNamespace
+
         from opencode_models.cli import _endpoint
         from opencode_models.models import Model
-        from opencode_models.pricing import PriceEntry
         from opencode_models.ranking import Row
 
-        def row(provider, mid, entry_id=None):
+        def row(provider, mid, endpoint_id=None):
             model = Model(
                 model_id=mid,
                 name="Display Name",
@@ -610,13 +662,6 @@ class CliTest(unittest.TestCase):
                 price_output=1.0,
                 price_cached_input=1.0,
                 scores={},
-            )
-            entry = (
-                PriceEntry(
-                    tier="go", model_id=entry_id, name="N", input=1.0, output=1.0
-                )
-                if entry_id is not None
-                else None
             )
             return Row(
                 model=model,
@@ -628,7 +673,7 @@ class CliTest(unittest.TestCase):
                 benchmark=None,
                 provider=provider,
                 grade="+",
-                entry=entry,
+                endpoint_id=endpoint_id,
             )
 
         # the plan-local id under a provider prefix, never the display name
@@ -647,6 +692,14 @@ class CliTest(unittest.TestCase):
         )
         # no documented entry: the catalog slug still identifies the model
         self.assertEqual(_endpoint(row("-", "l/m1")), "opencode/m1")
+        # legacy rows carrying a documented entry object resolve through it
+        import dataclasses
+
+        legacy = dataclasses.replace(
+            row("go", "stepfun/step-5-preview"),
+            entry=SimpleNamespace(model_id="step-5-preview-free"),
+        )
+        self.assertEqual(_endpoint(legacy), "opencode-go/step-5-preview-free")
 
     def test_next_endpoint_column_carries_no_display_names(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -908,66 +961,72 @@ class CliTest(unittest.TestCase):
             (_models(d) / "l__ds.json").write_text(model_doc("l/ds", 9.9, 50.0))
             (_models(d) / "l__e1.json").write_text(model_doc("l/e1", 5.0, 10.0))
             (_models(d) / "l__e2.json").write_text(model_doc("l/e2", 6.0, 20.0))
-            prices_dir = d / "tier_prices"
-            prices_dir.mkdir()
+            plans_dir = d / "plans"
+            plans_dir.mkdir()
             # the snapshot is also the availability record now, so it lists
             # every model these plans offer, not only the priced one
-            (prices_dir / "zen_prices.json").write_text(
+            (plans_dir / "zen.json").write_text(
                 json.dumps(
-                    [
-                        dict(
-                            tier="zen",
-                            model_id="ds",
-                            name="DS",
-                            input=2.0,
-                            output=2.0,
-                            cached_read=2.0,
-                            limit=None,
-                            free=False,
-                        )
-                    ]
-                    + [
-                        dict(
-                            tier="zen",
-                            model_id=mid,
-                            name=mid.upper(),
-                            input=9.0,
-                            output=9.0,
-                            cached_read=9.0,
-                            limit=None,
-                            free=False,
-                        )
-                        for mid in ("e1", "e2")
-                    ]
+                    _plan_doc(
+                        [
+                            dict(
+                                tier="zen",
+                                model_id="ds",
+                                name="DS",
+                                input=2.0,
+                                output=2.0,
+                                cached_read=2.0,
+                                limit=None,
+                                free=False,
+                            )
+                        ]
+                        + [
+                            dict(
+                                tier="zen",
+                                model_id=mid,
+                                name=mid.upper(),
+                                input=9.0,
+                                output=9.0,
+                                cached_read=9.0,
+                                limit=None,
+                                free=False,
+                            )
+                            for mid in ("e1", "e2")
+                        ],
+                        "zen",
+                    )
                 )
             )
-            (prices_dir / "go_prices.json").write_text(
+            (plans_dir / "go.json").write_text(
                 json.dumps(
-                    [
-                        dict(
-                            tier="go",
-                            model_id="ds",
-                            name="DS",
-                            input=1.0,
-                            output=1.0,
-                            cached_read=1.0,
-                            limit=60.0,
-                            free=False,
-                        )
-                    ]
-                    + [
-                        dict(
-                            tier="go",
-                            model_id=mid,
-                            name=mid.upper(),
-                            input=9.0,
-                            output=9.0,
-                            cached_read=9.0,
-                            limit=None,
-                            free=False,
-                        )
-                        for mid in ("e1", "e2")
-                    ]
+                    _plan_doc(
+                        [
+                            dict(
+                                tier="go",
+                                model_id="ds",
+                                name="DS",
+                                input=1.0,
+                                output=1.0,
+                                cached_read=1.0,
+                                limit=60.0,
+                                free=False,
+                            )
+                        ]
+                        + [
+                            dict(
+                                tier="go",
+                                model_id=mid,
+                                name=mid.upper(),
+                                input=9.0,
+                                output=9.0,
+                                cached_read=9.0,
+                                limit=None,
+                                free=False,
+                            )
+                            for mid in ("e1", "e2")
+                        ],
+                        "go",
+                    )
                 )
             )
             orig = availability.load_roster
@@ -1066,8 +1125,8 @@ class CliTest(unittest.TestCase):
                     }
                 )
             )
-            prices_dir = d / "tier_prices"
-            prices_dir.mkdir()
+            plans_dir = d / "plans"
+            plans_dir.mkdir()
             same = {
                 "model_id": "ds",
                 "name": "DS",
@@ -1076,11 +1135,11 @@ class CliTest(unittest.TestCase):
                 "cached_read": 1.0,
                 "free": False,
             }
-            (prices_dir / "go_prices.json").write_text(
-                json.dumps([dict(same, tier="go", limit=60.0)])
+            (plans_dir / "go.json").write_text(
+                json.dumps(_plan_doc([dict(same, tier="go", limit=60.0)], "go"))
             )
-            (prices_dir / "zen_prices.json").write_text(
-                json.dumps([dict(same, tier="zen", limit=None)])
+            (plans_dir / "zen.json").write_text(
+                json.dumps(_plan_doc([dict(same, tier="zen", limit=None)], "zen"))
             )
             orig = availability.load_roster
             availability.load_roster = lambda _d, name: {"ds"}
@@ -1127,22 +1186,25 @@ class CliTest(unittest.TestCase):
             d = Path(tmp)
             (_models(d) / "l__gift.json").write_text(doc("l/gift", 5.0, 40.0))
             (_models(d) / "l__paid.json").write_text(doc("l/paid", 1.0, 50.0))
-            prices_dir = d / "tier_prices"
-            prices_dir.mkdir()
-            (prices_dir / "go_prices.json").write_text(
+            plans_dir = d / "plans"
+            plans_dir.mkdir()
+            (plans_dir / "go.json").write_text(
                 json.dumps(
-                    [
-                        {
-                            "tier": "go",
-                            "model_id": "gift",
-                            "name": "Gift",
-                            "input": 0.0,
-                            "output": 0.0,
-                            "cached_read": 0.0,
-                            "limit": None,
-                            "free": True,
-                        },
-                    ]
+                    _plan_doc(
+                        [
+                            {
+                                "tier": "go",
+                                "model_id": "gift",
+                                "name": "Gift",
+                                "input": 0.0,
+                                "output": 0.0,
+                                "cached_read": 0.0,
+                                "limit": None,
+                                "free": True,
+                            },
+                        ],
+                        "go",
+                    )
                 )
             )
             orig = availability.load_roster
@@ -1208,39 +1270,45 @@ class CliTest(unittest.TestCase):
                 (_models(d) / f"l__{mid}.json").write_text(
                     doc(f"l/{mid}", price, score)
                 )
-            prices_dir = d / "tier_prices"
-            prices_dir.mkdir()
-            (prices_dir / "go_prices.json").write_text(
+            plans_dir = d / "plans"
+            plans_dir.mkdir()
+            (plans_dir / "go.json").write_text(
                 json.dumps(
-                    [
-                        {
-                            "tier": "go",
-                            "model_id": "wide",
-                            "name": "Wide",
-                            "input": 0.263175,
-                            "output": 0.263175,
-                            "cached_read": 0.263175,
-                            "limit": 60.0,
-                            "free": False,
-                        },
-                    ]
+                    _plan_doc(
+                        [
+                            {
+                                "tier": "go",
+                                "model_id": "wide",
+                                "name": "Wide",
+                                "input": 0.263175,
+                                "output": 0.263175,
+                                "cached_read": 0.263175,
+                                "limit": 60.0,
+                                "free": False,
+                            },
+                        ],
+                        "go",
+                    )
                 )
             )
-            (prices_dir / "zen_prices.json").write_text(
+            (plans_dir / "zen.json").write_text(
                 json.dumps(
-                    [
-                        {
-                            "tier": "zen",
-                            "model_id": mid,
-                            "name": mid.title(),
-                            "input": price,
-                            "output": price,
-                            "cached_read": price,
-                            "limit": None,
-                            "free": mid == "gift",
-                        }
-                        for mid, (price, _) in prices.items()
-                    ]
+                    _plan_doc(
+                        [
+                            {
+                                "tier": "zen",
+                                "model_id": mid,
+                                "name": mid.title(),
+                                "input": price,
+                                "output": price,
+                                "cached_read": price,
+                                "limit": None,
+                                "free": mid == "gift",
+                            }
+                            for mid, (price, _) in prices.items()
+                        ],
+                        "zen",
+                    )
                 )
             )
             orig = availability.load_roster
@@ -1483,47 +1551,50 @@ class CliTest(unittest.TestCase):
                 (_models(d) / f"{mid.replace('/', '__')}.json").write_text(
                     doc(mid, price, score)
                 )
-            prices_dir = d / "tier_prices"
-            prices_dir.mkdir()
-            (prices_dir / "go_prices.json").write_text(
+            plans_dir = d / "plans"
+            plans_dir.mkdir()
+            (plans_dir / "go.json").write_text(
                 json.dumps(
-                    [
-                        {
-                            "tier": "go",
-                            "model_id": "inc",
-                            "name": "Inc",
-                            "input": 1.0,
-                            "output": 1.0,
-                            "cached_read": 1.0,
-                            "limit": 60.0,
-                            "free": False,
-                        },
-                        {
-                            "tier": "go",
-                            "model_id": "gift",
-                            "name": "Gift",
-                            "input": 0.0,
-                            "output": 0.0,
-                            "cached_read": 0.0,
-                            "limit": None,
-                            "free": True,
-                        },
-                        # the snapshot is also the availability record: the fillers
-                        # this test needs are offered even though they are unpriced
-                    ]
-                    + [
-                        {
-                            "tier": "go",
-                            "model_id": mid,
-                            "name": mid.upper(),
-                            "input": 9.0,
-                            "output": 9.0,
-                            "cached_read": 9.0,
-                            "limit": None,
-                            "free": False,
-                        }
-                        for mid in ("p1", "p2", "p3", "p4", "p5")
-                    ]
+                    _plan_doc(
+                        [
+                            {
+                                "tier": "go",
+                                "model_id": "inc",
+                                "name": "Inc",
+                                "input": 1.0,
+                                "output": 1.0,
+                                "cached_read": 1.0,
+                                "limit": 60.0,
+                                "free": False,
+                            },
+                            {
+                                "tier": "go",
+                                "model_id": "gift",
+                                "name": "Gift",
+                                "input": 0.0,
+                                "output": 0.0,
+                                "cached_read": 0.0,
+                                "limit": None,
+                                "free": True,
+                            },
+                            # the snapshot is also the availability record: the fillers
+                            # this test needs are offered even though they are unpriced
+                        ]
+                        + [
+                            {
+                                "tier": "go",
+                                "model_id": mid,
+                                "name": mid.upper(),
+                                "input": 9.0,
+                                "output": 9.0,
+                                "cached_read": 9.0,
+                                "limit": None,
+                                "free": False,
+                            }
+                            for mid in ("p1", "p2", "p3", "p4", "p5")
+                        ],
+                        "go",
+                    )
                 )
             )
             orig = availability.load_roster
@@ -1640,32 +1711,35 @@ class CliTest(unittest.TestCase):
                     }
                 )
             )
-            prices_dir = d / "tier_prices"
-            prices_dir.mkdir()
-            (prices_dir / "go_prices.json").write_text(
+            plans_dir = d / "plans"
+            plans_dir.mkdir()
+            (plans_dir / "go.json").write_text(
                 json.dumps(
-                    [
-                        {
-                            "tier": "go",
-                            "model_id": "ds",
-                            "name": "DS (Off-Peak)",
-                            "input": 0.66,
-                            "output": 1.98,
-                            "cached_read": 0.022,
-                            "limit": 15.0,
-                            "free": False,
-                        },
-                        {
-                            "tier": "go",
-                            "model_id": "ds",
-                            "name": "DS (Peak)",
-                            "input": 1.32,
-                            "output": 3.96,
-                            "cached_read": 0.044,
-                            "limit": 15.0,
-                            "free": False,
-                        },
-                    ]
+                    _plan_doc(
+                        [
+                            {
+                                "tier": "go",
+                                "model_id": "ds",
+                                "name": "DS (Off-Peak)",
+                                "input": 0.66,
+                                "output": 1.98,
+                                "cached_read": 0.022,
+                                "limit": 15.0,
+                                "free": False,
+                            },
+                            {
+                                "tier": "go",
+                                "model_id": "ds",
+                                "name": "DS (Peak)",
+                                "input": 1.32,
+                                "output": 3.96,
+                                "cached_read": 0.044,
+                                "limit": 15.0,
+                                "free": False,
+                            },
+                        ],
+                        "go",
+                    )
                 )
             )
             orig = availability.load_roster
@@ -2159,23 +2233,26 @@ class AvailabilityTest(unittest.TestCase):
                     }
                 )
             )
-        prices = d / "tier_prices"
-        prices.mkdir(parents=True, exist_ok=True)
-        (prices / "zen_prices.json").write_text(
+        plans = d / "plans"
+        plans.mkdir(parents=True, exist_ok=True)
+        (plans / "zen.json").write_text(
             json.dumps(
-                [
-                    {
-                        "tier": "zen",
-                        "model_id": m,
-                        "name": m,
-                        "input": 1.0,
-                        "output": 1.0,
-                        "cached_read": None,
-                        "limit": None,
-                        "free": False,
-                    }
-                    for m in offered
-                ]
+                _plan_doc(
+                    [
+                        {
+                            "tier": "zen",
+                            "model_id": m,
+                            "name": m,
+                            "input": 1.0,
+                            "output": 1.0,
+                            "cached_read": None,
+                            "limit": None,
+                            "free": False,
+                        }
+                        for m in offered
+                    ],
+                    "zen",
+                )
             )
         )
         # no go snapshot at all: unknown, not "offers nothing"
@@ -2232,23 +2309,26 @@ class AvailabilityTest(unittest.TestCase):
                         }
                     )
                 )
-            prices = d / "tier_prices"
-            prices.mkdir(parents=True, exist_ok=True)
-            (prices / "zen_prices.json").write_text(
+            plans = d / "plans"
+            plans.mkdir(parents=True, exist_ok=True)
+            (plans / "zen.json").write_text(
                 json.dumps(
-                    [
-                        {
-                            "tier": "zen",
-                            "model_id": m,
-                            "name": m,
-                            "input": 1.0,
-                            "output": 1.0,
-                            "cached_read": None,
-                            "limit": None,
-                            "free": m == "step-5-preview-free",
-                        }
-                        for m in ("step-5-preview-free", "other", "third")
-                    ]
+                    _plan_doc(
+                        [
+                            {
+                                "tier": "zen",
+                                "model_id": m,
+                                "name": m,
+                                "input": 1.0,
+                                "output": 1.0,
+                                "cached_read": None,
+                                "limit": None,
+                                "free": m == "step-5-preview-free",
+                            }
+                            for m in ("step-5-preview-free", "other", "third")
+                        ],
+                        "zen",
+                    )
                 )
             )
             import opencode_models.availability as availability
@@ -2385,32 +2465,35 @@ class AvailabilityTest(unittest.TestCase):
                         }
                     )
                 )
-            prices = d / "tier_prices"
-            prices.mkdir(parents=True, exist_ok=True)
-            (prices / "zen_prices.json").write_text(
+            plans = d / "plans"
+            plans.mkdir(parents=True, exist_ok=True)
+            (plans / "zen.json").write_text(
                 json.dumps(
-                    [
-                        {
-                            "tier": "zen",
-                            "model_id": "m1",
-                            "name": "M1",
-                            "input": 0.0,
-                            "output": 0.0,
-                            "cached_read": 0.0,
-                            "limit": None,
-                            "free": True,
-                        },
-                        {
-                            "tier": "zen",
-                            "model_id": "m2",
-                            "name": "M2",
-                            "input": 1.0,
-                            "output": 1.0,
-                            "cached_read": 1.0,
-                            "limit": None,
-                            "free": False,
-                        },
-                    ]
+                    _plan_doc(
+                        [
+                            {
+                                "tier": "zen",
+                                "model_id": "m1",
+                                "name": "M1",
+                                "input": 0.0,
+                                "output": 0.0,
+                                "cached_read": 0.0,
+                                "limit": None,
+                                "free": True,
+                            },
+                            {
+                                "tier": "zen",
+                                "model_id": "m2",
+                                "name": "M2",
+                                "input": 1.0,
+                                "output": 1.0,
+                                "cached_read": 1.0,
+                                "limit": None,
+                                "free": False,
+                            },
+                        ],
+                        "zen",
+                    )
                 )
             )
             usage = d / "usage"
@@ -3000,23 +3083,37 @@ class ModelsCommandTest(unittest.TestCase):
     def _snapshot(self, data_dir, tier, model_ids):
         import json
 
-        out = Path(data_dir) / "tier_prices"
+        out = Path(data_dir) / "plans"
         out.mkdir(parents=True, exist_ok=True)
-        (out / f"{tier}_prices.json").write_text(
+        (out / f"{tier}.json").write_text(
             json.dumps(
-                [
-                    {
-                        "tier": tier,
-                        "model_id": mid,
-                        "name": mid,
-                        "input": 1.0,
-                        "output": 1.0,
-                        "cached_read": None,
-                        "limit": None,
-                        "free": False,
-                    }
-                    for mid in model_ids
-                ]
+                {
+                    "meta": {
+                        "source": "test",
+                        "fetched_at": "2026-01-01T00:00:00+00:00",
+                        "schema_rev": 1,
+                        "plans": [tier],
+                    },
+                    "models": {
+                        mid: {
+                            "name": mid,
+                            "free": False,
+                            "tiers": [
+                                {
+                                    "label": None,
+                                    "in": 1.0,
+                                    "out": 1.0,
+                                    "cached": None,
+                                    "cached_write": None,
+                                }
+                            ],
+                            "limits": None,
+                            "requests_per_month": None,
+                            "assumptions": None,
+                        }
+                        for mid in model_ids
+                    },
+                }
             )
         )
 
@@ -3113,23 +3210,37 @@ class CurrentOfferedTest(unittest.TestCase):
     def _snapshot(self, data_dir, tier, model_ids):
         import json
 
-        out = Path(data_dir) / "tier_prices"
+        out = Path(data_dir) / "plans"
         out.mkdir(parents=True, exist_ok=True)
-        (out / f"{tier}_prices.json").write_text(
+        (out / f"{tier}.json").write_text(
             json.dumps(
-                [
-                    {
-                        "tier": tier,
-                        "model_id": mid,
-                        "name": mid,
-                        "input": 1.0,
-                        "output": 1.0,
-                        "cached_read": None,
-                        "limit": None,
-                        "free": False,
-                    }
-                    for mid in model_ids
-                ]
+                {
+                    "meta": {
+                        "source": "test",
+                        "fetched_at": "2026-01-01T00:00:00+00:00",
+                        "schema_rev": 1,
+                        "plans": [tier],
+                    },
+                    "models": {
+                        mid: {
+                            "name": mid,
+                            "free": False,
+                            "tiers": [
+                                {
+                                    "label": None,
+                                    "in": 1.0,
+                                    "out": 1.0,
+                                    "cached": None,
+                                    "cached_write": None,
+                                }
+                            ],
+                            "limits": None,
+                            "requests_per_month": None,
+                            "assumptions": None,
+                        }
+                        for mid in model_ids
+                    },
+                }
             )
         )
 
@@ -3428,24 +3539,26 @@ class ModelsWidthTest(unittest.TestCase):
         import json
 
         with tempfile.TemporaryDirectory() as tmp:
-            out = Path(tmp) / "tier_prices"
+            out = Path(tmp) / "plans"
             out.mkdir(parents=True, exist_ok=True)
             slugs = ["m1", "s" * 60]
-            (out / "zen_prices.json").write_text(
+            (out / "zen.json").write_text(
                 json.dumps(
-                    [
-                        {
-                            "tier": "zen",
-                            "model_id": s,
-                            "name": s,
-                            "input": 1.0,
-                            "output": 1.0,
-                            "cached_read": None,
-                            "limit": None,
-                            "free": False,
-                        }
-                        for s in slugs
-                    ]
+                    _plan_doc(
+                        [
+                            {
+                                "model_id": s,
+                                "name": s,
+                                "input": 1.0,
+                                "output": 1.0,
+                                "cached_read": None,
+                                "limit": None,
+                                "free": False,
+                            }
+                            for s in slugs
+                        ],
+                        "zen",
+                    )
                 )
             )
             buf = io.StringIO()
@@ -3466,23 +3579,37 @@ class ModelsTableTest(unittest.TestCase):
     def _snapshot(self, data_dir, tier, model_ids):
         import json
 
-        out = Path(data_dir) / "tier_prices"
+        out = Path(data_dir) / "plans"
         out.mkdir(parents=True, exist_ok=True)
-        (out / f"{tier}_prices.json").write_text(
+        (out / f"{tier}.json").write_text(
             json.dumps(
-                [
-                    {
-                        "tier": tier,
-                        "model_id": mid,
-                        "name": mid,
-                        "input": 1.0,
-                        "output": 1.0,
-                        "cached_read": None,
-                        "limit": None,
-                        "free": False,
-                    }
-                    for mid in model_ids
-                ]
+                {
+                    "meta": {
+                        "source": "test",
+                        "fetched_at": "2026-01-01T00:00:00+00:00",
+                        "schema_rev": 1,
+                        "plans": [tier],
+                    },
+                    "models": {
+                        mid: {
+                            "name": mid,
+                            "free": False,
+                            "tiers": [
+                                {
+                                    "label": None,
+                                    "in": 1.0,
+                                    "out": 1.0,
+                                    "cached": None,
+                                    "cached_write": None,
+                                }
+                            ],
+                            "limits": None,
+                            "requests_per_month": None,
+                            "assumptions": None,
+                        }
+                        for mid in model_ids
+                    },
+                }
             )
         )
 
@@ -3725,10 +3852,9 @@ class VersionTest(unittest.TestCase):
 class PriceModeTest(unittest.TestCase):
     """`--cost fix` (the fixed 20/60/20 blend) and `--cost est`.
 
-    Fixture: one scored model, a Go tier entry at 1.0/5.0 in/out (no
+    Fixture: one scored model, a Go tier at 1.0/5.0 in/out (no
     cache discount, so fix = .2*1 + .6*1 + .2*5 = 1.8 $/1M -> 180c) and
-    a Go snapshot whose tiers+assumptions give
-    (1000*2 + 9000*.5 + 500*10)/1e6 = 0.0115 $/req -> 1c.
+    assumptions giving (1000*1 + 9000*1 + 500*5)/1e6 = 0.0125 $/req -> 1c.
     """
 
     def _data(self, d):
@@ -3765,23 +3891,6 @@ class PriceModeTest(unittest.TestCase):
                 }
             )
         )
-        (d / "tier_prices").mkdir(parents=True, exist_ok=True)
-        (d / "tier_prices" / "go_prices.json").write_text(
-            json.dumps(
-                [
-                    {
-                        "tier": "go",
-                        "model_id": "m1",
-                        "name": "M1",
-                        "input": 1.0,
-                        "output": 5.0,
-                        "cached_read": None,
-                        "limit": 60.0,
-                        "free": False,
-                    }
-                ]
-            )
-        )
         (d / "plans").mkdir(parents=True, exist_ok=True)
         (d / "plans" / "go.json").write_text(
             json.dumps(
@@ -3797,9 +3906,9 @@ class PriceModeTest(unittest.TestCase):
                             "tiers": [
                                 {
                                     "label": None,
-                                    "in": 2.0,
-                                    "out": 10.0,
-                                    "cached": 0.5,
+                                    "in": 1.0,
+                                    "out": 5.0,
+                                    "cached": None,
                                     "cached_write": None,
                                 }
                             ],
@@ -3898,20 +4007,22 @@ class PriceModeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
             self._data(d)
-            (d / "tier_prices" / "zen_prices.json").write_text(
+            (d / "plans" / "zen.json").write_text(
                 json.dumps(
-                    [
-                        {
-                            "tier": "zen",
-                            "model_id": "m1",
-                            "name": "M1",
-                            "input": 1.0,
-                            "output": 5.0,
-                            "cached_read": None,
-                            "limit": None,
-                            "free": False,
-                        }
-                    ]
+                    _plan_doc(
+                        [
+                            {
+                                "model_id": "m1",
+                                "name": "M1",
+                                "input": 1.0,
+                                "output": 5.0,
+                                "cached_read": None,
+                                "limit": None,
+                                "free": False,
+                            }
+                        ],
+                        "zen",
+                    )
                 )
             )
             code, out = self._run_list(tmp, "--source", "zen", "--cost", "est")
@@ -3939,23 +4050,25 @@ class ModelsListCoverageTest(unittest.TestCase):
     def _snapshot(self, data_dir, tier, model_ids):
         import json
 
-        out = Path(data_dir) / "tier_prices"
+        out = Path(data_dir) / "plans"
         out.mkdir(parents=True, exist_ok=True)
-        (out / f"{tier}_prices.json").write_text(
+        (out / f"{tier}.json").write_text(
             json.dumps(
-                [
-                    {
-                        "tier": tier,
-                        "model_id": mid,
-                        "name": mid,
-                        "input": 1.0 if not mid.endswith("-free") else 0.0,
-                        "output": 1.0 if not mid.endswith("-free") else 0.0,
-                        "cached_read": None,
-                        "limit": None,
-                        "free": mid.endswith("-free"),
-                    }
-                    for mid in model_ids
-                ]
+                _plan_doc(
+                    [
+                        {
+                            "model_id": mid,
+                            "name": mid,
+                            "input": 1.0 if not mid.endswith("-free") else 0.0,
+                            "output": 1.0 if not mid.endswith("-free") else 0.0,
+                            "cached_read": None,
+                            "limit": None,
+                            "free": mid.endswith("-free"),
+                        }
+                        for mid in model_ids
+                    ],
+                    tier,
+                )
             )
         )
 

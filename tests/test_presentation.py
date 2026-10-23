@@ -110,22 +110,40 @@ class PresentationTest(unittest.TestCase):
             (d / "opencode" / (mid.replace("/", "__") + ".json")).write_text(
                 json.dumps(doc)
             )
-        (d / "tier_prices").mkdir(parents=True, exist_ok=True)
-        (d / "tier_prices" / "go_prices.json").write_text(
+        (d / "plans").mkdir(parents=True, exist_ok=True)
+        (d / "plans" / "go.json").write_text(
             json.dumps(
-                [
-                    {
-                        "tier": "go",
-                        "model_id": mid.split("/")[1],
-                        "name": mid,
-                        "input": price,
-                        "output": price,
-                        "cached_read": price,
-                        "limit": limit,
-                        "free": free,
-                    }
-                    for mid, price, _s, free, limit in specs
-                ]
+                {
+                    "meta": {
+                        "source": "test",
+                        "fetched_at": "2026-01-01T00:00:00+00:00",
+                        "schema_rev": 1,
+                        "plans": ["go"],
+                    },
+                    "models": {
+                        mid.split("/")[1]: {
+                            "name": mid,
+                            "free": free,
+                            "tiers": []
+                            if free
+                            else [
+                                {
+                                    "label": None,
+                                    "in": price,
+                                    "out": price,
+                                    "cached": price,
+                                    "cached_write": None,
+                                }
+                            ],
+                            "limits": {"go": limit, "go_plus": limit}
+                            if limit is not None
+                            else None,
+                            "requests_per_month": None,
+                            "assumptions": None,
+                        }
+                        for mid, price, _s, free, limit in specs
+                    },
+                }
             )
         )
         return {mid.split("/")[1] for mid, *_ in specs}

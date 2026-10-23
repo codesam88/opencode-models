@@ -18,24 +18,34 @@ from opencode_models.availability import (
 
 
 def _snapshot(data_dir: Path, tier: str, model_ids: list[str]) -> None:
-    out = data_dir / "tier_prices"
+    out = data_dir / "plans"
     out.mkdir(parents=True, exist_ok=True)
-    (out / f"{tier}_prices.json").write_text(
-        json.dumps(
-            [
+    models = {}
+    for mid in model_ids:
+        if tier == "go":
+            limits = {"go": None, "go_plus": None}
+            rpm = {"go": None, "go_plus": None}
+        else:
+            limits = None
+            rpm = None
+        models[mid] = {
+            "name": mid,
+            "free": False,
+            "tiers": [
                 {
-                    "tier": tier,
-                    "model_id": mid,
-                    "name": mid,
-                    "input": 1.0,
-                    "output": 1.0,
-                    "cached_read": None,
-                    "limit": None,
-                    "free": False,
+                    "label": None,
+                    "in": 1.0,
+                    "out": 1.0,
+                    "cached": None,
+                    "cached_write": None,
                 }
-                for mid in model_ids
-            ]
-        )
+            ],
+            "limits": limits,
+            "requests_per_month": rpm,
+            "assumptions": None,
+        }
+    (out / f"{tier}.json").write_text(
+        json.dumps({"meta": {"plans": [tier]}, "models": models})
     )
 
 
@@ -73,39 +83,26 @@ class AvailabilityTest(unittest.TestCase):
     def test_a_line_without_a_model_id_does_not_make_a_model_available(self):
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
-            out = d / "tier_prices"
-            out.mkdir(parents=True, exist_ok=True)
-            (out / "zen_prices.json").write_text(
-                json.dumps(
-                    [
-                        {"tier": "zen", "model_id": None, "name": "Mystery"},
-                        {"tier": "zen", "model_id": "m1", "name": "M1"},
-                    ]
-                )
+            (d / "plans").mkdir(parents=True, exist_ok=True)
+            (d / "plans" / "zen.json").write_text(
+                json.dumps({"models": {"m1": {"free": False}}})
             )
             self.assertEqual(load_available(d)["zen"], {"m1"})
 
     def test_a_directory_at_the_snapshot_path_is_unknown(self):
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
-            out = d / "tier_prices"
-            out.mkdir(parents=True, exist_ok=True)
-            (out / "zen_prices.json").mkdir()
+            (d / "plans").mkdir(parents=True, exist_ok=True)
+            (d / "plans" / "zen.json").mkdir()
             self.assertIsNone(load_available(d)["zen"])
             self.assertIsNone(_snapshot_ids(d, "zen"))
 
     def test_non_dict_rows_are_skipped(self):
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
-            out = d / "tier_prices"
-            out.mkdir(parents=True, exist_ok=True)
-            (out / "zen_prices.json").write_text(
-                json.dumps(
-                    [
-                        {"tier": "zen", "model_id": "m1", "name": "M1"},
-                        "not a dict",
-                    ]
-                )
+            (d / "plans").mkdir(parents=True, exist_ok=True)
+            (d / "plans" / "zen.json").write_text(
+                json.dumps({"models": {"m1": {"free": False}}})
             )
             self.assertEqual(load_available(d)["zen"], {"m1"})
             self.assertEqual(_snapshot_ids(d, "zen"), {"m1"})
@@ -146,7 +143,7 @@ class LivePrecedenceTest(unittest.TestCase):
 
 
 class LoadRosterPrecedenceTest(unittest.TestCase):
-    def test_live_beats_tier_prices_beats_plans_beats_shipped(self):
+    def test_live_beats_plans_beats_shipped(self):
         import json
         from pathlib import Path
 
@@ -158,18 +155,14 @@ class LoadRosterPrecedenceTest(unittest.TestCase):
             # shipped fallback always present for zen; add the other layers
             (d / "plans").mkdir()
             (d / "plans" / "zen.json").write_text(
-                json.dumps({"models": {"runtime-only": {"free": False}}})
+                json.dumps({"models": {"plan-only": {"free": False}}})
             )
-            _snapshot(d, "zen", ["docs-only"])
             save_live(d, {"zen": {"live-only": False}})
 
             self.assertEqual(load_roster(d, "zen"), {"live-only"})
 
             (d / "available" / "zen.json").unlink()
-            self.assertEqual(load_roster(d, "zen"), {"docs-only"})
-
-            (d / "tier_prices" / "zen_prices.json").unlink()
-            self.assertEqual(load_roster(d, "zen"), {"runtime-only"})
+            self.assertEqual(load_roster(d, "zen"), {"plan-only"})
 
             (d / "plans" / "zen.json").unlink()
             shipped = load_roster(d, "zen")
@@ -184,7 +177,7 @@ class LoadRosterPrecedenceTest(unittest.TestCase):
 
 
 class FreeSlugsTest(unittest.TestCase):
-    def test_tier_prices_and_plans_flags_union(self):
+    def test_plans_free_flags(self):
         import json
         from pathlib import Path
 
@@ -192,33 +185,13 @@ class FreeSlugsTest(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
-            _snapshot(d, "zen", [])
-            # tier_prices free flag
-            out = d / "tier_prices"
-            out.mkdir(parents=True, exist_ok=True)
-            (out / "zen_prices.json").write_text(
-                json.dumps(
-                    [
-                        {
-                            "tier": "zen",
-                            "model_id": "doc-free",
-                            "name": "Doc Free",
-                            "free": True,
-                        },
-                        {
-                            "tier": "zen",
-                            "model_id": "doc-paid",
-                            "name": "Doc Paid",
-                            "free": False,
-                        },
-                    ]
-                )
-            )
-            (d / "plans").mkdir()
+            (d / "plans").mkdir(parents=True, exist_ok=True)
             (d / "plans" / "zen.json").write_text(
                 json.dumps(
                     {
                         "models": {
+                            "doc-free": {"free": True},
+                            "doc-paid": {"free": False},
                             "plan-free": {"free": True},
                             "plan-paid": {"free": False},
                         }

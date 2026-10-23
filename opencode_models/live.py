@@ -3,7 +3,7 @@
 ``GET /api/v2/config`` answers with the workspace's live model set, per
 provider — the same plans the docs describe, but as the API serves them
 right now rather than as the pricing pages last said. The docs snapshot
-(``tier_prices/``) stays the offline fallback; this layer wins wherever it
+(unified ``plans/`` snapshot) stays the offline fallback; this layer wins wherever it
 exists, because the API is what the next request is actually checked
 against.
 

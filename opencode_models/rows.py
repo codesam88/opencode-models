@@ -16,11 +16,9 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from . import availability
-from .allowance import cost_per_request
 from .catalog import load_catalog
 from .identity import canonical_id
 from .models import Model
-from .pricing import load_prices
 from .ranking import build_rows, dedupe_providers, merge_rows
 from .scoring import scales
 
@@ -37,29 +35,9 @@ class RowsResult:
     models: list
     warnings: tuple[str, ...] = field(default_factory=tuple)
 
-    def __iter__(self):
-        yield self.rows
-        yield self.listed
-        yield self.curated
-        yield self.counts
-        yield self.tier_slugs
-        yield self.models
-        yield self.warnings
-
-
-def _entries_for(source: str, data_dir: Path):
-    """Documented pricing lines for a tier (Go first: interchangeable, and
-    its rates are the ones with included usage attached)."""
-    prices = load_prices(data_dir / "tier_prices")
-    if source in prices:
-        return prices[source]
-    if source == "all":
-        return prices.get("go", []) + prices.get("zen", [])
-    return []
-
 
 def _docs_known_slugs(data_dir: Path, tier: str) -> set[str]:
-    """Slugs a tier's documentation knows about (tier_prices or plans)."""
+    """Slugs a tier's documentation knows about (unified plans)."""
     out: set[str] = set()
     snap = availability._snapshot_ids(data_dir, tier)
     if snap:
@@ -80,11 +58,10 @@ def _synthesize_roster_models(
     excluded here -- that is the junk filter.
     """
     plan_models = availability._plan_models(data_dir, tier)
-    entries = load_prices(data_dir / "tier_prices").get(tier, [])
     entry_by_slug: dict[str, object] = {}
-    for entry in entries:
-        if entry.model_id and entry.model_id not in entry_by_slug:
-            entry_by_slug[entry.model_id] = entry
+    for slug, rec in plan_models.items():
+        if isinstance(rec, dict) and slug not in entry_by_slug:
+            entry_by_slug[slug] = rec
     catalog_canonical = {canonical_id(m.model_id.split("/")[-1]) for m in models}
     aliases = availability.load_aliases(data_dir)
     catalog_by_id = {m.model_id: m for m in models}
@@ -96,15 +73,17 @@ def _synthesize_roster_models(
             continue
         rec = plan_models.get(slug)
         name = rec.get("name") if isinstance(rec, dict) else None
-        entry = entry_by_slug.get(slug)
-        if not name and entry is not None:
-            name = entry.name
+        rec = entry_by_slug.get(slug)
+        if not name and isinstance(rec, dict):
+            name = rec.get("name")
         if not name:
             name = slug
-        if entry is not None:
-            price_input = entry.input
-            price_output = entry.output
-            price_cached_input = entry.cached_read
+        tiers = rec.get("tiers") if isinstance(rec, dict) else None
+        if tiers:
+            first = tiers[0]
+            price_input = first.get("in", 0.0)
+            price_output = first.get("out", 0.0)
+            price_cached_input = first.get("cached", 0.0)
         else:
             price_input = 0.0
             price_output = 0.0
@@ -156,19 +135,6 @@ def rows_for(
     avail = availability.current_offered(data_dir, bypass=all_models)
     on_offer = avail.offered
     warnings: list[str] = list(avail.warnings)
-    # page-estimated $/req per snapshot slug (the `est` cost base);
-    # Zen lines and snapshot-missing models fall back to the fix
-    est_rates = None
-    if price == "est":
-        try:
-            plan_snapshot, _origin = availability.load_plan_snapshot(data_dir)
-        except (OSError, ValueError):
-            plan_snapshot = {}
-        est_rates = {}
-        for slug, rec in (plan_snapshot.get("models") or {}).items():
-            cpr = cost_per_request(rec.get("tiers") or [], rec.get("assumptions"))
-            if cpr is not None and cpr > 0:
-                est_rates[slug] = cpr
     # one scale for the whole catalog: per-tier scales would make the same
     # score mean two different things in the merged view
     table = scales(models)
@@ -221,17 +187,20 @@ def rows_for(
             provider_listed = [m for m in pool if id(m) in catalog_ids]
             synthetic_ids |= {id(m) for m in pool if id(m) not in catalog_ids}
         listed += provider_listed
-        provider_entries = _entries_for(provider, data_dir)
+        plan_models = (
+            availability._plan_models(data_dir, provider)
+            if provider in ("go", "zen")
+            else {}
+        )
         catalog_rows = [m for m in pool if id(m) not in synthetic_ids]
         groups.append(
             build_rows(
                 catalog_rows,
-                provider_entries,
-                free_ids,
+                records=plan_models,
+                free_ids=free_ids,
                 axis=price,
                 provider=provider,
                 table=table,
-                est_rates=est_rates,
             )
         )
         synth_rows = [m for m in pool if id(m) in synthetic_ids]
@@ -241,12 +210,11 @@ def rows_for(
             groups.append(
                 build_rows(
                     synth_rows,
-                    provider_entries,
-                    free_ids,
+                    records=plan_models,
+                    free_ids=free_ids,
                     axis=price,
                     provider=provider,
                     table=table,
-                    est_rates=est_rates,
                     reach_variants=False,
                 )
             )

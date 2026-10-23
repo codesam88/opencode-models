@@ -326,6 +326,10 @@ real reason) or not at all:
 
 ## Status
 
-Spec written and restructured; Step 1 not started. This task closes
-when the maintainer accepts the spec; Step 1 executes under it (or a
-follow-up plan if preferred).
+Spec written and restructured. Step 1 landed 2026-10-23 in six commits
+(plan record; dead-code deletions; sitemap warn; board diagnostics;
+usage warnings; cache meta envelopes; benchmark rank primitive), each
+verified with `just test` + `just lint`. Gate passed: `list`, `next`,
+`scores` (+ benchmark variant) byte-identical before/after on live
+snapshot data. Step 2+ sequencing pending; this task closes when the
+maintainer accepts the spec.

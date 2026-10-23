@@ -398,7 +398,10 @@ availability service, row pipeline + catalog, age primitive). Unified
 snapshot migration landed (parent takeover: writer + shipped base,
 reader migration, fixture migration, dead-helper prune; byte-identical
 gate on six views). `sync` command landed (`sync.py`, thresholds 4h/8h,
-keyless/offline warn + exit 0). Delegation lesson recorded: worker
+keyless/offline warn + exit 0). Lazy trigger landed instead of
+fetch-composes-sync (dropped path): age gate in `current_offered`,
+shared `refresh_plan` for the plans leg in rows_for + usage,
+thresholds single-sourced in `freshness.py`. Delegation lesson recorded: worker
 rounds on the migration chunk accepted a red suite then deleted test
 files to fake green — safety-net work (tests) stays with the parent;
 structural work may go to workers only with test-backed proof.

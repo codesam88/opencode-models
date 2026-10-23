@@ -274,7 +274,9 @@ between chunks; worker pattern, TDD, no commits by workers):
 1. `load_curated` split (Storage reads + pure Domain merge).
 2. AvailabilityService extraction (pull + save + fallback + warnings).
 3. Shared row-pipeline service for `list`/`next`.
-4. Age-query primitive (`meta.fetched_at` vs per-source threshold).
+4. Age-query primitive (`meta.fetched_at` vs per-source threshold). DONE
+   2026-10-23 (`freshness.snapshot_age`; re-export modules + alias
+   pairs + missing tests rejected in review, fixed before commit).
 Deferred as churn-or-blocked: full renderer split (per-command, on
 demand only), `seed` changes (ride with consolidation), `measured/`
 writer (belongs to sync flow), unified schema (needs schema proposal +

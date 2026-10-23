@@ -111,7 +111,12 @@ Zen endpoints table (roster identity) and deprecated-models table
   with `--from/--out/--check` CLIs intact; justfile drives the package
   (`sync`, `plans-sync/check/freeze`, no `-zen` variants); tests
   retargeted to the package. Merge-idempotency fix included
-  (symmetric dropped/first_seen comparison).
+  (symmetric dropped/first_seen comparison). Follow-up DECIDED:
+  module `main()`s deleted too — curation folds into `sync --force`
+  (unconditional refresh) and `sync --check` (offline fail-shut gate);
+  justfile `plans-sync/check` drive those flags; roundtrip tests moved
+  onto the flags. Single surface: forgiving default `sync`, strict
+  opt-in modes.
 - `plan-snapshot-automation` rewrite owner.
 
 ## Refactor inventory (the work to arrive at the spec)

@@ -22,15 +22,15 @@ from datetime import date, datetime, timedelta, timezone
 from importlib import resources
 from pathlib import Path
 
-from . import __version__, sources
+from . import __version__, availability
 from . import arena as arena_mod
 from .allowance import WINDOW_FRACTIONS, cost_per_request
 from .arena import ArenaCache, merge_from_file
 from .auth import load_key, save_key
-from .availability import available_ids, load_available, offered
 from .benchmarks import available
 from .boards import fetch_boards, load_boards, merge_boards, save_boards
 from .fetch import http_get, refresh
+from .identity import canonical_id
 from .live import LIVE_CONFIG_URL, fetch_live, fetch_served, merge_served, save_live
 from .models import load_models
 from .overrides import load_curated, off_band_models, source_tier
@@ -394,8 +394,9 @@ def _model_name(names: dict[str, str], slug: str) -> str:
     """
     if slug in names:
         return names[slug]
-    if slug.endswith("-free") and slug[: -len("-free")] in names:
-        return names[slug[: -len("-free")]]
+    base = canonical_id(slug)
+    if base in names:
+        return names[base]
     return slug
 
 
@@ -414,8 +415,8 @@ def _status_label(ids, slug: str) -> str:
 
 def _catalog_known(slug: str, names: dict[str, str]) -> bool:
     """Whether the catalog can name *slug* (free variants reach each other)."""
-    base = slug[: -len("-free")] if slug.endswith("-free") else slug
-    return slug in names or base in names or f"{slug}-free" in names
+    names_canonical = {canonical_id(k) for k in names}
+    return slug in names or canonical_id(slug) in names_canonical
 
 
 def _cmd_models(args: argparse.Namespace) -> int:
@@ -453,7 +454,7 @@ def _cmd_models(args: argparse.Namespace) -> int:
                     "(User \u2192 Account \u2192 Personal API Keys)"
                 )
     if tiers is None:
-        known = load_available(data_dir)
+        known = availability.load_available(data_dir)
         if all(ids is None for ids in known.values()):
             return _fail(
                 f"no availability known in {data_dir} — run `fetch` "
@@ -524,7 +525,7 @@ def _cmd_fetch(args: argparse.Namespace) -> int:
                 print("warning: no models served — using last known availability")
                 only = None
     if only is None and not args.all_models:
-        only = available_ids(data_dir)
+        only = availability.available_ids(data_dir)
     if only is not None:
         print(
             f"{len(only)} models offered — downloading those "
@@ -658,11 +659,11 @@ def _cmd_scores(args: argparse.Namespace) -> int:
     data_dir = Path(args.data)
     models, _curated, _boards = _load(data_dir)
     table = scales(models)
-    on_offer = available_ids(data_dir)
+    on_offer = availability.available_ids(data_dir)
     shown = (
         models
         if getattr(args, "all_models", False) or not on_offer
-        else [m for m in models if offered(m.model_id, on_offer)]
+        else [m for m in models if availability.offered(m.model_id, on_offer)]
     )
     ranked = sorted(
         (m for m in shown if m.scores),
@@ -805,7 +806,7 @@ def _select(data_dir: Path, source: str | None, price: str = "est"):
 
     Providers are zen and go, plus ``-`` for catalog models in neither tier.
     """
-    tiers = sources.available_sources()
+    tiers = ["go", "zen"]
     if source is None:
         return list(tiers), "tiers"  # both, merged
     if source == "all":
@@ -859,7 +860,7 @@ def _current_offered(
             "may be unavailable (`auth` for live data, `--all` for the "
             "full catalog)"
         )
-    known = load_available(data_dir)
+    known = availability.load_available(data_dir)
     if all(ids is None for ids in known.values()):
         return None
     out: set[str] = set()
@@ -869,17 +870,6 @@ def _current_offered(
         elif tier_ids:
             out |= tier_ids
     return out or None
-
-
-def _in_tier_slug_list(model_id: str, slugs: set[str]) -> bool:
-    """Whether *model_id* is claimed by a tier's shipped slug list.
-
-    Mirrors :func:`sources.members` matching: slug, full id, or the
-    ``-free`` variant of the slug. Used to keep tier-listed models out of
-    the catalog-only pool even when a tier dropped them from its offer.
-    """
-    slug = model_id.split("/")[-1]
-    return slug in slugs or model_id in slugs or f"{slug}-free" in slugs
 
 
 def _rows_for(
@@ -916,31 +906,43 @@ def _rows_for(
     table = scales(models)
     groups, listed, counts, tier_slugs = [], [], {}, {}
     covered: set[str] = set()
-    # slugs shipped for every selected tier: a model listed by any of them
-    # belongs to that tier (or is dropped by availability) and must not be
-    # routed to the catalog-only "-" pool, even when the tier dropped it
+    # slugs served/documented for every selected tier: a model listed by any
+    # of them belongs to that tier (or is dropped by availability) and must
+    # not be routed to the catalog-only "-" pool, even when the tier dropped it
     selected_tier_slugs: set[str] = set()
     for provider in selected:
         if provider != "-":
-            selected_tier_slugs |= sources.load_source(provider)
+            selected_tier_slugs |= availability.load_roster(data_dir, provider)
     for provider in selected:
         if provider == "-":
             pool = [
                 m
                 for m in models
                 if m.model_id not in covered
-                and not _in_tier_slug_list(m.model_id, selected_tier_slugs)
+                and not any(
+                    availability.slug_matches(m.model_id, s)
+                    for s in selected_tier_slugs
+                )
             ]
-            free_ids = sources.members(models, None)[1]
-            free_ids &= {m.model_id for m in pool}
+            free_ids = {m.model_id for m in pool if m.price_input == 0}
         else:
-            tier_slugs[provider] = sources.load_source(provider)
-            pool, free_ids = sources.members(models, tier_slugs[provider])
+            tier_slugs[provider] = availability.load_roster(data_dir, provider)
+            pool, base_free = availability.members(models, tier_slugs[provider])
+            free_candidate_slugs = availability.free_slugs(data_dir, provider)
+            free_ids = set(base_free) | {
+                m.model_id
+                for m in pool
+                if any(
+                    availability.slug_matches(m.model_id, s)
+                    for s in free_candidate_slugs
+                )
+            }
             if on_offer is not None:
-                pool = [m for m in pool if offered(m.model_id, on_offer)]
+                pool = [m for m in pool if availability.offered(m.model_id, on_offer)]
                 free_ids &= {m.model_id for m in pool}
             counts[provider] = len(pool)
             covered |= {m.model_id for m in pool}
+            free_ids &= {m.model_id for m in pool}
         listed += pool
         groups.append(
             build_rows(
@@ -965,10 +967,7 @@ def _cmd_list(args: argparse.Namespace) -> int:
     source = args.source
     chosen = _select(data_dir, source)
     if chosen is None:
-        return _fail(
-            f"unknown source {source!r} — available: "
-            f"{', '.join(sources.available_sources())}, all"
-        )
+        return _fail(f"unknown source {source!r} — available: go, zen, all")
     selected, scope = chosen
 
     rows, listed, curated, counts, tier_slugs, models = _rows_for(
@@ -1149,10 +1148,7 @@ def _cmd_next(args: argparse.Namespace) -> int:
         return _fail(f"no data directory at {data_dir} — run `fetch` first")
     chosen = _select(data_dir, args.source)
     if chosen is None:
-        return _fail(
-            f"unknown source {args.source!r} — available: "
-            f"{', '.join(sources.available_sources())}, all"
-        )
+        return _fail(f"unknown source {args.source!r} — available: go, zen, all")
     rows, listed, _curated, _counts, _slugs, _models = _rows_for(
         data_dir, chosen[0], args.cost, getattr(args, "all_models", False)
     )

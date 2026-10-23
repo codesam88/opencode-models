@@ -492,7 +492,7 @@ class TbenchPageTest(unittest.TestCase):
         self.assertEqual(len(rows), 4)
 
     def test_a_page_without_a_board_yields_nothing(self):
-        self.assertEqual(tbench_page_rows("<html><body>nope</body></html>"), [])
+        self.assertIsNone(tbench_page_rows("<html><body>nope</body></html>"))
 
     def test_a_row_missing_its_score_is_skipped(self):
         payload = json.dumps(
@@ -725,7 +725,7 @@ class FetchBoardsProgressTest(unittest.TestCase):
             raise OSError("offline")
 
         out = fetch_boards(get, progress=lambda d, t, n: calls.append((d, t, n)))
-        self.assertEqual(out, {})
+        self.assertEqual(out, {"tbench": None, "swebench": None})
         self.assertEqual(len(calls), 2)
         self.assertEqual([c[0] for c in calls], [1, 2])
         self.assertTrue(all(c[1] == 2 for c in calls))

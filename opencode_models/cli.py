@@ -601,8 +601,13 @@ def _cmd_fetch(args: argparse.Namespace) -> int:
     boards = fetch_boards(
         get=http_get, progress=lambda done, total, desc: print(f"fetch {desc} ...")
     )
-    saved = save_boards(data_dir / "boards", boards)
-    rows = sum(len(v) for v in boards.values())
+    for name, result in boards.items():
+        if result is None:
+            print(f"warning: {name} board not refreshed — keeping existing records")
+    saved = save_boards(
+        data_dir / "boards", {n: r for n, r in boards.items() if r is not None}
+    )
+    rows = sum(len(v) for v in boards.values() if v)
     if saved:
         print(
             f"saved {rows} board rows from {', '.join(saved)} to {data_dir / 'boards'}"

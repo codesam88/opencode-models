@@ -1,10 +1,9 @@
-"""Zen/Go tier membership lists and score/price ranking for text output."""
+"""Tier membership matching between catalog models and offered slugs."""
 
 import unittest
 
+from opencode_models.availability import members
 from opencode_models.models import Model
-from opencode_models.ranking import by_score_per_price
-from opencode_models.sources import available_sources, load_source, members
 
 
 def _m(model_id, price, score, output=None):
@@ -19,22 +18,10 @@ def _m(model_id, price, score, output=None):
     )
 
 
-class SourcesTest(unittest.TestCase):
-    def test_ships_zen_and_go(self):
-        self.assertEqual(sorted(available_sources()), ["go", "zen"])
-
-    def test_load_returns_slugs(self):
-        slugs = load_source("zen")
-        self.assertIn("claude-opus-5", slugs)
-        self.assertTrue(all("/" not in s for s in slugs))
-
-    def test_unknown_source_raises(self):
-        with self.assertRaises(KeyError):
-            load_source("nope")
-
-
 class MembershipTest(unittest.TestCase):
-    def test_free_variant_slug_reaches_the_base_model_and_flags_it_free(self):
+    def test_free_variant_slug_reaches_the_base_model_but_suffix_confers_no_free_flag(
+        self,
+    ):
         models = [_m("xiaomi/mimo-v2.6-flash", 0.16, 50.0), _m("lab/other", 1.0, 40.0)]
         got, free = members(models, {"mimo-v2.6-flash-free", "other"})
         # the tier page offers MiMo-V2.6-Flash Free; the catalog knows one
@@ -42,7 +29,7 @@ class MembershipTest(unittest.TestCase):
         self.assertEqual(
             sorted(m.model_id for m in got), ["lab/other", "xiaomi/mimo-v2.6-flash"]
         )
-        self.assertEqual(free, {"xiaomi/mimo-v2.6-flash"})
+        self.assertEqual(free, set())
 
     def test_plain_slug_member_is_not_free(self):
         _, free = members([_m("a/m1", 1.0, 50.0)], {"m1"})
@@ -58,45 +45,22 @@ class MembershipTest(unittest.TestCase):
         self.assertEqual(got, models)
         self.assertEqual(free, {"a/free"})
 
-
-class RankingTest(unittest.TestCase):
-    BENCH = "TB"
-
-    def test_sorted_by_score_over_price_descending(self):
-        # a: 80/2=40, b: 90/10=9, c: 40/1=40 → a before c by score on tie
-        out = by_score_per_price(
-            [_m("a", 2.0, 80.0), _m("b", 10.0, 90.0), _m("c", 1.0, 40.0)],
-            self.BENCH,
-        )
-        self.assertEqual([m.model_id for m in out], ["a", "c", "b"])
-
-    def test_free_models_rank_by_score(self):
-        out = by_score_per_price(
-            [_m("paid", 1.0, 50.0), _m("free", 0.0, 30.0), _m("free2", 0.0, 60.0)],
-            self.BENCH,
-        )
-        # infinite ratio first, highest-scoring free model leads
-        self.assertEqual([m.model_id for m in out], ["free2", "free", "paid"])
-
-    def test_excludes_models_missing_price_or_score(self):
-        out = by_score_per_price(
-            [_m("ok", 1.0, 50.0), _m("np", None, 90.0), _m("ns", 1.0, None)],
-            self.BENCH,
-        )
-        self.assertEqual([m.model_id for m in out], ["ok"])
-
-    def test_output_price_axis_changes_ratio(self):
-        # Both cost $2/M input; output differs: a 5, b 10 → a cheaper out
-        models = [_m("a", 2.0, 80.0, output=5.0), _m("b", 2.0, 90.0, output=10.0)]
-        out = by_score_per_price(models, self.BENCH, price_field="price_output")
-        # a: 80/5=16, b: 90/10=9 → a leads despite lower score
-        self.assertEqual([m.model_id for m in out], ["a", "b"])
-
-    def test_unknown_price_field_raises(self):
-        with self.assertRaises(ValueError):
-            by_score_per_price(
-                [_m("a", 1.0, 50.0)], self.BENCH, price_field="price_cache_write"
-            )
+    def test_exact_slug_wins_over_canonical_group(self):
+        # base + variant both exist in the catalog: a base roster slug
+        # reaches only the base record, a variant roster slug only the
+        # variant record.
+        models = [
+            _m("lab/base", 1.0, 50.0),
+            _m("lab/base-contributor", 2.0, 60.0),
+        ]
+        got, _ = members(models, {"base"})
+        self.assertEqual([m.model_id for m in got], ["lab/base"])
+        got, _ = members(models, {"base-contributor"})
+        self.assertEqual([m.model_id for m in got], ["lab/base-contributor"])
+        # a variant roster slug with no exact catalog record falls back to
+        # the canonical base model.
+        got, _ = members([_m("lab/base", 1.0, 50.0)], {"base-contributor"})
+        self.assertEqual([m.model_id for m in got], ["lab/base"])
 
 
 if __name__ == "__main__":

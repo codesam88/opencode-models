@@ -341,33 +341,33 @@ class NextViewContract(unittest.TestCase):
     COLUMNS = ["#", "Plan", "Score", "¢/req", "Score/$", "Endpoint", "Band"]
 
     def test_columns(self):
-        import opencode_models.sources as sources
+        import opencode_models.availability as availability
 
         with tempfile.TemporaryDirectory() as tmp:
             _grid(tmp)
-            orig = sources.load_source
-            sources.load_source = lambda name: {"m1", "m2", "m3"}
+            orig = availability.load_roster
+            availability.load_roster = lambda _d, name: {"m1", "m2", "m3"}
             try:
                 code, out = _run("--data", tmp, "next", "--source", "all")
             finally:
-                sources.load_source = orig
+                availability.load_roster = orig
         self.assertEqual(code, 0)
         head = next(l for l in out.splitlines() if "Endpoint" in l and "Score" in l)
         self.assertEqual(head.split(), self.COLUMNS)
 
     def test_picks_stay_within_a_quarter_of_the_best(self):
-        import opencode_models.sources as sources
+        import opencode_models.availability as availability
 
         with tempfile.TemporaryDirectory() as tmp:
             _grid(tmp)
-            orig = sources.load_source
-            sources.load_source = lambda name: {"m1", "m2", "m3"}
+            orig = availability.load_roster
+            availability.load_roster = lambda _d, name: {"m1", "m2", "m3"}
             try:
                 code, out = _run(
                     "--data", tmp, "next", "--source", "all", "--count", "3"
                 )
             finally:
-                sources.load_source = orig
+                availability.load_roster = orig
         self.assertEqual(code, 0)
         # floor is 75% of 100: M1 at 0 never appears
         self.assertNotIn("m1", out.split("Band")[1].lower())

@@ -30,15 +30,14 @@ PYTHONPATH=. uv run python -c "
 from pathlib import Path
 from opencode_models.cli import _load
 from opencode_models.scoring import scales, derived_scores, canonical, _TRACKED
-from opencode_models.availability import load_available, offered
-from opencode_models import sources
+from opencode_models.availability import load_available, offered, members
 
 models, *_ = _load(Path('data'))
 table = scales(models)
 # availability is the provider's own snapshot, not the committed slug lists:
 # a model a plan has dropped is not worth a number
 offered = {m.model_id for tier, ids in load_available(Path('data')).items()
-           if ids for m in sources.members(models, ids)[0]}
+           if ids for m in members(models, ids)[0]}
 for m in models:
     derived = derived_scores(m, table)
     plan = next((t for t, ids in load_available(Path('data')).items()

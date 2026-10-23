@@ -373,8 +373,8 @@ committed**. They are third-party records, they go stale, and they are large;
 Shipped fallbacks (committed, versioned deliberately, validated — the
 offline copy when no snapshot exists): `opencode_models/data/plans/go.json`
 (promoted from `data/plans/` via `just plans-freeze`, pinned by
-test) and `opencode_models/sources/*.txt` (hand-maintained tier membership —
-`zen` curated, `go` open). Rule of thumb: mutability decides the home — refreshable
+test) and `opencode_models/data/plans/zen.json` (shipped roster derived from the
+plan snapshots). Rule of thumb: mutability decides the home — refreshable
 state lives in `data/`, frozen seeds ship in the package.
 
 `fetch` downloads only the models the plans offer (use `--all` for the
@@ -384,9 +384,10 @@ model keeps its place in the scales rather than moving every score.
 #### Which models the plans actually offer
 
 Providers unlist models and move them between plans, so "which models can I
-use" is a fact about today, not a property of the codebase. It used to come
-from committed text files — `opencode_models/sources/zen.txt` and `go.txt` —
-which are hand-maintained and drifted in both directions. In the live data 13
+use" is a fact about today, not a property of the codebase. Tier membership
+now comes from the same snapshots `fetch` writes — the live `available/` set,
+then `tier_prices/`, then the runtime `plans/` copy, then the shipped plan
+fallback — so there is no hand-maintained roster to drift. In the live data 13
 Go models were still being listed, scored and recommended after the provider's
 own documentation had stopped listing them, among them `hy3-preview` and
 `glm-5`, two of the models an active backfill was chasing numbers for.

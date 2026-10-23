@@ -294,12 +294,12 @@ class CliTest(unittest.TestCase):
         self.assertEqual(code, 0)
 
     def test_list_source_sorted_by_score_per_price(self):
-        import opencode_models.sources as sources
+        import opencode_models.availability as availability
 
         with tempfile.TemporaryDirectory() as tmp:
             _write_sample(Path(tmp))
-            orig = sources.load_source
-            sources.load_source = lambda name: {"m1", "m2", "m3"}
+            orig = availability.load_roster
+            availability.load_roster = lambda _d, name: {"m1", "m2", "m3"}
             try:
                 code, out = self._run(
                     "--data",
@@ -313,7 +313,7 @@ class CliTest(unittest.TestCase):
                     "all",
                 )
             finally:
-                sources.load_source = orig
+                availability.load_roster = orig
         self.assertEqual(code, 0)
         # m1: 50/1=50, m2: 90/3=30, m3: 40/9≈4.4 — but the list now culls:
         # m2 stays in best value, m1 is the worst score, m3 the highest cost
@@ -324,12 +324,12 @@ class CliTest(unittest.TestCase):
         self.assertIn("highest cost", out)
 
     def test_list_filters_to_source_members_only(self):
-        import opencode_models.sources as sources
+        import opencode_models.availability as availability
 
         with tempfile.TemporaryDirectory() as tmp:
             _write_sample(Path(tmp))
-            orig = sources.load_source
-            sources.load_source = lambda name: {"a/m1"}
+            orig = availability.load_roster
+            availability.load_roster = lambda _d, name: {"a/m1"}
             try:
                 code, out = self._run(
                     "--data",
@@ -341,18 +341,18 @@ class CliTest(unittest.TestCase):
                     "TB",
                 )
             finally:
-                sources.load_source = orig
+                availability.load_roster = orig
         self.assertEqual(code, 0)
         self.assertIn("M1", out)
         self.assertNotIn("M2", out)
 
     def test_list_shows_score_cost_value_and_plan_columns(self):
-        import opencode_models.sources as sources
+        import opencode_models.availability as availability
 
         with tempfile.TemporaryDirectory() as tmp:
             _write_sample(Path(tmp))
-            orig = sources.load_source
-            sources.load_source = lambda name: {"m1"}
+            orig = availability.load_roster
+            availability.load_roster = lambda _d, name: {"m1"}
             try:
                 code, out = self._run(
                     "--data",
@@ -366,7 +366,7 @@ class CliTest(unittest.TestCase):
                     "all",
                 )
             finally:
-                sources.load_source = orig
+                availability.load_roster = orig
         self.assertEqual(code, 0)
         line = next(l for l in out.splitlines() if l.rstrip().endswith("M1"))
         # the calculated score, the benchmark tag, $1.00 as 100 cents
@@ -375,7 +375,7 @@ class CliTest(unittest.TestCase):
     def test_numbers_are_shown_as_rounded_integers(self):
         import json
 
-        import opencode_models.sources as sources
+        import opencode_models.availability as availability
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
@@ -477,12 +477,12 @@ class CliTest(unittest.TestCase):
                     }
                 )
             )
-            orig = sources.load_source
-            sources.load_source = lambda name: {"cheap", "dear", "mid"}
+            orig = availability.load_roster
+            availability.load_roster = lambda _d, name: {"cheap", "dear", "mid"}
             try:
                 code, out = self._run("--data", tmp, "list")
             finally:
-                sources.load_source = orig
+                availability.load_roster = orig
         self.assertEqual(code, 0)
         self.assertIn("¢/req", out)  # the column says what it counts
         line = next(l for l in out.splitlines() if l.rstrip().endswith("CHEAP"))
@@ -494,7 +494,7 @@ class CliTest(unittest.TestCase):
     def test_list_output_price_uses_output_axis(self):
         import json
 
-        import opencode_models.sources as sources
+        import opencode_models.availability as availability
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
@@ -516,8 +516,8 @@ class CliTest(unittest.TestCase):
                 }
             )
             (_models(d) / "a__m1.json").write_text(doc)
-            orig = sources.load_source
-            sources.load_source = lambda name: {"m1"}
+            orig = availability.load_roster
+            availability.load_roster = lambda _d, name: {"m1"}
             try:
                 code, out = self._run(
                     "--data",
@@ -531,7 +531,7 @@ class CliTest(unittest.TestCase):
                     "output",
                 )
             finally:
-                sources.load_source = orig
+                availability.load_roster = orig
         self.assertEqual(code, 0)
         # output price $5.00 shown as 500 cents; ratio 50/5 → 10
         line = next(l for l in out.splitlines() if l.rstrip().endswith("M1"))
@@ -809,19 +809,19 @@ class CliTest(unittest.TestCase):
         self.assertIn("M3", out)
 
     def test_the_three_tables_are_visually_separated(self):
-        import opencode_models.sources as sources
+        import opencode_models.availability as availability
 
         with tempfile.TemporaryDirectory() as tmp:
             _write_grid(Path(tmp))
             slugs = {f"m{i:02d}" for i in range(1, 11)}
-            orig = sources.load_source
-            sources.load_source = lambda name: slugs
+            orig = availability.load_roster
+            availability.load_roster = lambda _d, name: slugs
             try:
                 code, out = self._run(
                     "--data", tmp, "list", "--tables", "all", "--source", "zen"
                 )
             finally:
-                sources.load_source = orig
+                availability.load_roster = orig
         self.assertEqual(code, 0)
         self.assertEqual(out.count("\n\n──"), 3)  # blank line before each table
         for title in ("best value", "worst score", "highest cost"):
@@ -843,7 +843,7 @@ class CliTest(unittest.TestCase):
     def test_list_defaults_to_both_providers_merged(self):
         import json
 
-        import opencode_models.sources as sources
+        import opencode_models.availability as availability
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
@@ -941,12 +941,12 @@ class CliTest(unittest.TestCase):
                     ]
                 )
             )
-            orig = sources.load_source
-            sources.load_source = lambda name: {"ds", "e1", "e2"}
+            orig = availability.load_roster
+            availability.load_roster = lambda _d, name: {"ds", "e1", "e2"}
             try:
                 code, out = self._run("--data", tmp, "list")  # no --source
             finally:
-                sources.load_source = orig
+                availability.load_roster = orig
         self.assertEqual(code, 0)
         lines = out.splitlines()
         self.assertEqual(
@@ -966,12 +966,12 @@ class CliTest(unittest.TestCase):
         self.assertIn("pay-as-you-go", out)  # zen does not
 
     def test_list_all_adds_a_dash_provider_for_catalog_only_models(self):
-        import opencode_models.sources as sources
+        import opencode_models.availability as availability
 
         with tempfile.TemporaryDirectory() as tmp:
             _write_sample(Path(tmp))
-            orig = sources.load_source
-            sources.load_source = lambda name: {"m1", "m2"}
+            orig = availability.load_roster
+            availability.load_roster = lambda _d, name: {"m1", "m2"}
             try:
                 code, out = self._run(
                     "--data", tmp, "list", "--tables", "all", "--benchmark", "TB"
@@ -990,7 +990,7 @@ class CliTest(unittest.TestCase):
                     "TB",
                 )
             finally:
-                sources.load_source = orig
+                availability.load_roster = orig
         self.assertEqual(code, 0)
         self.assertIn("M1", out)
         self.assertTrue(
@@ -1001,7 +1001,7 @@ class CliTest(unittest.TestCase):
     def test_list_collapses_a_pair_priced_the_same_into_one_line(self):
         import json
 
-        import opencode_models.sources as sources
+        import opencode_models.availability as availability
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
@@ -1053,12 +1053,12 @@ class CliTest(unittest.TestCase):
             (prices_dir / "zen_prices.json").write_text(
                 json.dumps([dict(same, tier="zen", limit=None)])
             )
-            orig = sources.load_source
-            sources.load_source = lambda name: {"ds"}
+            orig = availability.load_roster
+            availability.load_roster = lambda _d, name: {"ds"}
             try:
                 code, out = self._run("--data", tmp, "list")
             finally:
-                sources.load_source = orig
+                availability.load_roster = orig
         self.assertEqual(code, 0)
         lines = [l for l in out.splitlines() if l.rstrip().endswith("DS")]
         self.assertEqual(len(lines), 1, out)  # one line, not one per provider
@@ -1067,7 +1067,7 @@ class CliTest(unittest.TestCase):
     def test_free_lines_show_a_zero_price_tag(self):
         import json
 
-        import opencode_models.sources as sources
+        import opencode_models.availability as availability
 
         def doc(mid, price, score):
             return json.dumps(
@@ -1116,12 +1116,12 @@ class CliTest(unittest.TestCase):
                     ]
                 )
             )
-            orig = sources.load_source
-            sources.load_source = lambda name: {"gift", "paid"}
+            orig = availability.load_roster
+            availability.load_roster = lambda _d, name: {"gift", "paid"}
             try:
                 code, out = self._run("--data", tmp, "list", "--tables", "all")
             finally:
-                sources.load_source = orig
+                availability.load_roster = orig
         self.assertEqual(code, 0)
         gift = [l for l in out.splitlines() if "GIFT [free]" in l]
         self.assertEqual(len(gift), 1, out)
@@ -1138,7 +1138,7 @@ class CliTest(unittest.TestCase):
         """
         import json
 
-        import opencode_models.sources as sources
+        import opencode_models.availability as availability
 
         def doc(mid, price, score):
             return json.dumps(
@@ -1214,12 +1214,14 @@ class CliTest(unittest.TestCase):
                     ]
                 )
             )
-            orig = sources.load_source
-            sources.load_source = lambda name: {"wide"} if name == "go" else set(prices)
+            orig = availability.load_roster
+            availability.load_roster = lambda _d, name: (
+                {"wide"} if name == "go" else set(prices)
+            )
             try:
                 code, out = self._run("--data", tmp, "list", "--tables", "all")
             finally:
-                sources.load_source = orig
+                availability.load_roster = orig
         self.assertEqual(code, 0)
         lines = out.splitlines()
         header = next(l for l in lines if l.strip().startswith("Score"))
@@ -1234,7 +1236,7 @@ class CliTest(unittest.TestCase):
     def test_models_with_different_coverage_share_one_score_column(self):
         import json
 
-        import opencode_models.sources as sources
+        import opencode_models.availability as availability
 
         def doc(mid, tb, swe):
             return json.dumps(
@@ -1273,12 +1275,12 @@ class CliTest(unittest.TestCase):
             d = Path(tmp)
             (_models(d) / "l__two.json").write_text(doc("l/two", 50.0, 40.0))
             (_models(d) / "l__four.json").write_text(doc("l/four", 90.0, 80.0))
-            orig = sources.load_source
-            sources.load_source = lambda name: {"two", "four"}
+            orig = availability.load_roster
+            availability.load_roster = lambda _d, name: {"two", "four"}
             try:
                 code, out = self._run("--data", tmp, "list", "--tables", "all")
             finally:
-                sources.load_source = orig
+                availability.load_roster = orig
             self.assertEqual(code, 0)
             two = next(l for l in out.splitlines() if l.rstrip().endswith("TWO"))
             four = next(l for l in out.splitlines() if l.rstrip().endswith("FOUR"))
@@ -1288,7 +1290,7 @@ class CliTest(unittest.TestCase):
             self.assertEqual(four.split()[1], "100")
             self.assertTrue(two.startswith(" "))  # marker prefix
             # --benchmark mode still shows one score plus the axis tag
-            sources.load_source = lambda name: {"four"}
+            availability.load_roster = lambda _d, name: {"four"}
             try:
                 code, single = self._run(
                     "--data",
@@ -1300,7 +1302,7 @@ class CliTest(unittest.TestCase):
                     "Terminal-Bench 2.1",
                 )
             finally:
-                sources.load_source = orig
+                availability.load_roster = orig
         self.assertEqual(code, 0)
         self.assertRegex(
             next(l for l in single.splitlines() if l.rstrip().endswith("FOUR")),
@@ -1365,38 +1367,38 @@ class CliTest(unittest.TestCase):
         self.assertEqual(exit_.exception.code, 2)
 
     def test_list_prints_three_tables_in_order(self):
-        import opencode_models.sources as sources
+        import opencode_models.availability as availability
 
         with tempfile.TemporaryDirectory() as tmp:
             _write_grid(Path(tmp))
             slugs = {f"m{i:02d}" for i in range(1, 11)}
-            orig = sources.load_source
-            sources.load_source = lambda name: slugs
+            orig = availability.load_roster
+            availability.load_roster = lambda _d, name: slugs
             try:
                 code, out = self._run(
                     "--data", tmp, "list", "--tables", "all", "--source", "zen"
                 )
             finally:
-                sources.load_source = orig
+                availability.load_roster = orig
         self.assertEqual(code, 0)
         self.assertEqual(out.count("Prov"), 3)  # one column header per table
         self.assertLess(out.index("best value"), out.index("worst score"))
         self.assertLess(out.index("worst score"), out.index("highest cost"))
 
     def test_list_culls_are_disjoint_and_cover_every_line(self):
-        import opencode_models.sources as sources
+        import opencode_models.availability as availability
 
         with tempfile.TemporaryDirectory() as tmp:
             _write_grid(Path(tmp))
             slugs = {f"m{i:02d}" for i in range(1, 11)}
-            orig = sources.load_source
-            sources.load_source = lambda name: slugs
+            orig = availability.load_roster
+            availability.load_roster = lambda _d, name: slugs
             try:
                 code, out = self._run(
                     "--data", tmp, "list", "--tables", "all", "--source", "zen"
                 )
             finally:
-                sources.load_source = orig
+                availability.load_roster = orig
         self.assertEqual(code, 0)
         for i in range(1, 11):  # each line printed exactly once
             self.assertEqual(out.count(f"M{i:02d}"), 1, f"M{i:02d}")
@@ -1404,7 +1406,7 @@ class CliTest(unittest.TestCase):
     def test_list_splits_best_value_into_free_included_and_payg(self):
         import json
 
-        import opencode_models.sources as sources
+        import opencode_models.availability as availability
 
         def doc(mid, price, score):
             return json.dumps(
@@ -1488,8 +1490,8 @@ class CliTest(unittest.TestCase):
                     ]
                 )
             )
-            orig = sources.load_source
-            sources.load_source = lambda name: {
+            orig = availability.load_roster
+            availability.load_roster = lambda _d, name: {
                 "p1",
                 "p2",
                 "p3",
@@ -1503,7 +1505,7 @@ class CliTest(unittest.TestCase):
                     "--data", tmp, "list", "--tables", "all", "--source", "go"
                 )
             finally:
-                sources.load_source = orig
+                availability.load_roster = orig
         self.assertEqual(code, 0)
         self.assertLess(out.index("free — use first"), out.index("included usage"))
         self.assertLess(out.index("included usage"), out.index("pay-as-you-go"))
@@ -1514,7 +1516,7 @@ class CliTest(unittest.TestCase):
     def test_list_shows_the_representative_cost_not_the_bare_input(self):
         import json
 
-        import opencode_models.sources as sources
+        import opencode_models.availability as availability
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
@@ -1557,12 +1559,12 @@ class CliTest(unittest.TestCase):
                         }
                     )
                 )
-            orig = sources.load_source
-            sources.load_source = lambda name: {"m1", "m2", "m3"}
+            orig = availability.load_roster
+            availability.load_roster = lambda _d, name: {"m1", "m2", "m3"}
             try:
                 code, out = self._run("--data", tmp, "list", "--source", "zen")
             finally:
-                sources.load_source = orig
+                availability.load_roster = orig
             self.assertEqual(code, 0)
             # 0.2 in + 0.6 cached + 0.2 out of (1.0, 0.1, 2.0) = 0.66,
             # shown as 66 cents rather than the bare $1.00 input rate;
@@ -1573,7 +1575,7 @@ class CliTest(unittest.TestCase):
     def test_list_gives_each_priced_variant_its_own_line(self):
         import json
 
-        import opencode_models.sources as sources
+        import opencode_models.availability as availability
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
@@ -1630,14 +1632,14 @@ class CliTest(unittest.TestCase):
                     ]
                 )
             )
-            orig = sources.load_source
-            sources.load_source = lambda name: {"ds"}
+            orig = availability.load_roster
+            availability.load_roster = lambda _d, name: {"ds"}
             try:
                 code, out = self._run(
                     "--data", tmp, "list", "--tables", "all", "--source", "go"
                 )
             finally:
-                sources.load_source = orig
+                availability.load_roster = orig
         self.assertEqual(code, 0)
         self.assertIn("(Off-Peak)", out)
         self.assertIn("(Peak)", out)
@@ -1860,7 +1862,7 @@ class ListViewContractTest(unittest.TestCase):
     def _data(self, tmp):
         import json
 
-        import opencode_models.sources as sources
+        import opencode_models.availability as availability
 
         _write_grid(Path(tmp))
         docs = {
@@ -1902,9 +1904,9 @@ class ListViewContractTest(unittest.TestCase):
                 )
             )
         slugs = {f"m{i:02d}" for i in range(1, 11)} | {"zfree", "single", "nobench"}
-        orig = sources.load_source
-        sources.load_source = lambda name: set(slugs)
-        self.addCleanup(setattr, sources, "load_source", orig)
+        orig = availability.load_roster
+        availability.load_roster = lambda _d, name: set(slugs)
+        self.addCleanup(setattr, availability, "load_roster", orig)
 
     def _section_rows(self, out, title):
         # rows under a ── title ── line, stopping at the next title: the
@@ -2141,11 +2143,11 @@ class AvailabilityTest(unittest.TestCase):
             )
         )
         # no go snapshot at all: unknown, not "offers nothing"
-        import opencode_models.sources as sources
+        import opencode_models.availability as availability
 
-        orig = sources.load_source
-        sources.load_source = lambda tier: set(shipped)
-        self.addCleanup(setattr, sources, "load_source", orig)
+        orig = availability.load_roster
+        availability.load_roster = lambda _d, tier: set(shipped)
+        self.addCleanup(setattr, availability, "load_roster", orig)
         return d
 
     def test_a_free_model_listed_only_under_its_free_slug_is_shown(self):
@@ -2213,16 +2215,20 @@ class AvailabilityTest(unittest.TestCase):
                     ]
                 )
             )
-            import opencode_models.sources as sources
+            import opencode_models.availability as availability
 
-            orig = sources.load_source
-            sources.load_source = lambda tier: {"step-5-preview-free", "other", "third"}
+            orig = availability.load_roster
+            availability.load_roster = lambda _d, tier: {
+                "step-5-preview-free",
+                "other",
+                "third",
+            }
             try:
                 code, out = self._run(
                     "--data", str(d), "list", "--source", "zen", "--tables", "all"
                 )
             finally:
-                sources.load_source = orig
+                availability.load_roster = orig
         self.assertEqual(code, 0)
         self.assertIn("STEP-5-PREVIEW [free]", out)
 
@@ -2373,16 +2379,16 @@ class AvailabilityTest(unittest.TestCase):
             )
             usage = d / "usage"
             usage.mkdir(parents=True, exist_ok=True)
-            import opencode_models.sources as sources
+            import opencode_models.availability as availability
 
-            orig = sources.load_source
-            sources.load_source = lambda tier: {"m1", "m2"}
+            orig = availability.load_roster
+            availability.load_roster = lambda _d, tier: {"m1", "m2"}
             try:
                 code, out = self._run(
                     "--data", str(d), "list", "--source", "zen", "--tables", "all"
                 )
             finally:
-                sources.load_source = orig
+                availability.load_roster = orig
         self.assertEqual(code, 0)
         lines = out.splitlines()
         m1 = next(i for i, l in enumerate(lines) if l.rstrip().endswith("M1 [free]"))
@@ -3209,13 +3215,15 @@ class CurrentOfferedTest(unittest.TestCase):
     def test_next_with_a_key_unlists_what_the_api_dropped(self):
         import os
 
+        import opencode_models.availability as availability
         import opencode_models.cli as cli_mod
-        import opencode_models.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
             _write_grid(Path(tmp))
-            orig = sources.load_source
-            sources.load_source = lambda name: {f"m{i:02d}" for i in range(1, 11)}
+            orig = availability.load_roster
+            availability.load_roster = lambda _d, name: {
+                f"m{i:02d}" for i in range(1, 11)
+            }
             try:
                 with mock.patch.dict(os.environ, {"OPENCODE_API_KEY": "oc_sk_test"}):
                     served = {"zen": {f"m{i:02d}" for i in range(1, 10)}, "go": set()}
@@ -3227,7 +3235,7 @@ class CurrentOfferedTest(unittest.TestCase):
                     ):
                         code, out = self._run("--data", tmp, "next", "--source", "zen")
             finally:
-                sources.load_source = orig
+                availability.load_roster = orig
         self.assertEqual(code, 0)
         self.assertNotIn("M10", out)
         self.assertNotIn("m10", out)
@@ -3336,19 +3344,19 @@ class NoKeyNoticeTest(unittest.TestCase):
     def test_list_without_a_key_warns_first(self):
         import os
 
-        import opencode_models.sources as sources
+        import opencode_models.availability as availability
 
         with tempfile.TemporaryDirectory() as tmp:
             _write_sample(Path(tmp))
             os.environ.pop("OPENCODE_API_KEY", None)
-            orig = sources.load_source
-            sources.load_source = lambda name: {"m1", "m2", "m3"}
+            orig = availability.load_roster
+            availability.load_roster = lambda _d, name: {"m1", "m2", "m3"}
             try:
                 code, out = self._run(
                     "--data", tmp, "list", "--source", "zen", "--benchmark", "TB"
                 )
             finally:
-                sources.load_source = orig
+                availability.load_roster = orig
         self.assertEqual(code, 0)
         self.assertTrue(
             out.splitlines()[0].startswith("no API token found"), out.splitlines()[0]
@@ -3357,13 +3365,15 @@ class NoKeyNoticeTest(unittest.TestCase):
     def test_next_with_a_key_has_no_warning(self):
         import os
 
+        import opencode_models.availability as availability
         import opencode_models.cli as cli_mod
-        import opencode_models.sources as sources
 
         with tempfile.TemporaryDirectory() as tmp:
             _write_grid(Path(tmp))
-            orig = sources.load_source
-            sources.load_source = lambda name: {f"m{i:02d}" for i in range(1, 11)}
+            orig = availability.load_roster
+            availability.load_roster = lambda _d, name: {
+                f"m{i:02d}" for i in range(1, 11)
+            }
             try:
                 with mock.patch.dict(os.environ, {"OPENCODE_API_KEY": "oc_sk_test"}):
                     served = {
@@ -3377,7 +3387,7 @@ class NoKeyNoticeTest(unittest.TestCase):
                     ):
                         code, out = self._run("--data", tmp, "next", "--source", "zen")
             finally:
-                sources.load_source = orig
+                availability.load_roster = orig
         self.assertEqual(code, 0)
         self.assertTrue(out.splitlines()[0].startswith("Next "), out.splitlines()[0])
 
@@ -3773,16 +3783,16 @@ class PriceModeTest(unittest.TestCase):
         )
 
     def _run_list(self, tmp, *extra):
-        import opencode_models.sources as sources
+        import opencode_models.availability as availability
 
         buf = io.StringIO()
-        orig = sources.load_source
-        sources.load_source = lambda name: {"m1"}
+        orig = availability.load_roster
+        availability.load_roster = lambda _d, name: {"m1"}
         try:
             with contextlib.redirect_stdout(buf):
                 code = main(["--data", tmp, "list", *extra])
         finally:
-            sources.load_source = orig
+            availability.load_roster = orig
         return code, buf.getvalue()
 
     def test_fix_is_accepted(self):
@@ -3875,3 +3885,100 @@ class PriceModeTest(unittest.TestCase):
         self.assertEqual(code, 0)
         line = next(l for l in out.splitlines() if l.rstrip().endswith("M1"))
         self.assertRegex(line, r"\s180\s+.*M1$")  # fix fallback
+
+
+class ModelsListCoverageTest(unittest.TestCase):
+    """Every served, catalog-nameable slug renders in `list --tables all`.
+
+    The tier snapshots (built from the docs Endpoints tables) are what the
+    plans offer; `models` shows them, so the full `list` view must render
+    each one the catalog can name (free variants reach their base). A slug
+    the roster drops instead vanishes from the ranking while still being
+    offered - the defect class this pins down.
+    """
+
+    def _run(self, *argv):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = main(list(argv))
+        return code, out.getvalue()
+
+    def _snapshot(self, data_dir, tier, model_ids):
+        import json
+
+        out = Path(data_dir) / "tier_prices"
+        out.mkdir(parents=True, exist_ok=True)
+        (out / f"{tier}_prices.json").write_text(
+            json.dumps(
+                [
+                    {
+                        "tier": tier,
+                        "model_id": mid,
+                        "name": mid,
+                        "input": 1.0 if not mid.endswith("-free") else 0.0,
+                        "output": 1.0 if not mid.endswith("-free") else 0.0,
+                        "cached_read": None,
+                        "limit": None,
+                        "free": mid.endswith("-free"),
+                    }
+                    for mid in model_ids
+                ]
+            )
+        )
+
+    def test_served_free_variant_renders_in_full_list(self):
+        import json
+        import os
+
+        def catalog(data_dir, mid, price, score):
+            # two scored benchmarks: one axis alone is never ranked
+            # (scoring.MIN_AXES), so a single-benchmark model cannot
+            # stand in for a listable row here.
+            doc = {
+                "model": {
+                    "id": mid,
+                    "name": mid.split("/")[1].upper(),
+                    "lab": mid.split("/")[0],
+                    "priceUsdPer1M": {
+                        "input": price,
+                        "output": None,
+                        "cachedInput": None,
+                    },
+                    "benchmarks": [
+                        {
+                            "name": name,
+                            "version": version,
+                            "score": score,
+                            "metric": "acc",
+                            "source": "",
+                        }
+                        for name, version in (
+                            ("Terminal-Bench", "2.1"),
+                            ("SWE-Bench", "Verified"),
+                        )
+                    ],
+                }
+            }
+            (_models(Path(data_dir)) / f"{mid.replace('/', '__')}.json").write_text(
+                json.dumps(doc)
+            )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            catalog(tmp, "l/m1", 1.0, 50.0)
+            catalog(tmp, "l/m2", 3.0, 90.0)
+            # m2-free is in the tier_prices snapshot (the roster now) and
+            # catalog-nameable via l/m2, so it must render in the full list.
+            self._snapshot(tmp, "zen", ["m1", "m2-free"])
+            self._snapshot(tmp, "go", [])
+            with mock.patch.dict(os.environ, {}, clear=False):
+                os.environ.pop("OPENCODE_API_KEY", None)
+                code, models_out = self._run("--data", tmp, "models")
+            self.assertEqual(code, 0)
+            self.assertIn("m2-free", models_out)
+            with mock.patch.dict(os.environ, {}, clear=False):
+                os.environ.pop("OPENCODE_API_KEY", None)
+                code, list_out = self._run(
+                    "--data", tmp, "list", "--source", "zen", "--tables", "all"
+                )
+        self.assertEqual(code, 0)
+        self.assertIn("M2 [free]", list_out)

@@ -24,7 +24,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest import mock
 
-import opencode_models.sources as sources
+import opencode_models.availability as availability
 from opencode_models.cli import main
 
 
@@ -134,14 +134,14 @@ class PresentationTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
             slugs = self._fixture(d)
-            orig = sources.load_source
-            sources.load_source = lambda name: set(slugs)
+            orig = availability.load_roster
+            availability.load_roster = lambda _d, name: set(slugs)
             buf = io.StringIO()
             try:
                 with contextlib.redirect_stdout(buf):
                     code = main(["--data", tmp, "list", "--source", "go"])
             finally:
-                sources.load_source = orig
+                availability.load_roster = orig
         self.assertEqual(code, 0)
         return buf.getvalue()
 
@@ -209,8 +209,8 @@ class PresentationTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
             slugs = self._fixture(d)
-            orig = sources.load_source
-            sources.load_source = lambda name: set(slugs)
+            orig = availability.load_roster
+            availability.load_roster = lambda _d, name: set(slugs)
             buf = io.StringIO()
             try:
                 with contextlib.redirect_stdout(buf):
@@ -218,7 +218,7 @@ class PresentationTest(unittest.TestCase):
                         ["--data", tmp, "next", "--source", "go", "--count", "2"]
                     )
             finally:
-                sources.load_source = orig
+                availability.load_roster = orig
         self.assertEqual(code, 0)
         return buf.getvalue()
 

@@ -31,7 +31,8 @@ from .benchmarks import available
 from .boards import fetch_boards, load_boards, merge_boards, save_boards
 from .fetch import SITEMAP_URL, http_get, refresh, urls_from_sitemap
 from .identity import canonical_id
-from .live import LIVE_CONFIG_URL, fetch_live, fetch_served, merge_served, save_live
+from .live import api_get as _api_get
+from .live import fetch_live, fetch_served, merge_served, save_live
 from .models import Model, load_models
 from .overrides import load_curated, off_band_models, source_tier
 from .pricing import (
@@ -327,27 +328,6 @@ def _model_tick(done: int, total: int, name: str) -> None:
         print(f"  opencode.ai/data: {done}/{total} model files ...")
 
 
-def _api_get(key: str):
-    """Authed transport for the key-gated Console API (30s per request)."""
-
-    def get(url: str) -> str:
-        req = urllib.request.Request(
-            url,
-            headers={
-                "Authorization": f"Bearer {key}",
-                "User-Agent": f"opencode-models/{__version__}",
-            },
-        )
-        try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                return resp.read().decode("utf-8", errors="replace")
-        except urllib.error.HTTPError as exc:
-            exc.close()  # see http_get: callers never read error bodies
-            raise
-
-    return get
-
-
 def _cmd_auth(args: argparse.Namespace) -> int:
     """Ask for the Console service-account key and save it owner-only.
 
@@ -451,41 +431,20 @@ def _cmd_models(args: argparse.Namespace) -> int:
     the catalog cannot name (internal ids like ``test``) are hidden.
     """
     data_dir = Path(args.data)
-    key = load_key()
-    tiers = None
-    if key:
-        try:
-            served = fetch_served(_api_get(key))
-            known = fetch_live(_api_get(key))
-        except (OSError, ValueError, KeyError) as exc:
-            print(
-                f"warning: live model list unreachable ({exc}) — showing the last snapshots"
-            )
-        else:
-            tiers = merge_served(served, known)
-            save_live(data_dir, tiers)
-            origin = (
-                f"live from {LIVE_CONFIG_URL} (recorded to {data_dir / 'available'})"
-            )
-            if not served.get("go"):
-                print(
-                    "warning: the Go plan returned no models — check that "
-                    "models are enabled in the Console and that the key is a "
-                    "personal one with model permissions "
-                    "(User \u2192 Account \u2192 Personal API Keys)"
-                )
+    result = availability.current_offered(data_dir, bypass=False)
+    for warning in result.warnings:
+        # `models` never printed the no-token stale notice; keep that.
+        if warning.startswith("no API token found"):
+            continue
+        print(warning)
+    tiers = result.tiers
+    origin = result.origin
+    unknown = result.unknown
     if tiers is None:
-        known = availability.load_available(data_dir)
-        if all(ids is None for ids in known.values()):
-            return _fail(
-                f"no availability known in {data_dir} — run `fetch` "
-                f"first (with OPENCODE_API_KEY for the live set)"
-            )
-        tiers = {t: ids for t, ids in known.items() if ids is not None}
-        origin = f"snapshots in {data_dir} (run `fetch` to refresh)"
-        unknown = sorted(t for t, ids in known.items() if ids is None)
-    else:
-        unknown = []
+        return _fail(
+            f"no availability known in {data_dir} — run `fetch` "
+            f"first (with OPENCODE_API_KEY for the live set)"
+        )
     names = _display_names(data_dir)
     by_slug: dict[str, tuple[str, str]] = {}  # slug -> (tier, status)
     for tier in sorted(tiers):
@@ -857,54 +816,14 @@ def _current_offered(
 ) -> set[str] | None:
     """Model ids served right now, or None for no restriction.
 
-    With ``OPENCODE_API_KEY`` availability comes from the inference
-    gateway's model lists (served = callable), while the config API
-    only annotates what is known-but-unserved; the merged status is
-    snapshotted to ``available/`` on the way, so offline runs inherit
-    the liveness. Without a key the existing notice prints and the last
-    snapshots decide. *bypass* (`--all`) skips every filter.
+    Thin wrapper over :func:`availability.current_offered` (the availability
+    service): it renders the returned warnings and returns the offered ids.
+    *bypass* (`--all`) skips every filter.
     """
-    if bypass:
-        return None
-    key = load_key()
-    if key:
-        try:
-            served = fetch_served(_api_get(key))
-            known = fetch_live(_api_get(key))
-        except (OSError, ValueError, KeyError) as exc:
-            print(
-                f"warning: live model list unreachable ({exc}) — using the last snapshots"
-            )
-        else:
-            ids = set().union(*served.values())
-            if not ids:
-                print("warning: no models served — using the last snapshots")
-            else:
-                save_live(data_dir, merge_served(served, known))
-                if not served.get("go"):
-                    print(
-                        "warning: the Go plan returned no models — check that "
-                        "models are enabled in the Console and that the key is a "
-                        "personal one with model permissions "
-                        "(User \u2192 Account \u2192 Personal API Keys)"
-                    )
-                return ids
-    else:
-        print(
-            "no API token found - availability may be stale, some models "
-            "may be unavailable (`auth` for live data, `--all` for the "
-            "full catalog)"
-        )
-    known = availability.load_available(data_dir)
-    if all(ids is None for ids in known.values()):
-        return None
-    out: set[str] = set()
-    for tier_ids in known.values():
-        if isinstance(tier_ids, dict):
-            out |= {slug for slug, served in tier_ids.items() if served is not False}
-        elif tier_ids:
-            out |= tier_ids
-    return out or None
+    result = availability.current_offered(Path(data_dir), bypass=bypass)
+    for warning in result.warnings:
+        print(warning)
+    return result.offered
 
 
 def _docs_known_slugs(data_dir: Path, tier: str) -> set[str]:

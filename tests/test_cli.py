@@ -10,6 +10,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import opencode_models.availability as availability
 from opencode_models.cli import main
 
 #: Fixture tests must be hermetic: a key in the environment — or in the
@@ -3047,8 +3048,6 @@ class ModelsCommandTest(unittest.TestCase):
     def test_models_prefers_the_live_api_when_keyed(self):
         import os
 
-        import opencode_models.cli as cli_mod
-
         with tempfile.TemporaryDirectory() as tmp:
             import json as _json
 
@@ -3062,12 +3061,12 @@ class ModelsCommandTest(unittest.TestCase):
             with mock.patch.dict(os.environ, {"OPENCODE_API_KEY": "oc_sk_test"}):
                 with (
                     mock.patch.object(
-                        cli_mod,
+                        availability,
                         "fetch_served",
                         return_value={"zen": {"m-live"}, "go": set()},
                     ),
                     mock.patch.object(
-                        cli_mod,
+                        availability,
                         "fetch_live",
                         return_value={"zen": {"m-live": False}, "go": {}},
                     ),
@@ -3081,19 +3080,17 @@ class ModelsCommandTest(unittest.TestCase):
         import json
         import os
 
-        import opencode_models.cli as cli_mod
-
         with tempfile.TemporaryDirectory() as tmp:
             self._snapshot(tmp, "zen", ["m-stale"])
             with mock.patch.dict(os.environ, {"OPENCODE_API_KEY": "oc_sk_test"}):
                 with (
                     mock.patch.object(
-                        cli_mod,
+                        availability,
                         "fetch_served",
                         return_value={"zen": {"m-live"}, "go": set()},
                     ),
                     mock.patch.object(
-                        cli_mod,
+                        availability,
                         "fetch_live",
                         return_value={"zen": {"m-live": False}, "go": {}},
                     ),
@@ -3148,13 +3145,11 @@ class CurrentOfferedTest(unittest.TestCase):
     def test_bypass_means_no_restriction_even_when_keyed(self):
         import os
 
-        import opencode_models.cli as cli_mod
-
         with tempfile.TemporaryDirectory() as tmp:
             self._snapshot(tmp, "zen", ["m1"])
             with mock.patch.dict(os.environ, {"OPENCODE_API_KEY": "oc_sk_test"}):
                 with mock.patch.object(
-                    cli_mod, "fetch_served", side_effect=AssertionError("no net")
+                    availability, "fetch_served", side_effect=AssertionError("no net")
                 ):
                     self.assertIsNone(self._offered(tmp, bypass=True))
 
@@ -3170,19 +3165,17 @@ class CurrentOfferedTest(unittest.TestCase):
         import json
         import os
 
-        import opencode_models.cli as cli_mod
-
         with tempfile.TemporaryDirectory() as tmp:
             self._snapshot(tmp, "zen", ["m-stale"])
             with mock.patch.dict(os.environ, {"OPENCODE_API_KEY": "oc_sk_test"}):
                 with (
                     mock.patch.object(
-                        cli_mod,
+                        availability,
                         "fetch_served",
                         return_value={"zen": {"m-live"}, "go": {"g-live"}},
                     ),
                     mock.patch.object(
-                        cli_mod,
+                        availability,
                         "fetch_live",
                         return_value={
                             "zen": {"m-live": True, "legacy": True},
@@ -3208,16 +3201,16 @@ class CurrentOfferedTest(unittest.TestCase):
             with mock.patch.dict(os.environ, {"OPENCODE_API_KEY": "oc_sk_test"}):
                 with (
                     mock.patch.object(
-                        cli_mod,
+                        availability,
                         "fetch_served",
                         return_value={"zen": {"m-live"}, "go": set()},
                     ),
                     mock.patch.object(
-                        cli_mod,
+                        availability,
                         "fetch_live",
                         return_value={"zen": {}, "go": {}},
                     ),
-                    mock.patch.object(cli_mod, "save_live", lambda *a: None),
+                    mock.patch.object(availability, "save_live", lambda *a: None),
                 ):
                     buf = io.StringIO()
                     with contextlib.redirect_stdout(buf):
@@ -3231,13 +3224,11 @@ class CurrentOfferedTest(unittest.TestCase):
     def test_an_unreachable_api_falls_back_to_snapshots(self):
         import os
 
-        import opencode_models.cli as cli_mod
-
         with tempfile.TemporaryDirectory() as tmp:
             self._snapshot(tmp, "zen", ["m-doc"])
             with mock.patch.dict(os.environ, {"OPENCODE_API_KEY": "oc_sk_test"}):
                 with mock.patch.object(
-                    cli_mod, "fetch_served", side_effect=OSError("down")
+                    availability, "fetch_served", side_effect=OSError("down")
                 ):
                     self.assertEqual(self._offered(tmp), {"m-doc"})
 
@@ -3251,7 +3242,6 @@ class CurrentOfferedTest(unittest.TestCase):
         import os
 
         import opencode_models.availability as availability
-        import opencode_models.cli as cli_mod
 
         with tempfile.TemporaryDirectory() as tmp:
             _write_grid(Path(tmp))
@@ -3263,9 +3253,13 @@ class CurrentOfferedTest(unittest.TestCase):
                 with mock.patch.dict(os.environ, {"OPENCODE_API_KEY": "oc_sk_test"}):
                     served = {"zen": {f"m{i:02d}" for i in range(1, 10)}, "go": set()}
                     with (
-                        mock.patch.object(cli_mod, "fetch_served", return_value=served),
                         mock.patch.object(
-                            cli_mod, "fetch_live", return_value={"zen": {}, "go": {}}
+                            availability, "fetch_served", return_value=served
+                        ),
+                        mock.patch.object(
+                            availability,
+                            "fetch_live",
+                            return_value={"zen": {}, "go": {}},
                         ),
                     ):
                         code, out = self._run("--data", tmp, "next", "--source", "zen")
@@ -3340,7 +3334,6 @@ class AuthCommandTest(unittest.TestCase):
         self.assertIn("interactive", out)
 
     def test_a_saved_key_is_used_when_the_environment_is_quiet(self):
-        import opencode_models.cli as cli_mod
         from opencode_models.auth import save_key
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -3353,12 +3346,12 @@ class AuthCommandTest(unittest.TestCase):
                 )
                 with (
                     mock.patch.object(
-                        cli_mod,
+                        availability,
                         "fetch_served",
                         return_value={"zen": {"m-live"}, "go": set()},
                     ),
                     mock.patch.object(
-                        cli_mod,
+                        availability,
                         "fetch_live",
                         return_value={"zen": {"m-live": False}, "go": {}},
                     ) as live,
@@ -3401,7 +3394,6 @@ class NoKeyNoticeTest(unittest.TestCase):
         import os
 
         import opencode_models.availability as availability
-        import opencode_models.cli as cli_mod
 
         with tempfile.TemporaryDirectory() as tmp:
             _write_grid(Path(tmp))
@@ -3415,9 +3407,13 @@ class NoKeyNoticeTest(unittest.TestCase):
                         t: {f"m{i:02d}" for i in range(1, 11)} for t in ("zen", "go")
                     }
                     with (
-                        mock.patch.object(cli_mod, "fetch_served", return_value=served),
                         mock.patch.object(
-                            cli_mod, "fetch_live", return_value={"zen": {}, "go": {}}
+                            availability, "fetch_served", return_value=served
+                        ),
+                        mock.patch.object(
+                            availability,
+                            "fetch_live",
+                            return_value={"zen": {}, "go": {}},
                         ),
                     ):
                         code, out = self._run("--data", tmp, "next", "--source", "zen")
@@ -3538,7 +3534,7 @@ class ModelsTableTest(unittest.TestCase):
         self.assertTrue(row_all.lstrip().startswith("[?]"), row_all)
 
     def test_models_shows_served_status_markers(self):
-        import opencode_models.cli as cli_mod
+        import opencode_models.availability as availability
 
         with tempfile.TemporaryDirectory() as tmp:
             self._snapshot(tmp, "zen", ["m-live", "m-dead"])
@@ -3546,12 +3542,12 @@ class ModelsTableTest(unittest.TestCase):
             with mock.patch.dict(os.environ, {"OPENCODE_API_KEY": "oc_sk_test"}):
                 with (
                     mock.patch.object(
-                        cli_mod,
+                        availability,
                         "fetch_served",
                         return_value={"zen": {"m-live"}, "go": set()},
                     ),
                     mock.patch.object(
-                        cli_mod,
+                        availability,
                         "fetch_live",
                         return_value={
                             "zen": {"m-live": True, "m-dead": True},
@@ -3590,7 +3586,7 @@ class ModelsTableTest(unittest.TestCase):
     def test_models_hides_live_only_rows_the_docs_do_not_name(self):
         # m-ghost is served but documented nowhere (like the live "test"
         # id): with no catalog record and no docs name it stays hidden.
-        import opencode_models.cli as cli_mod
+        import opencode_models.availability as availability
 
         with tempfile.TemporaryDirectory() as tmp:
             self._snapshot(tmp, "zen", ["m-known"])
@@ -3598,12 +3594,12 @@ class ModelsTableTest(unittest.TestCase):
             with mock.patch.dict(os.environ, {"OPENCODE_API_KEY": "oc_sk_test"}):
                 with (
                     mock.patch.object(
-                        cli_mod,
+                        availability,
                         "fetch_served",
                         return_value={"zen": {"m-ghost", "m-known"}, "go": set()},
                     ),
                     mock.patch.object(
-                        cli_mod, "fetch_live", return_value={"zen": {}, "go": {}}
+                        availability, "fetch_live", return_value={"zen": {}, "go": {}}
                     ),
                 ):
                     code, out = self._run("--data", tmp, "models")

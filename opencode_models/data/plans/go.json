@@ -1,7 +1,7 @@
 {
   "meta": {
     "source": "https://opencode.ai/v2/docs/console/go",
-    "fetched_at": "2026-10-21T22:51:49+00:00",
+    "fetched_at": "2026-10-23T11:52:28+00:00",
     "plans": [
       "go",
       "go_plus"
@@ -599,6 +599,32 @@
         "out": 190
       }
     },
+    "minimax-m3.1-flash": {
+      "name": "MiniMax M3.1 Flash",
+      "free": false,
+      "tiers": [
+        {
+          "label": null,
+          "in": 0.15,
+          "out": 0.6,
+          "cached": 0.015,
+          "cached_write": null
+        }
+      ],
+      "limits": {
+        "go": 20,
+        "go_plus": 80
+      },
+      "requests_per_month": {
+        "go": 19380,
+        "go_plus": 77520
+      },
+      "assumptions": {
+        "in": 500,
+        "cached": 49400,
+        "out": 360
+      }
+    },
     "minimax-m3.1-flash-free": {
       "name": "MiniMax M3.1 Flash Free",
       "free": true,
@@ -611,7 +637,8 @@
         "go": null,
         "go_plus": null
       },
-      "assumptions": null
+      "assumptions": null,
+      "dropped": true
     },
     "muse-spark-1.2-contributor": {
       "name": "Muse Spark 1.2 Contributor",

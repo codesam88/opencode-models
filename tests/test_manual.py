@@ -166,19 +166,6 @@ class ManualGateTest(unittest.TestCase):
                 ).read_text()
             )
             doc_slugs.update(raw.get("models", {}))
-        tier_prices = root / "data" / "tier_prices"
-        if tier_prices.is_dir():
-            for path in sorted(tier_prices.glob("*_prices.json")):
-                try:
-                    rows = json.loads(path.read_text())
-                except (json.JSONDecodeError, OSError):
-                    continue
-                if isinstance(rows, list):
-                    doc_slugs.update(
-                        r["model_id"]
-                        for r in rows
-                        if isinstance(r, dict) and r.get("model_id")
-                    )
         manual = list((root / "data" / "manual").glob("*.json"))
         self.assertTrue(manual, "no shipped manual records to gate")
         for path in manual:
@@ -273,22 +260,36 @@ class ManualListTest(unittest.TestCase):
                     )
                 )
             )
-            tp = d / "tier_prices"
+            tp = d / "plans"
             tp.mkdir(parents=True, exist_ok=True)
-            (tp / "zen_prices.json").write_text(
+            (tp / "zen.json").write_text(
                 json.dumps(
-                    [
-                        {
-                            "tier": "zen",
-                            "model_id": "m-scored",
-                            "name": "M SCORED",
-                            "input": 1.0,
-                            "output": 1.0,
-                            "cached_read": None,
-                            "limit": None,
-                            "free": False,
-                        }
-                    ]
+                    {
+                        "meta": {
+                            "source": "test",
+                            "fetched_at": "2026-01-01T00:00:00+00:00",
+                            "schema_rev": 1,
+                            "plans": ["zen"],
+                        },
+                        "models": {
+                            "m-scored": {
+                                "name": "M SCORED",
+                                "free": False,
+                                "tiers": [
+                                    {
+                                        "label": None,
+                                        "in": 1.0,
+                                        "out": 1.0,
+                                        "cached": None,
+                                        "cached_write": None,
+                                    }
+                                ],
+                                "limits": None,
+                                "requests_per_month": None,
+                                "assumptions": None,
+                            }
+                        },
+                    }
                 )
             )
             with unittest.mock.patch.dict(os.environ, {}, clear=False):

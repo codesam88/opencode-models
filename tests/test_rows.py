@@ -43,23 +43,37 @@ def _write_model(data_dir: Path, mid: str, price: float = 1.0, benches=None):
 
 
 def _snapshot(data_dir: Path, tier: str, model_ids: list[str]) -> None:
-    out = data_dir / "tier_prices"
+    out = data_dir / "plans"
     out.mkdir(parents=True, exist_ok=True)
-    (out / f"{tier}_prices.json").write_text(
+    (out / f"{tier}.json").write_text(
         json.dumps(
-            [
-                {
-                    "tier": tier,
-                    "model_id": mid,
-                    "name": mid,
-                    "input": 1.0,
-                    "output": 1.0,
-                    "cached_read": None,
-                    "limit": None,
-                    "free": False,
-                }
-                for mid in model_ids
-            ]
+            {
+                "meta": {
+                    "source": "test",
+                    "fetched_at": "2026-01-01T00:00:00+00:00",
+                    "schema_rev": 1,
+                    "plans": [tier],
+                },
+                "models": {
+                    mid: {
+                        "name": mid,
+                        "free": False,
+                        "tiers": [
+                            {
+                                "label": None,
+                                "in": 1.0,
+                                "out": 1.0,
+                                "cached": None,
+                                "cached_write": None,
+                            }
+                        ],
+                        "limits": None,
+                        "requests_per_month": None,
+                        "assumptions": None,
+                    }
+                    for mid in model_ids
+                },
+            }
         )
     )
 
@@ -111,7 +125,6 @@ class RowsForSyntheticTest(unittest.TestCase):
             d = Path(tmp)
             _write_model(d, "l/m1")
             _snapshot(d, "zen", ["ghost-slug"])
-            (d / "plans").mkdir()
             (d / "plans" / "zen.json").write_text(
                 json.dumps({"models": {"ghost-slug": {"name": "Ghost", "free": False}}})
             )

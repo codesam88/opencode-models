@@ -61,51 +61,44 @@ def _make_fixture(tmp):
                 }
             )
         )
-    (d / "tier_prices").mkdir(parents=True, exist_ok=True)
-    (d / "tier_prices" / "zen_prices.json").write_text(
-        json.dumps(
-            [
-                {
-                    "tier": "zen",
-                    "model_id": "m-alpha",
-                    "name": "M-ALPHA",
-                    "input": 1.0,
-                    "output": 1.0,
-                    "cached_read": 1.0,
-                    "limit": None,
-                    "free": False,
-                },
-                {
-                    "tier": "zen",
-                    "model_id": "m-beta",
-                    "name": "M-BETA",
-                    "input": 2.0,
-                    "output": 2.0,
-                    "cached_read": 2.0,
-                    "limit": None,
-                    "free": False,
-                },
-                {
-                    "tier": "zen",
-                    "model_id": "orphan-free",
-                    "name": "Orphan Free",
-                    "input": 0.0,
-                    "output": 0.0,
-                    "cached_read": 0.0,
-                    "limit": None,
-                    "free": True,
-                },
-            ]
-        )
-    )
     (d / "plans").mkdir(parents=True, exist_ok=True)
     (d / "plans" / "zen.json").write_text(
         json.dumps(
             {
                 "meta": {},
                 "models": {
-                    "m-alpha": {"name": "M-ALPHA", "free": False},
-                    "m-beta": {"name": "M-BETA", "free": False},
+                    "m-alpha": {
+                        "name": "M-ALPHA",
+                        "free": False,
+                        "tiers": [
+                            {
+                                "label": None,
+                                "in": 1.0,
+                                "out": 1.0,
+                                "cached": 1.0,
+                                "cached_write": None,
+                            }
+                        ],
+                        "limits": None,
+                        "requests_per_month": None,
+                        "assumptions": None,
+                    },
+                    "m-beta": {
+                        "name": "M-BETA",
+                        "free": False,
+                        "tiers": [
+                            {
+                                "label": None,
+                                "in": 2.0,
+                                "out": 2.0,
+                                "cached": 2.0,
+                                "cached_write": None,
+                            }
+                        ],
+                        "limits": None,
+                        "requests_per_month": None,
+                        "assumptions": None,
+                    },
                     "orphan-free": {"name": "Orphan Free", "free": True},
                 },
             }
@@ -176,34 +169,23 @@ class ModelsRosterCoverageTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             _make_fixture(tmp)
             d = Path(tmp)
-            prices = json.loads((d / "tier_prices" / "zen_prices.json").read_text())
-            prices.append(
-                {
-                    "tier": "zen",
-                    "model_id": "plain",
-                    "name": "Plain",
-                    "input": 1.0,
-                    "output": 1.0,
-                    "cached_read": 1.0,
-                    "limit": None,
-                    "free": False,
-                }
-            )
-            prices.append(
-                {
-                    "tier": "zen",
-                    "model_id": "plain-free",
-                    "name": "Plain Free",
-                    "input": 0.0,
-                    "output": 0.0,
-                    "cached_read": 0.0,
-                    "limit": None,
-                    "free": True,
-                }
-            )
-            (d / "tier_prices" / "zen_prices.json").write_text(json.dumps(prices))
             plans = json.loads((d / "plans" / "zen.json").read_text())
-            plans["models"]["plain"] = {"name": "Plain", "free": False}
+            plans["models"]["plain"] = {
+                "name": "Plain",
+                "free": False,
+                "tiers": [
+                    {
+                        "label": None,
+                        "in": 1.0,
+                        "out": 1.0,
+                        "cached": 1.0,
+                        "cached_write": None,
+                    }
+                ],
+                "limits": None,
+                "requests_per_month": None,
+                "assumptions": None,
+            }
             plans["models"]["plain-free"] = {
                 "name": "Plain Free",
                 "free": True,
@@ -272,43 +254,6 @@ class AliasSynthesisTests(unittest.TestCase):
                     }
                 )
             )
-        (d / "tier_prices").mkdir(parents=True, exist_ok=True)
-        (d / "tier_prices" / "zen_prices.json").write_text(
-            json.dumps(
-                [
-                    {
-                        "tier": "zen",
-                        "model_id": "m-alpha",
-                        "name": "M-ALPHA",
-                        "input": 1.0,
-                        "output": 1.0,
-                        "cached_read": 1.0,
-                        "limit": None,
-                        "free": False,
-                    },
-                    {
-                        "tier": "zen",
-                        "model_id": "m-beta",
-                        "name": "M-BETA",
-                        "input": 2.0,
-                        "output": 2.0,
-                        "cached_read": 2.0,
-                        "limit": None,
-                        "free": False,
-                    },
-                    {
-                        "tier": "zen",
-                        "model_id": alias_slug,
-                        "name": "Orphan Free",
-                        "input": 0.0,
-                        "output": 0.0,
-                        "cached_read": 0.0,
-                        "limit": None,
-                        "free": True,
-                    },
-                ]
-            )
-        )
         (d / "plans").mkdir(parents=True, exist_ok=True)
         (d / "plans" / "zen.json").write_text(
             json.dumps(

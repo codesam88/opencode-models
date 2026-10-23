@@ -108,6 +108,15 @@ class CostPerRequestTests(unittest.TestCase):
             cost_per_request(NO_ASSUMPTIONS["tiers"], NO_ASSUMPTIONS["assumptions"])
         )
 
+    def test_missing_cached_rate_bills_at_input_rate(self):
+        # no cache discount: cached reads cost what input costs
+        tiers = [{"label": None, "in": 1.0, "out": 5.0, "cached": None}]
+        assumptions = {"in": 1000, "cached": 9000, "out": 500}
+        self.assertAlmostEqual(
+            cost_per_request(tiers, assumptions),
+            (1000 * 1.0 + 9000 * 1.0 + 500 * 5.0) / 1e6,
+        )
+
 
 class CapTests(unittest.TestCase):
     def test_request_cap(self):

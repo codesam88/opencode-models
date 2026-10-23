@@ -3,7 +3,6 @@
 import unittest
 
 from opencode_models.models import Model
-from opencode_models.pricing import PriceEntry
 from opencode_models.ranking import (
     Row,
     axis_scores,
@@ -65,16 +64,58 @@ def _m(
 def _entry(
     model_id, inp, out, cached=None, limit=None, free=False, name=None, tier="go"
 ):
-    return PriceEntry(
-        tier=tier,
-        model_id=model_id,
-        name=name or model_id,
-        input=inp,
-        output=out,
-        cached_read=cached,
-        limit=limit,
-        free=free,
-    )
+    if free:
+        tiers = []
+    else:
+        import re
+
+        label = None
+        nm = name or model_id
+        m = re.search(r"\(([^)]*)\)\s*$", nm)
+        if m:
+            label = m.group(1)
+        tiers = [
+            {
+                "label": label,
+                "in": inp,
+                "out": out,
+                "cached": cached,
+                "cached_write": None,
+            }
+        ]
+    if tier == "go":
+        limits = {"go": limit, "go_plus": limit}
+        rpm = {"go": None, "go_plus": None}
+    else:
+        limits = None
+        rpm = None
+    return {
+        "model_id": model_id,
+        "name": name or model_id,
+        "free": free,
+        "tiers": tiers,
+        "limits": limits,
+        "requests_per_month": rpm,
+        "assumptions": None,
+    }
+
+
+def _records(entries):
+    """Unified records map keyed by slug, as the plan snapshot carries them.
+
+    Two entries for one slug are two priced variants (tiers) of one
+    record, merged the way the snapshot stores them.
+    """
+    out = {}
+    for e in entries:
+        slug = e["model_id"]
+        if slug in out:
+            out[slug]["tiers"] = (out[slug].get("tiers") or []) + (e.get("tiers") or [])
+            if e.get("free"):
+                out[slug]["free"] = True
+        else:
+            out[slug] = e
+    return out
 
 
 class RowBuildingTest(unittest.TestCase):
@@ -91,7 +132,7 @@ class RowBuildingTest(unittest.TestCase):
                 name="DeepSeek V4 Pro (Off-Peak)",
             )
         ]
-        rows = build_rows(models, entries)
+        rows = build_rows(models, _records(entries))
         self.assertEqual(len(rows), 1)
         self.assertAlmostEqual(rows[0].price, 0.2 * 0.66 + 0.6 * 0.022 + 0.2 * 1.98)
         self.assertEqual(rows[0].band, "included")  # Go grants $15/month
@@ -105,12 +146,14 @@ class RowBuildingTest(unittest.TestCase):
             _entry("m", 0.15, 0.5, cached=0.03, name="M"),
             _entry("m-free", 0.0, 0.0, cached=0.0, free=True, name="M Free"),
         ]
-        rows = build_rows(models, entries)
+        rows = build_rows(models, _records(entries))
         self.assertEqual(len(rows), 2)
-        by_endpoint = {r.entry.model_id: r for r in rows}
+        by_endpoint = {r.endpoint_id: r for r in rows}
         self.assertEqual(by_endpoint["m"].band, "payg")
         self.assertEqual(by_endpoint["m-free"].band, "free")
         self.assertEqual(by_endpoint["m-free"].price, 0.0)
+        # the free row renders under the base model's name, tagged
+        self.assertEqual(by_endpoint["m-free"].name, "M [free]")
 
     def test_a_free_line_is_priced_at_zero(
         self,
@@ -121,7 +164,7 @@ class RowBuildingTest(unittest.TestCase):
             _entry("paid", 1.0, 1.0, cached=1.0),  # costs 1.0
             _entry("gift", 0.0, 0.0, cached=0.0, free=True),  # free tier
         ]
-        rows = {r.model.model_id: r for r in build_rows(models, entries)}
+        rows = {r.model.model_id: r for r in build_rows(models, _records(entries))}
         self.assertEqual(rows["lab/gift"].price, 0.0)
         self.assertEqual(rows["lab/gift"].band, "free")
         self.assertTrue(rows["lab/gift"].name.endswith("[free]"))
@@ -140,19 +183,19 @@ class RowBuildingTest(unittest.TestCase):
             _entry("step-5-preview-free", 0.0, 0.0, free=True),
             _entry("muse-spark-1.3-contributor-free", 0.0, 0.0, free=True),
         ]
-        rows = {r.model.model_id: r for r in build_rows(models, entries)}
+        rows = {r.model.model_id: r for r in build_rows(models, _records(entries))}
         self.assertEqual(rows["stepfun/step-5-preview"].price, 0.0)
         self.assertEqual(rows["meta/muse-spark-1.3-contributor"].price, 0.0)
 
     def test_free_tag_is_not_added_when_the_name_already_says_free(self):
         models = [_m("lab/ling", 1.0, tb=40.0, name="Ling 3.1 Flash Free")]
         entries = [_entry("ling", 0.0, 0.0, free=True)]
-        row = build_rows(models, entries)[0]
+        row = build_rows(models, _records(entries))[0]
         self.assertEqual(row.name, "Ling 3.1 Flash Free")
 
     def test_model_without_documented_price_uses_the_catalog_cost(self):
         models = [_m("a/m1", 2.0, output=4.0, tb=50.0)]  # cached unknown
-        rows = build_rows(models, [])
+        rows = build_rows(models, {})
         # no cache discount published → cached reads bill at the input rate
         self.assertAlmostEqual(rows[0].price, 0.2 * 2.0 + 0.6 * 2.0 + 0.2 * 4.0)
         self.assertEqual(rows[0].band, "payg")
@@ -160,10 +203,15 @@ class RowBuildingTest(unittest.TestCase):
     def test_axis_picks_a_single_rate_even_when_a_line_is_documented(self):
         models = [_m("l/ds", 9.9, tb=50.0)]
         entries = [_entry("ds", 1.0, 2.0, cached=0.5, limit=15.0)]
-        self.assertEqual(build_rows(models, entries, axis="input")[0].price, 1.0)
-        self.assertEqual(build_rows(models, entries, axis="output")[0].price, 2.0)
+        self.assertEqual(
+            build_rows(models, _records(entries), axis="input")[0].price, 1.0
+        )
+        self.assertEqual(
+            build_rows(models, _records(entries), axis="output")[0].price, 2.0
+        )
         self.assertAlmostEqual(
-            build_rows(models, entries)[0].price, 0.2 * 1.0 + 0.6 * 0.5 + 0.2 * 2.0
+            build_rows(models, _records(entries))[0].price,
+            0.2 * 1.0 + 0.6 * 0.5 + 0.2 * 2.0,
         )
 
     def test_the_same_variant_from_a_second_tier_does_not_double_the_line(self):
@@ -181,7 +229,7 @@ class RowBuildingTest(unittest.TestCase):
             ),
             _entry("ds", 1.74, 3.0, cached=0.04, name="DS (Off-Peak)", tier="zen"),
         ]
-        rows = build_rows(models, entries)
+        rows = build_rows(models, _records(entries))
         self.assertEqual(len(rows), 1)  # one line, not one per tier
         self.assertAlmostEqual(rows[0].price, 0.2 * 0.66 + 0.6 * 0.022 + 0.2 * 1.98)
 
@@ -205,7 +253,7 @@ class RowBuildingTest(unittest.TestCase):
                 name="DeepSeek V4 Pro (Peak)",
             ),
         ]
-        rows = build_rows(models, entries)
+        rows = build_rows(models, _records(entries))
         self.assertEqual(len(rows), 2)
         self.assertLess(rows[0].price, rows[1].price)
         self.assertIn("Peak", rows[0].name)
@@ -357,7 +405,7 @@ class MergeTest(unittest.TestCase):
         # zen and go changes nothing about what a free line costs
         zen = build_rows(
             [_m("l/zfree", 5.0, tb=40.0)],
-            [_entry("zfree", 0.0, 0.0, free=True)],
+            _records([_entry("zfree", 0.0, 0.0, free=True)]),
             provider="zen",
         )
         go = build_rows([_m("l/gopaid", 0.2, tb=40.0)], provider="go")
@@ -375,12 +423,12 @@ class DedupeTest(unittest.TestCase):
     def test_the_same_line_from_two_providers_becomes_one_row(self):
         go = build_rows(
             [_m("l/ds", 1.0, tb=50.0)],
-            [_entry("ds", 1.0, 1.0, cached=1.0, limit=60.0, tier="go")],
+            _records([_entry("ds", 1.0, 1.0, cached=1.0, limit=60.0, tier="go")]),
             provider="go",
         )
         zen = build_rows(
             [_m("l/ds", 1.0, tb=50.0)],
-            [_entry("ds", 1.0, 1.0, cached=1.0, tier="zen")],
+            _records([_entry("ds", 1.0, 1.0, cached=1.0, tier="zen")]),
             provider="zen",
         )
         rows = dedupe_providers(merge_rows(go, zen))
@@ -393,22 +441,24 @@ class DedupeTest(unittest.TestCase):
     def test_lines_that_differ_in_cost_stay_separate(self):
         go = build_rows(
             [_m("l/ds", 1.0, tb=50.0)],
-            [
-                _entry(
-                    "ds",
-                    0.66,
-                    1.98,
-                    cached=0.022,
-                    limit=15.0,
-                    name="DS (Off-Peak)",
-                    tier="go",
-                )
-            ],
+            _records(
+                [
+                    _entry(
+                        "ds",
+                        0.66,
+                        1.98,
+                        cached=0.022,
+                        limit=15.0,
+                        name="DS (Off-Peak)",
+                        tier="go",
+                    )
+                ],
+            ),
             provider="go",
         )
         zen = build_rows(
             [_m("l/ds", 1.0, tb=50.0)],
-            [_entry("ds", 1.74, 3.0, cached=0.04, tier="zen")],
+            _records([_entry("ds", 1.74, 3.0, cached=0.04, tier="zen")]),
             provider="zen",
         )
         rows = dedupe_providers(merge_rows(go, zen))
@@ -419,19 +469,19 @@ class DedupeTest(unittest.TestCase):
         # even with zen handed over first the pair reads 'go,zen'
         zen = build_rows(
             [_m("l/ds", 1.0, tb=50.0)],
-            [_entry("ds", 1.0, 1.0, cached=1.0, tier="zen")],
+            _records([_entry("ds", 1.0, 1.0, cached=1.0, tier="zen")]),
             provider="zen",
         )
         go = build_rows(
             [_m("l/ds", 1.0, tb=50.0)],
-            [_entry("ds", 1.0, 1.0, cached=1.0, limit=60.0, tier="go")],
+            _records([_entry("ds", 1.0, 1.0, cached=1.0, limit=60.0, tier="go")]),
             provider="go",
         )
         rows = dedupe_providers(merge_rows(zen, go))
         self.assertEqual([r.provider for r in rows], ["go,zen"])
 
     def test_free_lines_from_both_providers_merge_too(self):
-        free = [_entry("gift", 0.0, 0.0, free=True)]
+        free = _records([_entry("gift", 0.0, 0.0, free=True)])
         go = build_rows([_m("l/gift", 5.0, tb=40.0)], free, provider="go")
         zen = build_rows([_m("l/gift", 5.0, tb=40.0)], free, provider="zen")
         rows = dedupe_providers(merge_rows(go, zen))
@@ -516,7 +566,11 @@ class GradeTest(unittest.TestCase):
         entries = [_entry("freebie", 0.0, 0.0, free=True)]
         graded = grade_rows(
             order_rows(
-                build_rows(models, entries, table={TB: (20.0, 80.0), SWE: (20.0, 80.0)})
+                build_rows(
+                    models,
+                    _records(entries),
+                    table={TB: (20.0, 80.0), SWE: (20.0, 80.0)},
+                )
             )
         )
         self.assertEqual([r.grade for r in graded], ["+", "·"])
@@ -524,7 +578,7 @@ class GradeTest(unittest.TestCase):
 
     def test_grades_ride_on_the_rows_best_first(self):
         models = [_m(f"l/m{i:02d}", float(i), tb=float(i * i)) for i in range(1, 11)]
-        graded = grade_rows(order_rows(build_rows(models)))
+        graded = grade_rows(order_rows(build_rows(models, {})))
         self.assertEqual([r.grade for r in graded][:1], ["++"])
         self.assertEqual(graded[-1].grade, "--")
         # value order: m10 scores 100 at $10 → the best points per dollar,
@@ -538,7 +592,7 @@ class OrderTest(unittest.TestCase):
         # the SCORE column is one comparable number, so value order is
         # score divided by price - no skeleton, no percentile insertion
         models = [_m("l/b", 1.0, tb=60.0, swe=60.0), _m("l/a", 2.0, tb=80.0, swe=80.0)]
-        ordered = order_rows(build_rows(models))
+        ordered = order_rows(build_rows(models, {}))
         # b derives 0 on both scales, a derives 100 on both: 0/1 vs 100/2
         self.assertEqual([r.model.model_id for r in ordered], ["l/a", "l/b"])
 
@@ -549,7 +603,7 @@ class OrderTest(unittest.TestCase):
             _m("l/tb", 1.0, tb=20.0, swe=20.0),
             _m("l/swe", 1.0, tb=90.0, swe=90.0),
         ]
-        ordered = [r.model.model_id for r in order_rows(build_rows(models))]
+        ordered = [r.model.model_id for r in order_rows(build_rows(models, {}))]
         self.assertEqual(ordered, ["l/swe", "l/tb"])
 
     def test_ties_break_toward_the_higher_score(self):
@@ -557,7 +611,7 @@ class OrderTest(unittest.TestCase):
             _m("l/cheap", 1.0, tb=50.0, swe=50.0),
             _m("l/dear", 2.0, tb=100.0, swe=100.0),
         ]
-        ordered = [r.model.model_id for r in order_rows(build_rows(models))]
+        ordered = [r.model.model_id for r in order_rows(build_rows(models, {}))]
         # 50/1 == 100/2 == 50 per dollar, so the higher score leads
         self.assertEqual(ordered, ["l/dear", "l/cheap"])
 
@@ -567,7 +621,7 @@ class OrderTest(unittest.TestCase):
             for i, (t, s) in enumerate([(90, 90), (70, 70), (50, 50)], 1)
         ]
         models.append(_m("l/sweweak", 1.0, swe=10.0, alone=True))
-        ordered = order_rows(build_rows(models))
+        ordered = order_rows(build_rows(models, {}))
         self.assertEqual([r.model.model_id for r in ordered][-1], "l/sweweak")
         self.assertIsNone(
             next(r for r in ordered if r.model.model_id == "l/sweweak").score
@@ -580,13 +634,13 @@ class OrderTest(unittest.TestCase):
         models = [_m(f"l/tb{i}", 1.0, tb=t) for i, t in enumerate([90.0, 70.0], 1)]
         models.append(_m("l/hard", 1.0, scores={"Terminal-Bench Hard": 20.5}))
         self.assertEqual(
-            [r.model.model_id for r in order_rows(build_rows(models))],
+            [r.model.model_id for r in order_rows(build_rows(models, {}))],
             ["l/tb1", "l/tb2"],
         )  # l/hard has no ranking axis
 
     def test_rows_with_neither_benchmark_drop_out(self):
         models = [_m("l/tb", 1.0, tb=70.0), _m("l/unbenchmarked", 1.0)]
-        ordered = order_rows(build_rows(models))
+        ordered = order_rows(build_rows(models, {}))
         self.assertEqual([r.model.model_id for r in ordered], ["l/tb"])
 
     def test_a_free_row_without_benchmark_scores_is_still_listed(self):
@@ -596,7 +650,9 @@ class OrderTest(unittest.TestCase):
         models = [_m("l/tb", 1.0, tb=70.0), _m("l/freebie", 5.0)]
         entries = [_entry("freebie", 0.0, 0.0, free=True)]
         ordered = order_rows(
-            build_rows(models, entries, table={TB: (20.0, 80.0), SWE: (20.0, 80.0)})
+            build_rows(
+                models, _records(entries), table={TB: (20.0, 80.0), SWE: (20.0, 80.0)}
+            )
         )
         self.assertEqual([r.model.model_id for r in ordered], ["l/tb", "l/freebie"])
 
@@ -610,7 +666,7 @@ class OrderTest(unittest.TestCase):
             _m("l/fourhot", 1.0, tb40=88.0, alone=True),
             _m("l/fourcool", 1.0, tb40=22.0, alone=True),
         ]
-        ordered = [r.model.model_id for r in order_rows(build_rows(models))]
+        ordered = [r.model.model_id for r in order_rows(build_rows(models, {}))]
         self.assertEqual(
             ordered,
             ["l/tb1", "l/tb2", "l/tb3", "l/tb4", "l/tb5", "l/fourhot", "l/fourcool"],
@@ -628,7 +684,7 @@ class OrderTest(unittest.TestCase):
         ordered = order_rows(
             build_rows(
                 models,
-                entries,
+                _records(entries),
                 table={TB: (10.0, 70.0), SWE: (10.0, 70.0), TB4: (10.0, 70.0)},
             )
         )
@@ -641,7 +697,7 @@ class PartitionTest(unittest.TestCase):
     def _grid(self):
         # m01..m10: price i, score i² → score-per-dollar climbs with i
         models = [_m(f"l/m{i:02d}", float(i), tb=float(i * i)) for i in range(1, 11)]
-        return order_rows(build_rows(models))
+        return order_rows(build_rows(models, {}))
 
     def test_three_disjoint_tables_and_who_goes_where(self):
         main, worst, pricey = partition_rows(self._grid())
@@ -663,7 +719,7 @@ class PartitionTest(unittest.TestCase):
             _m("l/d", 3.0, tb=80.0),
             _m("l/e", 4.0, tb=70.0),
         ]
-        main, worst, pricey = partition_rows(order_rows(build_rows(models)))
+        main, worst, pricey = partition_rows(order_rows(build_rows(models, {})))
         self.assertEqual([r.model.model_id for r in pricey], ["l/a", "l/e"])
         self.assertNotIn("l/a", [r.model.model_id for r in worst])
         self.assertEqual([r.model.model_id for r in worst], ["l/d", "l/c"])
@@ -674,7 +730,7 @@ class PartitionTest(unittest.TestCase):
         self.assertEqual([len(g) for g in partition_rows(rows)], [4, 3, 3])
         few = [_m(f"l/m{i}", float(i), tb=float(i)) for i in range(1, 5)]
         self.assertEqual(
-            [len(g) for g in partition_rows(order_rows(build_rows(few)))], [2, 1, 1]
+            [len(g) for g in partition_rows(order_rows(build_rows(few, {})))], [2, 1, 1]
         )  # 30% of 4 = 1.2 → 1, not 2
 
     def test_a_single_row_is_never_culled(self):

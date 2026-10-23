@@ -1,0 +1,10 @@
+{"model": {
+  "id": "typesafe/jev-1.13",
+  "name": "Jev 1.13",
+  "lab": "typesafe",
+  "priceUsdPer1M": {"input": 0.042, "output": 0.0, "cachedInput": null},
+  "benchmarks": [
+    {"name": "JevMan", "score": 2750.0, "metric": "mean score", "source": "https://opper.ai/typesafe/jev-1-13-0", "note": "vendor-reported JevMan Pac-Man benchmark, 100 games, 2026-10"}
+  ],
+  "note": "Provenance: https://opper.ai/typesafe/jev-1-13-0 (TypeSafe/Opper vendor page)"
+}}

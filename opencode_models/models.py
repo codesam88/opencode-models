@@ -48,9 +48,8 @@ def benchmark_key(b: dict) -> str:
     return f"{name} {version}" if version else name
 
 
-def load_model(path: Path) -> Model:
-    """Parse one scraped ``<lab>__<model>.json`` file."""
-    doc = json.loads(path.read_text())
+def _model_from_doc(doc: dict) -> Model:
+    """A model record from its parsed document."""
     m = doc["model"]
     price = m.get("priceUsdPer1M") or {}
     scores: dict[str, float] = {}
@@ -71,6 +70,11 @@ def load_model(path: Path) -> Model:
     )
 
 
+def load_model(path: Path) -> Model:
+    """Parse one scraped ``<lab>__<model>.json`` file."""
+    return _model_from_doc(json.loads(path.read_text()))
+
+
 def load_models(data_dir: Path) -> list[Model]:
     """Parse every ``*.json`` file in *data_dir*, skipping unreadable ones."""
     models: list[Model] = []
@@ -78,5 +82,51 @@ def load_models(data_dir: Path) -> list[Model]:
         try:
             models.append(load_model(path))
         except (json.JSONDecodeError, KeyError, TypeError):
+            continue
+    return models
+
+
+def _manual_valid(doc) -> bool:
+    """Whether *doc* carries the fields a manual record must have."""
+    if not isinstance(doc, dict):
+        return False
+    m = doc.get("model")
+    if not isinstance(m, dict):
+        return False
+    if not m.get("id") or not m.get("name") or not m.get("lab"):
+        return False
+    price = m.get("priceUsdPer1M")
+    if not isinstance(price, dict):
+        return False
+    if price.get("input") is None or price.get("output") is None:
+        return False
+    return True
+
+
+def load_manual(path: Path) -> list[Model]:
+    """Load curated manual records, failing shut on incomplete ones.
+
+    Manual records are hand-written and must carry identity and prices; a
+    file missing ``id``/``name``/``lab``/prices is refused rather than
+    rendered half-formed. Benchmark entries without a ``source`` are
+    dropped, the same as overrides: an unsourced number cannot be tiered.
+    Unreadable files are skipped.
+    """
+    models: list[Model] = []
+    for p in sorted(Path(path).glob("*.json")):
+        try:
+            doc = json.loads(p.read_text())
+        except (json.JSONDecodeError, OSError):
+            continue
+        if not _manual_valid(doc):
+            continue
+        try:
+            doc["model"]["benchmarks"] = [
+                b
+                for b in doc["model"].get("benchmarks") or []
+                if isinstance(b, dict) and b.get("source")
+            ]
+            models.append(_model_from_doc(doc))
+        except (json.JSONDecodeError, KeyError, TypeError, OSError):
             continue
     return models

@@ -33,6 +33,7 @@ SEED_SUBDIRS = (
     "usage",
     "available",
     "overrides",
+    "manual",
 )
 
 BRANCH = "local-data"
@@ -128,19 +129,27 @@ def seed(target: Path, repo: Path) -> dict[str, int]:
     target, repo = Path(target), Path(repo)
     copied = skipped = synced = 0
     for sub in SEED_SUBDIRS:
-        if sub == "overrides":
+        if sub in ("overrides", "manual"):
             continue
         c, s = copy_missing(repo / "data" / sub, target / sub)
         copied += c
         skipped += s
-    provided = sync_tracked(repo / "data" / "overrides", target / "overrides")
-    synced += len(provided)
+    provided_overrides = sync_tracked(repo / "data" / "overrides", target / "overrides")
+    synced += len(provided_overrides)
+    provided_manual = sync_tracked(repo / "data" / "manual", target / "manual")
+    synced += len(provided_manual)
     for key, text in sorted(read_branch_files(repo, BRANCH, PREFIX).items()):
         rel = key[len(PREFIX) :] if key.startswith(PREFIX) else key
         dest = target / rel
         if rel.startswith("overrides/"):
-            if rel[len("overrides/") :] in provided:
+            if rel[len("overrides/") :] in provided_overrides:
                 continue  # the working tree already deployed this pin
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(text.encode("utf-8"))
+            synced += 1
+        elif rel.startswith("manual/"):
+            if rel[len("manual/") :] in provided_manual:
+                continue  # the working tree already deployed this record
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(text.encode("utf-8"))
             synced += 1

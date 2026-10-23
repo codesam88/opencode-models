@@ -1,0 +1,12 @@
+{"model": {
+  "id": "recursive/flint-40b-free",
+  "name": "Flint 40B Free",
+  "lab": "recursive",
+  "priceUsdPer1M": {"input": 0.0, "output": 0.0, "cachedInput": 0.0},
+  "benchmarks": [
+    {"name": "Terminal-Bench", "version": "2.1", "score": 54.9, "metric": "success rate", "source": "https://huggingface.co/RecursiveSI/flint", "note": "vendor-reported on the model card (Recursive), 2026-10"},
+    {"name": "SWE-Bench", "version": "Verified", "score": 74.2, "metric": "resolved", "source": "https://huggingface.co/RecursiveSI/flint", "note": "vendor-reported on the model card (Recursive), 2026-10"},
+    {"name": "LiveCodeBench", "version": "v6", "score": 80.3, "metric": "pass@1", "source": "https://huggingface.co/RecursiveSI/flint", "note": "vendor-reported on the model card (Recursive), 2026-10"}
+  ],
+  "note": "Provenance: https://huggingface.co/RecursiveSI/flint (Recursive model card)"
+}}

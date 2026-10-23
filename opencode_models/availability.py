@@ -11,11 +11,21 @@ checks a model against a set of ids. A tier absent from every layer is
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
 
+from .auth import load_key
 from .identity import canonical_id
-from .live import load_live
+from .live import (
+    LIVE_CONFIG_URL,
+    api_get,
+    fetch_live,
+    fetch_served,
+    load_live,
+    merge_served,
+    save_live,
+)
 from .models import Model
 
 
@@ -219,6 +229,110 @@ def members(models: list[Model], slugs: set[str] | None):
     return included, free
 
 
+@dataclass(frozen=True)
+class AvailabilityResult:
+    """Result of resolving current availability."""
+
+    offered: set[str] | None
+    warnings: tuple[str, ...]
+    tiers: object
+    origin: str | None
+    unknown: tuple[str, ...]
+    live: bool
+
+
+def current_offered(data_dir, bypass=False):
+    """Resolve which models the plans offer right now."""
+    data_dir = Path(data_dir)
+    warnings: list[str] = []
+
+    if bypass:
+        return AvailabilityResult(
+            offered=None,
+            warnings=tuple(warnings),
+            tiers=None,
+            origin=None,
+            unknown=(),
+            live=False,
+        )
+
+    key = load_key()
+    tiers = None
+    origin = None
+    unknown: list[str] = []
+
+    if key:
+        try:
+            get = api_get(key)
+            served = fetch_served(get)
+            known = fetch_live(get)
+        except (OSError, ValueError, KeyError) as exc:
+            warnings.append(
+                f"warning: live model list unreachable ({exc}) — using the last snapshots"
+            )
+        else:
+            ids = set().union(*served.values()) if served else set()
+            if not ids:
+                warnings.append("warning: no models served — using the last snapshots")
+            else:
+                save_live(data_dir, merge_served(served, known))
+                if not served.get("go"):
+                    warnings.append(
+                        "warning: the Go plan returned no models — check that "
+                        "models are enabled in the Console and that the key is a "
+                        "personal one with model permissions "
+                        "(User \u2192 Account \u2192 Personal API Keys)"
+                    )
+                tiers = merge_served(served, known)
+                origin = f"live from {LIVE_CONFIG_URL} (recorded to {data_dir / 'available'})"
+                unknown = []
+                offered_ids = ids
+                return AvailabilityResult(
+                    offered=offered_ids,
+                    warnings=tuple(warnings),
+                    tiers=tiers,
+                    origin=origin,
+                    unknown=tuple(unknown),
+                    live=True,
+                )
+
+    if not key:
+        warnings.append(
+            "no API token found - availability may be stale, some models "
+            "may be unavailable (`auth` for live data, `--all` for the "
+            "full catalog)"
+        )
+
+    known = load_available(data_dir)
+    if all(ids is None for ids in known.values()):
+        return AvailabilityResult(
+            offered=None,
+            warnings=tuple(warnings),
+            tiers=None,
+            origin=None,
+            unknown=tuple(sorted(t for t, ids in known.items() if ids is None)),
+            live=False,
+        )
+    tiers = {t: ids for t, ids in known.items() if ids is not None}
+    unknown = sorted(t for t, ids in known.items() if ids is None)
+    out: set[str] = set()
+    for tier_ids in known.values():
+        if isinstance(tier_ids, dict):
+            out |= {slug for slug, served in tier_ids.items() if served is not False}
+        elif tier_ids:
+            out |= tier_ids
+    origin = f"snapshots in {data_dir} (run `fetch` to refresh)"
+    offered_ids = out or None
+    return AvailabilityResult(
+        offered=offered_ids,
+        warnings=tuple(warnings),
+        tiers=tiers,
+        origin=origin,
+        unknown=tuple(unknown),
+        live=False,
+    )
+
+
 # Public surface of this module.
 __all__ = [
     "available_ids",
@@ -229,4 +343,6 @@ __all__ = [
     "members",
     "offered",
     "slug_matches",
+    "AvailabilityResult",
+    "current_offered",
 ]

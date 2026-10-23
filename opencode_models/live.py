@@ -14,8 +14,12 @@ builds the authed transport, so this module never touches the environment.
 from __future__ import annotations
 
 import json
+import urllib.error
+import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
+
+from . import __version__
 
 #: The workspace's live model set, with tiered cost arrays and limits.
 LIVE_CONFIG_URL = "https://opencode.ai/console/api/v2/config"
@@ -151,3 +155,24 @@ def load_live(data_dir: Path) -> dict[str, dict[str, bool | None] | None]:
         else:
             out[tier] = None
     return out
+
+
+def api_get(key: str):
+    """Authed transport for the key-gated Console API (30s per request)."""
+
+    def get(url: str) -> str:
+        req = urllib.request.Request(
+            url,
+            headers={
+                "Authorization": f"Bearer {key}",
+                "User-Agent": f"opencode-models/{__version__}",
+            },
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                return resp.read().decode("utf-8", errors="replace")
+        except urllib.error.HTTPError as exc:
+            exc.close()
+            raise
+
+    return get

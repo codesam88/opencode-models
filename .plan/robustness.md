@@ -1,11 +1,18 @@
 ---
-status: in-progress
+status: done
 type: feature
 priority: high
 area: cli
 ---
 
 ## Notes
+
+Superseded 2026-10-23 by the architecture-refactoring plan: neither fix
+is implemented here, and neither will be as a standalone change. Both
+items below move there as architecture concerns — (1) ingestion failure
+handling (degrade to warning, never traceback) as the ingestion-layer
+contract, and (2) per-layer freshness/staleness reporting as part of the
+data-layer lifecycle rules. Close this file, not the problems.
 
 `fetch` dies with a traceback when the catalog sitemap is unreachable, and
 `list` / `next` / `models` silently use arbitrarily old snapshots. Two

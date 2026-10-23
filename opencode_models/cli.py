@@ -23,6 +23,7 @@ from pathlib import Path
 
 from . import __version__, availability, go_pricing, zen_pricing
 from . import arena as arena_mod
+from . import sync as sync_mod
 from .allowance import WINDOW_FRACTIONS, cost_per_request
 from .arena import ArenaCache
 from .auth import load_key, save_key
@@ -1473,6 +1474,15 @@ def _cmd_usage(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_sync(args: argparse.Namespace) -> int:
+    """Refresh stale T2 sources (availability + plan pricing).
+
+    T1 sources (catalog, boards, arena) are explicit `fetch` only and are
+    left untouched here.
+    """
+    return sync_mod.sync(Path(args.data), get=http_get)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="opencode-models",
@@ -1495,6 +1505,10 @@ def main(argv: list[str] | None = None) -> int:
         help="download the full model catalog, not just the models the "
         "plans offer (kept records are never deleted either way)",
     )
+    sub.add_parser(
+        "sync", help="refresh stale data sources (availability ~4h, plans ~8h)"
+    )
+
     sub.add_parser(
         "models",
         help="the models the plans offer right now, endpoints "
@@ -1619,6 +1633,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     return {
         "fetch": _cmd_fetch,
+        "sync": _cmd_sync,
         "models": _cmd_models,
         "auth": _cmd_auth,
         "overrides": _cmd_conflicts,

@@ -1,6 +1,6 @@
 ---
 name: backfill-scores
-description: Use when an opencode-models model has only one scored benchmark and is therefore unranked, or when asked to find, research or add benchmark numbers — covers where to look, which sources are actually scrapable, how to write a data/overrides JSON file, and how to verify it landed.
+description: Use when an opencode-models model has only one scored benchmark and is therefore unranked, when asked to find, research or add benchmark numbers, or when a roster slug has no catalog record — covers where to look, which sources are actually scrapable, how to write a data/overrides JSON file, how to resolve an orphan via alias or manual record with challenger review, and how to verify it landed.
 ---
 
 # Backfilling missing benchmark scores
@@ -274,6 +274,95 @@ What to look for:
 
 If a model you expected to be picked does not appear, the most likely cause
 is the tier: a vendor number cannot displace an independent one.
+
+## 7. Orphans: roster slugs with no catalog record
+
+A slug the plans offer but the catalog never carried (Beam Free before
+its alias, `exo-free`, `jev-1.13`) renders scoreless at best, invisible at
+worst — and no benchmark number can fix that, because there is no record
+to attach it to. Resolve the identity first, scores second:
+
+```sh
+PYTHONPATH=. uv run python -c "
+from pathlib import Path
+from opencode_models.cli import _load
+from opencode_models import availability as av
+models, *_ = _load(Path('data'))
+cat = {m.model_id.split('/')[-1] for m in models}
+aliases = av.load_aliases(Path('data'))
+for tier in ('go', 'zen'):
+    roster = av.load_roster(Path('data'), tier)
+    orphans = sorted(s for s in roster
+                     if s not in aliases
+                     and av.canonical_id(s) not in {av.canonical_id(c) for c in cat})
+    print(tier, sorted(orphans))
+"
+```
+
+For each orphan, research in this order — model name, vendor/lab, model
+card (Hugging Face, vendor page or blog), endpoint URL (the lab hint),
+then whether upstream lists it under another slug. `MiniMax-M3.1-Flash`
+versus `minimax-m3.1-flash` is a real case: same model, different
+capitalisation and separator, and the sitemap settles it. Cross-check
+every candidate against all four: exact catalog id, slug variants and
+case, existing `aliases.json` entries, existing `data/manual/` records,
+and presence in the plan snapshots (a live-only slug with no docs record
+is junk like the internal `test` id, not an orphan).
+
+Decide by the first match, in this order — one mechanism per model:
+
+1. **Upstream record exists** (any slug): add an alias in
+   `opencode_models/data/aliases.json`
+   (`{"<roster slug>": {"model_id": "<catalog id>", "source": "<url>",
+   "note": "<why same weights>"}}`), never a manual duplicate. The
+   source must evidence same weights, not just a similar name — a
+   distilled, quantised, or different-size variant does not qualify.
+2. **No upstream record, but a card publishes prices** (benchmarks
+   optional): add `data/manual/<lab>__<model>.json` per
+   `data/manual/README.md` — full record, provenance note, every
+   benchmark sourced. Zero benchmarks renders `·`; neither prices nor
+   benchmarks means skip it.
+3. **No card, stealth, or internal id**: leave it out and say so. An
+   unbenchmarked stealth model with no card is a finding, not a record.
+4. **Upstream has the exact record**: nothing to do — `fetch` picks it up.
+   Check the sitemap before writing anything, and watch out for rotating
+   stealth names: a free-tier label like Big Pickle has pointed at
+   different backends over time (GLM-4.6, then GLM-5.2, per community
+   reports), so it must never be aliased to a momentary backend — leave
+   it out and say so.
+
+Prefer alias over manual wherever an upstream record exists; prefer
+leaving out over inventing. A duplicate record for a model the catalog
+already carries (two ids, one set of weights) is worse than a missing
+row — it splits scores, recommendations, and future fetch updates.
+
+## 8. Challenger review: keep aliases and manual records minimal
+
+No alias or manual record lands on one model's say-so. After research
+proposes entries, a **second, different model** from the researcher
+critically reviews the proposal before anything is written:
+
+- **Identity**: does the evidence show same weights, or just a shared
+  name? Quants, distills, and size variants are different models.
+- **Conflicts**: does a catalog record, alias, or manual file already
+  cover it (exact id, slug variant, case difference)? One mechanism per
+  model — flag anything the proposal would duplicate or shadow.
+- **Docs presence**: is the slug actually offered (snapshot or live
+  roster), or stale/live-only junk? Undocumented slugs stay out.
+- **Sources**: every score has a URL; every record and alias has a
+  provenance note tying it to the card or page. Tier the sources
+  honestly — vendor claims are tier 3.
+- **Conventions**: override-style filenames, `-free` only for genuinely
+  free servings, labs matching the vendor.
+
+Run it as a worker subagent with an explicit brief (proposal + tree
+paths + the checklist above), a different model than the researcher, and
+report-only output — the parent resolves disagreements and owns the
+commit. The shipped gates stay green throughout: alias keys must be
+snapshot slugs, manual ids must be docs-documented (shipped plans, plus
+local tier-prices where fetched) with sourced benchmarks (`just test`
+enforces all three), and a real-data `list`/`models` pass shows the row with
+the right name, price, and endpoint and no duplicates.
 
 ## Etiquette
 

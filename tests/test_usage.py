@@ -507,6 +507,54 @@ class DegradedSourceTest(UsageCase):
         self.assertIn("balance n/a", out)
         self.assertIn("muse-spark-1.3", out)  # the rest still renders
 
+    def test_window_failure_warns(self):
+        now = datetime.now(timezone.utc)
+        _write_history(
+            self.tmp.name,
+            [
+                _history_line(
+                    now - timedelta(hours=1), {"rolling": 1, "weekly": 5, "monthly": 2}
+                )
+            ],
+        )
+        get = _routes(
+            **{
+                cli_mod.GO_USAGE_URL: urllib.error.URLError("down"),
+                cli_mod.USAGE_EXPORT_URL: EXPORT_CSV,
+                cli_mod.GO_BILLING_URL: BILLING_PAYLOAD,
+            }
+        )
+        code, out = self._run(get=get)
+        self.assertEqual(code, 0)
+        self.assertIn("warning", out.lower())
+        self.assertIn("window api", out.lower())
+
+    def test_export_failure_warns(self):
+        get = _routes(
+            **{
+                cli_mod.GO_USAGE_URL: json.dumps(USAGE_PAYLOAD),
+                cli_mod.USAGE_EXPORT_URL: urllib.error.URLError("down"),
+                cli_mod.GO_BILLING_URL: BILLING_PAYLOAD,
+            }
+        )
+        code, out = self._run(get=get)
+        self.assertEqual(code, 0)
+        self.assertIn("warning", out.lower())
+        self.assertIn("usage export", out.lower())
+
+    def test_balance_failure_warns(self):
+        get = _routes(
+            **{
+                cli_mod.GO_USAGE_URL: json.dumps(USAGE_PAYLOAD),
+                cli_mod.USAGE_EXPORT_URL: EXPORT_CSV,
+                cli_mod.GO_BILLING_URL: urllib.error.URLError("down"),
+            }
+        )
+        code, out = self._run(get=get)
+        self.assertEqual(code, 0)
+        self.assertIn("warning", out.lower())
+        self.assertIn("balance", out.lower())
+
 
 class HistoryTest(UsageCase):
     def test_successful_poll_appends_one_record(self):

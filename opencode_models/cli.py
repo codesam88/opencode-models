@@ -45,6 +45,7 @@ from .ranking import (
     BAND_PAYG,
     RECOMMEND_FLOOR,
     build_rows,
+    by_score_per_price,
     dedupe_providers,
     grade_for,
     grade_rows,
@@ -1131,7 +1132,13 @@ def _cmd_list(args: argparse.Namespace) -> int:
             for r in rows
             if wanted in r.model.scores
         ]
-        rows.sort(key=lambda r: (-ratio(r.score, r.price), -r.score))
+        proxies = [
+            replace(r.model, price_input=r.price, scores={wanted: r.score})
+            for r in rows
+        ]
+        ranked = by_score_per_price(proxies, wanted, price_field="price_input")
+        by_proxy = {id(p): r for p, r in zip(proxies, rows, strict=True)}
+        rows = [by_proxy[id(m)] for m in ranked]
         order_note = f"benchmark {wanted} · sorted by score per $"
     else:
         rows = order_rows(rows)

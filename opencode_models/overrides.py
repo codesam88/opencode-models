@@ -21,10 +21,10 @@ applied. :func:`load_curated` returns those disagreements for the
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
-from .models import Model, benchmark_key, load_models
+from .models import Model, benchmark_key, load_manual, load_models
 
 #: Independent evaluator that runs every model on one harness — the only
 #: regime where cross-model differences are model differences.
@@ -45,8 +45,6 @@ TIER_LABELS = {
 INDEPENDENT_HOSTS = ("artificialanalysis.ai",)
 #: Hosts that run the official benchmark submission boards.
 OFFICIAL_HOSTS = ("tbench.ai", "www.tbench.ai", "www.swebench.com", "swebench.com")
-
-OVERRIDES_DIR = "overrides"
 
 #: The Terminal-Bench 2.1 → 4.0 band, fitted on the models whose vendor
 #: cards carry *both* versions (tb4 ≈ 1.131·tb21 − 71.39, R² ≈ 0.77,
@@ -200,19 +198,39 @@ class Curated:
     conflicts: list[Conflict]
     curated: set[str]
     orphans: set[str]
+    manual_orphans: set[str] = field(default_factory=set)
 
 
-def load_curated(upstream_dir: Path, overrides_dir: Path) -> Curated:
+def load_curated(
+    upstream_dir: Path, overrides_dir: Path, manual_dir: Path | None = None
+) -> Curated:
     """Load upstream records with the curated overlays applied.
 
     Models without an override come back untouched; a model carrying one
     gets its benchmarks merged and any disagreement recorded.
+
+    When *manual_dir* is given, its records are merged in alongside the
+    upstream ones: an id already present upstream wins and the manual
+    record is reported as a manual orphan. Curated overrides then layer on
+    top of the merged set, so a manual id is overridable exactly like an
+    upstream id.
     """
+    upstream_models = load_models(upstream_dir)
+    upstream_ids = {m.model_id for m in upstream_models}
+    manual_models = load_manual(manual_dir) if manual_dir is not None else []
+    manual_orphans: set[str] = set()
+    base_models: list[Model] = list(upstream_models)
+    for model in manual_models:
+        if model.model_id in upstream_ids:
+            manual_orphans.add(model.model_id)
+            continue
+        base_models.append(model)
+
     models: list[Model] = []
     conflicts: list[Conflict] = []
     curated: set[str] = set()
     overrides = load_overrides(overrides_dir)
-    for model in load_models(upstream_dir):
+    for model in base_models:
         override = overrides.pop(model.model_id, None)
         if override:
             model, found = apply(model, override)
@@ -221,7 +239,11 @@ def load_curated(upstream_dir: Path, overrides_dir: Path) -> Curated:
         models.append(model)
     conflicts.sort(key=lambda c: (c.model_id, c.benchmark))
     return Curated(
-        models=models, conflicts=conflicts, curated=curated, orphans=set(overrides)
+        models=models,
+        conflicts=conflicts,
+        curated=curated,
+        orphans=set(overrides),
+        manual_orphans=manual_orphans,
     )
 
 

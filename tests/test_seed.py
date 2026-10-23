@@ -197,5 +197,46 @@ class SeedTest(unittest.TestCase):
             self.assertEqual((target / "opencode/a.json").read_text(), "mine")
 
 
+@unittest.skipIf(NEEDS_GIT, "no git on PATH")
+class ManualDeployTest(unittest.TestCase):
+    """Tracked manual records deploy like overrides: same-named files sync
+    when the repo ships a newer pin, local-only files survive, and the
+    fetched layers stay missing-only."""
+
+    def _seed_repo(self, tmp: Path) -> Path:
+        tmp.mkdir(parents=True, exist_ok=True)
+        _git(["init", "-qb", "main"], tmp)
+        _git(["config", "user.email", "t@t"], tmp)
+        _git(["config", "user.name", "t"], tmp)
+        _write(tmp, "data/manual/pinned.json", '{"v": 2}')
+        _write(tmp, "data/opencode/a.json", '{"a": 1}')
+        _git(["add", "-A"], tmp)
+        _git(["commit", "-qm", "seed"], tmp)
+        return tmp
+
+    def test_a_shipped_manual_record_updates_even_when_present(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = self._seed_repo(Path(tmp) / "repo")
+            target = Path(tmp) / "xdg"
+            _write(target, "manual/pinned.json", '{"v": 1}')
+            result = seed(target, repo)
+            self.assertEqual(
+                (target / "manual" / "pinned.json").read_text(), '{"v": 2}'
+            )
+            self.assertEqual(result["synced"], 1)
+
+    def test_a_local_only_manual_file_survives(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = self._seed_repo(Path(tmp) / "repo")
+            target = Path(tmp) / "xdg"
+            _write(target, "manual/mine.json", '{"v": 9}')
+            seed(target, repo)
+            self.assertEqual((target / "manual" / "mine.json").read_text(), '{"v": 9}')
+
+
 if __name__ == "__main__":
     unittest.main()

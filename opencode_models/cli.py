@@ -216,7 +216,9 @@ def _load(data_dir: Path):
     the board-vs-registry disagreements — so `overrides` can report the
     boards' numbers replacing self-reports.
     """
-    curated = load_curated(data_dir / "opencode", data_dir / "overrides")
+    curated = load_curated(
+        data_dir / "opencode", data_dir / "overrides", data_dir / "manual"
+    )
     models = merge_from_file(curated.models, data_dir / "aiarena")
     models, board_conflicts = merge_boards(models, load_boards(data_dir / "boards"))
     return models, curated, board_conflicts
@@ -246,7 +248,7 @@ def _note_text(c) -> str:
     return text if len(text) <= _NOTE_WIDTH else text[: _NOTE_WIDTH - 1] + "…"
 
 
-def _print_conflicts(conflicts, orphans=()) -> int:
+def _print_conflicts(conflicts, orphans=(), manual_orphans=()) -> int:
     """Disagreements between two sources, as a table with the value used.
 
     Three numbers per row would be one too many, so the two reported values
@@ -271,10 +273,15 @@ def _print_conflicts(conflicts, orphans=()) -> int:
         for model_id in sorted(orphans)
     ]
     rows += orphans
+    manual_orphans = [
+        (model_id, "", "", "", "", "manual record shadowed by upstream record")
+        for model_id in sorted(manual_orphans)
+    ]
+    rows += manual_orphans
     if not rows:
         return 0
     print(_bold_head(render(CONFLICT_HEADERS, rows, aligns="<", indent="  ")))
-    return len(conflicts) + len(orphans)
+    return len(conflicts) + len(orphans) + len(manual_orphans)
 
 
 def _cmd_conflicts(args: argparse.Namespace) -> int:
@@ -289,7 +296,7 @@ def _cmd_conflicts(args: argparse.Namespace) -> int:
     if not data_dir.is_dir():
         return _fail(f"no data directory at {data_dir} — run `fetch` first")
     models, curated, board_conflicts = _load(data_dir)
-    n = _print_conflicts(curated.conflicts, curated.orphans)
+    n = _print_conflicts(curated.conflicts, curated.orphans, curated.manual_orphans)
     if board_conflicts:
         print("— official boards —")
         _print_conflicts(board_conflicts)
@@ -572,8 +579,10 @@ def _cmd_fetch(args: argparse.Namespace) -> int:
             f"saved {len(elo)} arena Elo scores to "
             f"{data_dir / 'aiarena' / arena_mod.CACHE_NAME}"
         )
-    curated = load_curated(data_dir / "opencode", data_dir / "overrides")
-    n = _print_conflicts(curated.conflicts, curated.orphans)
+    curated = load_curated(
+        data_dir / "opencode", data_dir / "overrides", data_dir / "manual"
+    )
+    n = _print_conflicts(curated.conflicts, curated.orphans, curated.manual_orphans)
     if n:
         print(
             f"{n} curated override(s) disagree with upstream — "

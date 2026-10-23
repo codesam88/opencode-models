@@ -1482,9 +1482,12 @@ def _cmd_sync(args: argparse.Namespace) -> int:
     """Refresh stale T2 sources (availability + plan pricing).
 
     T1 sources (catalog, boards, arena) are explicit `fetch` only and are
-    left untouched here.
+    left untouched here. `--force` refreshes regardless of age (curation);
+    `--check` only validates the local snapshots, failing shut.
     """
-    return sync_mod.sync(Path(args.data), get=http_get)
+    if args.check:
+        return sync_mod.check_snapshots(Path(args.data))
+    return sync_mod.sync(Path(args.data), get=http_get, force=args.force)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -1509,8 +1512,19 @@ def main(argv: list[str] | None = None) -> int:
         help="download the full model catalog, not just the models the "
         "plans offer (kept records are never deleted either way)",
     )
-    sub.add_parser(
+    sync_parser = sub.add_parser(
         "sync", help="refresh stale data sources (availability ~4h, plans ~8h)"
+    )
+    sync_flags = sync_parser.add_mutually_exclusive_group()
+    sync_flags.add_argument(
+        "--force",
+        action="store_true",
+        help="refresh every T2 source regardless of age",
+    )
+    sync_flags.add_argument(
+        "--check",
+        action="store_true",
+        help="validate the local plan snapshots offline; no network, no writes",
     )
 
     sub.add_parser(

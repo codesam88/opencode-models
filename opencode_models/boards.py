@@ -204,7 +204,7 @@ def tbench_page_rows(html: str) -> list[BoardRow]:
     """Every row of the official Terminal-Bench 4.0 board in *html*."""
     data = tbench_board(html)
     if data is None:
-        return []
+        return None
     rows = [tbench_row(entry) for entry in data["rows"] if isinstance(entry, dict)]
     return [r for r in rows if r is not None]
 
@@ -479,7 +479,7 @@ def fetch_boards(get=http_get, progress=None) -> dict[str, list[BoardRow]]:
         try:
             out[name] = fetch(get)
         except (OSError, ValueError, json.JSONDecodeError):
-            continue
+            out[name] = None
     return out
 
 

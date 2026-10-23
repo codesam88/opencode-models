@@ -201,23 +201,25 @@ class Curated:
     manual_orphans: set[str] = field(default_factory=set)
 
 
-def load_curated(
-    upstream_dir: Path, overrides_dir: Path, manual_dir: Path | None = None
-) -> Curated:
-    """Load upstream records with the curated overlays applied.
+def merge_curated(upstream, manual=(), overrides=None) -> Curated:
+    """Pure merge of already-loaded records into a :class:`Curated`.
 
-    Models without an override come back untouched; a model carrying one
-    gets its benchmarks merged and any disagreement recorded.
-
-    When *manual_dir* is given, its records are merged in alongside the
-    upstream ones: an id already present upstream wins and the manual
-    record is reported as a manual orphan. Curated overrides then layer on
-    top of the merged set, so a manual id is overridable exactly like an
-    upstream id.
+    No paths, no filesystem, no clock. *upstream* is the list of upstream
+    :class:`Model` records, *manual* the hand-written ones (default empty),
+    and *overrides* the mapping ``load_overrides`` returns: ``{model id:
+    document}``, where each document is that model's override entry (the
+    ``"model"`` payload, carrying ``id``, ``benchmarks``, ``note``).
+    Manual records shadowed by an upstream id are reported as manual orphans;
+    override entries with no upstream or manual record are reported as orphans.
     """
-    upstream_models = load_models(upstream_dir)
+    if overrides is None:
+        overrides = {}
+
+    upstream_models = list(upstream)
+    manual_models = list(manual)
+    overrides_work = dict(overrides)
+
     upstream_ids = {m.model_id for m in upstream_models}
-    manual_models = load_manual(manual_dir) if manual_dir is not None else []
     manual_orphans: set[str] = set()
     base_models: list[Model] = list(upstream_models)
     for model in manual_models:
@@ -229,9 +231,8 @@ def load_curated(
     models: list[Model] = []
     conflicts: list[Conflict] = []
     curated: set[str] = set()
-    overrides = load_overrides(overrides_dir)
     for model in base_models:
-        override = overrides.pop(model.model_id, None)
+        override = overrides_work.pop(model.model_id, None)
         if override:
             model, found = apply(model, override)
             conflicts.extend(found)
@@ -242,9 +243,23 @@ def load_curated(
         models=models,
         conflicts=conflicts,
         curated=curated,
-        orphans=set(overrides),
+        orphans=set(overrides_work),
         manual_orphans=manual_orphans,
     )
+
+
+def load_curated(
+    upstream_dir: Path, overrides_dir: Path, manual_dir: Path | None = None
+) -> Curated:
+    """Load upstream records with the curated overlays applied.
+
+    Storage-side reader: parses the upstream, manual and override files (with
+    their usual tolerance) and delegates the pure merge to :func:`merge_curated`.
+    """
+    upstream_models = load_models(upstream_dir)
+    manual_models = load_manual(manual_dir) if manual_dir is not None else []
+    overrides = load_overrides(overrides_dir)
+    return merge_curated(upstream_models, manual_models, overrides)
 
 
 def curated_ids(overrides_dir: Path) -> set[str]:

@@ -13,6 +13,7 @@ from opencode_models.overrides import (
     apply,
     load_curated,
     load_overrides,
+    merge_curated,
     off_band_models,
     source_tier,
 )
@@ -487,6 +488,127 @@ class OverrideRulesTest(unittest.TestCase):
             model, _ = apply(_m("vendor/model-x"), doc)
             self.assertEqual(model.scores, {})
             self.assertNotIn(benchmark_key(doc["benchmarks"][0]), model.scores)
+
+
+class SyntheticMergeTest(unittest.TestCase):
+    """Pure-merge coverage built from in-memory records only (no data dir)."""
+
+    def test_overlay_adds_a_missing_benchmark(self):
+        upstream = [_m("x/grok", {"Terminal-Bench 4.0": 20.3})]
+        overrides = {
+            "x/grok": {
+                "id": "x/grok",
+                "benchmarks": [
+                    {
+                        "name": "Terminal-Bench",
+                        "version": "2.1",
+                        "score": 88.4,
+                        "source": "https://artificialanalysis.ai/models/grok",
+                    }
+                ],
+            }
+        }
+        out = merge_curated(upstream, [], overrides)
+        model = out.models[0]
+        self.assertEqual(model.scores["Terminal-Bench 2.1"], 88.4)
+        self.assertEqual(model.scores["Terminal-Bench 4.0"], 20.3)
+        self.assertEqual(out.curated, {"x/grok"})
+        self.assertEqual(out.conflicts, [])
+        self.assertEqual(out.orphans, set())
+
+    def test_override_pins_over_a_self_report(self):
+        upstream = [
+            _m(
+                "x/grok",
+                {"Terminal-Bench 4.0": 37.6},
+                {"Terminal-Bench 4.0": "https://x.ai/news/grok"},
+            )
+        ]
+        overrides = {
+            "x/grok": {
+                "id": "x/grok",
+                "benchmarks": [
+                    {
+                        "name": "Terminal-Bench",
+                        "version": "4.0",
+                        "score": 33.0,
+                        "source": "https://artificialanalysis.ai/models/grok",
+                    }
+                ],
+            }
+        }
+        out = merge_curated(upstream, [], overrides)
+        model = out.models[0]
+        self.assertEqual(model.scores["Terminal-Bench 4.0"], 33.0)
+        self.assertEqual(len(out.conflicts), 1)
+        self.assertTrue(out.conflicts[0].override_wins)
+
+    def test_override_loses_to_an_independent_run_and_is_recorded(self):
+        upstream = [
+            _m(
+                "a/m",
+                {"SWE-Bench Verified": 74.0},
+                {"SWE-Bench Verified": "https://artificialanalysis.ai/models/m"},
+            )
+        ]
+        overrides = {
+            "a/m": {
+                "id": "a/m",
+                "benchmarks": [
+                    {
+                        "name": "SWE-Bench",
+                        "version": "Verified",
+                        "score": 99.0,
+                        "source": "https://random-blog.example/post",
+                    }
+                ],
+            }
+        }
+        out = merge_curated(upstream, [], overrides)
+        model = out.models[0]
+        self.assertEqual(model.scores["SWE-Bench Verified"], 74.0)
+        self.assertEqual(
+            model.sources["SWE-Bench Verified"],
+            "https://artificialanalysis.ai/models/m",
+        )
+        self.assertEqual(len(out.conflicts), 1)
+        self.assertFalse(out.conflicts[0].override_wins)
+        self.assertFalse(out.conflicts[0].applied)
+        self.assertEqual(out.conflicts[0].used, 74.0)
+
+    def test_orphan_override_is_reported(self):
+        upstream = [_m("a/m", {})]
+        overrides = {"a/ghost": {"id": "a/ghost", "benchmarks": []}}
+        out = merge_curated(upstream, [], overrides)
+        self.assertEqual(out.orphans, {"a/ghost"})
+
+    def test_manual_record_merges_and_shadow_is_reported(self):
+        upstream = [_m("l/dup", {})]
+        manual = [_m("l/dup", {}), _m("l/only-manual", {})]
+        out = merge_curated(upstream, manual, {})
+        ids = {m.model_id for m in out.models}
+        self.assertIn("l/only-manual", ids)
+        self.assertEqual(out.manual_orphans, {"l/dup"})
+
+    def test_manual_model_is_overridable(self):
+        upstream = [_m("l/plain", {})]
+        manual = [_m("l/m")]
+        overrides = {
+            "l/m": {
+                "id": "l/m",
+                "benchmarks": [
+                    {
+                        "name": "Terminal-Bench",
+                        "version": "2.1",
+                        "score": 60.0,
+                        "source": "https://example.invalid/run",
+                    }
+                ],
+            }
+        }
+        out = merge_curated(upstream, manual, overrides)
+        by_id = {m.model_id: m for m in out.models}
+        self.assertEqual(by_id["l/m"].scores.get("Terminal-Bench 2.1"), 60.0)
 
 
 if __name__ == "__main__":

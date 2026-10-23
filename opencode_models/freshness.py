@@ -18,6 +18,13 @@ import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+# Per-source staleness thresholds: T2 ~4h availability / ~8h pricing.
+# Owned here (Storage freshness policy) so both the sync flow and the
+# lazy trigger in read paths share one definition. See
+# .plan/architecture-refactoring.md and docs/architecture.md section 7.
+AVAILABILITY_MAX_AGE = timedelta(hours=4)
+PLANS_MAX_AGE = timedelta(hours=8)
+
 
 def _parse_iso(value):
     """An ISO-8601 timestamp as aware UTC, or None when unparseable."""

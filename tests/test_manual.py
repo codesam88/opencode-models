@@ -267,7 +267,7 @@ class ManualListTest(unittest.TestCase):
                     {
                         "meta": {
                             "source": "test",
-                            "fetched_at": "2026-01-01T00:00:00+00:00",
+                            "fetched_at": "2099-01-01T00:00:00+00:00",
                             "schema_rev": 1,
                             "plans": ["zen"],
                         },

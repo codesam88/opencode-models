@@ -108,7 +108,7 @@ def _plan_doc(entries, tier):
     return {
         "meta": {
             "source": "test",
-            "fetched_at": "2026-01-01T00:00:00+00:00",
+            "fetched_at": "2099-01-01T00:00:00+00:00",
             "schema_rev": 1,
             "plans": [tier],
         },
@@ -171,6 +171,14 @@ def _write_grid(data_dir: Path):
 
 
 class CliTest(unittest.TestCase):
+    def setUp(self):
+        self._rp = __import__("unittest.mock", fromlist=["patch"]).patch(
+            "opencode_models.cli.sync_mod.refresh_plan",
+            return_value=("fresh", (), None),
+        )
+        self._rp.start()
+        self.addCleanup(self._rp.stop)
+
     def _run(self, *argv):
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
@@ -1955,6 +1963,14 @@ class OverridesCommandTest(unittest.TestCase):
 
 
 class ListViewContractTest(unittest.TestCase):
+    def setUp(self):
+        self._rp = __import__("unittest.mock", fromlist=["patch"]).patch(
+            "opencode_models.cli.sync_mod.refresh_plan",
+            return_value=("fresh", (), None),
+        )
+        self._rp.start()
+        self.addCleanup(self._rp.stop)
+
     """What the printed `list` guarantees, read back off the console text.
 
     These tests recompute every number from the modules rather than pinning
@@ -3474,6 +3490,14 @@ class AuthCommandTest(unittest.TestCase):
 
 
 class NoKeyNoticeTest(unittest.TestCase):
+    def setUp(self):
+        self._rp = __import__("unittest.mock", fromlist=["patch"]).patch(
+            "opencode_models.cli.sync_mod.refresh_plan",
+            return_value=("fresh", (), None),
+        )
+        self._rp.start()
+        self.addCleanup(self._rp.stop)
+
     def _run(self, *argv):
         out = io.StringIO()
         with contextlib.redirect_stdout(out):

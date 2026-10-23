@@ -16,6 +16,7 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from . import availability
+from . import sync as sync_mod
 from .catalog import load_catalog
 from .identity import canonical_id
 from .models import Model
@@ -132,9 +133,15 @@ def rows_for(
     """
     data_dir = Path(data_dir)
     models, curated, _board_conflicts = load_catalog(data_dir)
+    plan_warnings: list[str] = []
+    for _provider in selected:
+        if _provider in ("go", "zen"):
+            _status, _messages, _age = sync_mod.refresh_plan(data_dir, _provider)
+            if _status != "fresh":
+                plan_warnings.extend(_messages)
     avail = availability.current_offered(data_dir, bypass=all_models)
     on_offer = avail.offered
-    warnings: list[str] = list(avail.warnings)
+    warnings: list[str] = list(avail.warnings) + plan_warnings
     # one scale for the whole catalog: per-tier scales would make the same
     # score mean two different things in the merged view
     table = scales(models)

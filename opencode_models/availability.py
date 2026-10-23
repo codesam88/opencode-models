@@ -16,6 +16,8 @@ from importlib import resources
 from pathlib import Path
 
 from .auth import load_key
+from .freshness import AVAILABILITY_MAX_AGE
+from .freshness import snapshot_age as _snapshot_age
 from .identity import canonical_id
 from .live import (
     LIVE_CONFIG_URL,
@@ -253,39 +255,48 @@ def current_offered(data_dir, bypass=False):
     unknown: list[str] = []
 
     if key:
-        try:
-            get = api_get(key)
-            served = fetch_served(get)
-            known = fetch_live(get)
-        except (OSError, ValueError, KeyError) as exc:
-            warnings.append(
-                f"warning: live model list unreachable ({exc}) — using the last snapshots"
-            )
-        else:
-            ids = set().union(*served.values()) if served else set()
-            if not ids:
-                warnings.append("warning: no models served — using the last snapshots")
-            else:
-                save_live(data_dir, merge_served(served, known))
-                if not served.get("go"):
-                    warnings.append(
-                        "warning: the Go plan returned no models — check that "
-                        "models are enabled in the Console and that the key is a "
-                        "personal one with model permissions "
-                        "(User \u2192 Account \u2192 Personal API Keys)"
-                    )
-                tiers = merge_served(served, known)
-                origin = f"live from {LIVE_CONFIG_URL} (recorded to {data_dir / 'available'})"
-                unknown = []
-                offered_ids = ids
-                return AvailabilityResult(
-                    offered=offered_ids,
-                    warnings=tuple(warnings),
-                    tiers=tiers,
-                    origin=origin,
-                    unknown=tuple(unknown),
-                    live=True,
+        _stale = False
+        for _tier in ("go", "zen"):
+            _age = _snapshot_age(data_dir, f"available/{_tier}")
+            if _age is None or _age > AVAILABILITY_MAX_AGE:
+                _stale = True
+                break
+        if _stale:
+            try:
+                get = api_get(key)
+                served = fetch_served(get)
+                known = fetch_live(get)
+            except (OSError, ValueError, KeyError) as exc:
+                warnings.append(
+                    f"warning: live model list unreachable ({exc}) — using the last snapshots"
                 )
+            else:
+                ids = set().union(*served.values()) if served else set()
+                if not ids:
+                    warnings.append(
+                        "warning: no models served — using the last snapshots"
+                    )
+                else:
+                    save_live(data_dir, merge_served(served, known))
+                    if not served.get("go"):
+                        warnings.append(
+                            "warning: the Go plan returned no models — check that "
+                            "models are enabled in the Console and that the key is a "
+                            "personal one with model permissions "
+                            "(User \u2192 Account \u2192 Personal API Keys)"
+                        )
+                    tiers = merge_served(served, known)
+                    origin = f"live from {LIVE_CONFIG_URL} (recorded to {data_dir / 'available'})"
+                    unknown = []
+                    offered_ids = ids
+                    return AvailabilityResult(
+                        offered=offered_ids,
+                        warnings=tuple(warnings),
+                        tiers=tiers,
+                        origin=origin,
+                        unknown=tuple(unknown),
+                        live=True,
+                    )
 
     if not key:
         warnings.append(

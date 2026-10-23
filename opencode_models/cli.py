@@ -1357,6 +1357,10 @@ def _cmd_usage(args: argparse.Namespace) -> int:
     """Per-window Go allowance view: Week then Month sections."""
     data_dir = Path(args.data)
     plan = "go_plus" if args.go_pro else "go"
+    _status, _msgs, _age = sync_mod.refresh_plan(data_dir, "go")
+    if _status != "fresh":
+        for _m in _msgs:
+            print(_m)
     try:
         snapshot, origin = availability.load_plan_snapshot(data_dir)
     except (OSError, ValueError) as exc:

@@ -516,49 +516,6 @@ def _off_plan(pool: list[Row], seen: set[str], previous: set[str]) -> Row | None
     return None
 
 
-def _take(ordered: list[Row], want: int) -> list[Row]:
-    """Up to *want* rows from *ordered*, alternating between plans.
-
-    One model is recommended once, however many lines it appears on: free on
-    Zen and paid on Go are two lines for one model, and spending two slots
-    on it wastes a recommendation. Free-first ordering means the cheaper
-    line is the one already in *ordered*, so it is the one that survives.
-
-    Plans are visited strongest-first, so the leading pick is the best row
-    available whichever plan it sits on. A plan with nothing left is simply
-    passed over — there is nothing to alternate with.
-    """
-    remaining = list(ordered)
-    seen: set[str] = set()
-    unique: list[Row] = []
-    for row in remaining:
-        if canonical_id(row.model.model_id) in seen:
-            continue
-        seen.add(canonical_id(row.model.model_id))
-        unique.append(row)
-    remaining = unique
-    plans = sorted(
-        {p for row in remaining for p in plans_of(row)},
-        key=lambda p: max((r.score for r in remaining if p in plans_of(r)), default=0),
-        reverse=True,
-    )
-    taken: list[Row] = []
-    while len(taken) < want and remaining:
-        progressed = False
-        for plan in plans:
-            if len(taken) >= want:
-                break
-            for i, row in enumerate(remaining):
-                if plan in plans_of(row):
-                    taken.append(row)
-                    remaining.pop(i)
-                    progressed = True
-                    break
-        if not progressed:
-            break
-    return taken
-
-
 def partition_rows(
     rows: list[Row], fraction: float = CULL_FRACTION
 ) -> tuple[list[Row], list[Row], list[Row]]:

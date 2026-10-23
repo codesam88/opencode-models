@@ -284,6 +284,37 @@ review), scripts thinning (needs mechanism decision), deprecated
 marking (needs flag-vs-sidecar), Curation entry point alone (fold into
 next overrides/boards behavior change).
 
+## Unified pricing schema (decided shape)
+
+One file per tier (`plans/go.json` incl. Go Plus via per-plan-keyed
+`limits`/`requests_per_month`; `plans/zen.json` standalone, no windows).
+Envelope: `meta{source, fetched_at, schema_rev, page_sha256, plans}` +
+`windows` (Go only) + `models{slug: record}`. Per-model: `name`, `free`,
+`tiers[]` (`label,in,out,cached,cached_write`), `limits`,
+`requests_per_month`, `assumptions`, `dropped`, `first_seen` — all
+current, all traced to readers — plus optional forward metadata:
+`deprecated`, `deprecation_date`, `notes`, `catalog_model_id`,
+`endpoint_model_id`, `endpoint`, `sdk_package`, `alias_keys` (display
+context + cross-storage mapping keys). Non-goals held: no measured
+data, no availability status, write-once by sync. Dead on arrival:
+`PriceEntry.tier` (tests-only), per-variant `limit`, `variant_of()`,
+the `tier_prices/` path. Verified: `cached_write` already in plans
+tiers; Zen records carry null allowances; 1 dropped model ships in Go.
+
+Decided 2026-10-23: (5) sync MAY read current data (catalog, aliases,
+pages) and write the expanded snapshot back to `data/` — enrichment
+within the snapshot's own domain; no-write-back covers foreign kinds
+only; sync NEVER writes into the wheel (shipped base updates via
+plans-freeze + commit). Lifecycle keeps `first_seen` beside
+`deprecation_date` (both ends of a model's visible lifespan).
+(7) keep `requests_per_month` (no rename churn).
+
+Still open, minor: (1) schema_rev type/bump policy; (2) page_sha256
+bytes-vs-text scope; (3) Go deprecated parsing or Zen-only; (4) Zen
+nulls as bare null vs `{zen: null}`; (6) endpoint value form;
+(8) `cached` nullability; (9) dropped models in shipped base;
+(10) `notes` split.
+
 ## Prioritization
 
 Guiding risk rule: `list` / `next` / `scores` outputs are the product.

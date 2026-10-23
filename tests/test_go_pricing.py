@@ -11,17 +11,13 @@ no test touches the network.
 """
 
 import contextlib
-import importlib.util
 import io
 import json
 import tempfile
 import unittest
 from pathlib import Path
 
-SCRIPT = Path(__file__).resolve().parent.parent / "scripts" / "update_go_pricing.py"
-_spec = importlib.util.spec_from_file_location("update_go_pricing", SCRIPT)
-go_pricing = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(go_pricing)
+from opencode_models import go_pricing
 
 # Frozen fixture mirrors the live page's structure: two plan tabpanels
 # (data-plan-panel="go" / "go-plus"), each holding one pricing table and
@@ -131,6 +127,13 @@ class ParseTest(unittest.TestCase):
                 "limits": {"go": 60, "go_plus": 180},
                 "requests_per_month": {"go": 31580, "go_plus": 94740},
                 "assumptions": {"in": 1000, "cached": 55000, "out": 200},
+                "dropped": False,
+                "first_seen": None,
+                "deprecated": False,
+                "deprecation_date": None,
+                "endpoint": "https://example/model-a",
+                "sdk_package": "@ai-sdk/x",
+                "notes": None,
             },
         )
 

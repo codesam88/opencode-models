@@ -11,17 +11,13 @@ the network.
 """
 
 import contextlib
-import importlib.util
 import io
 import json
 import tempfile
 import unittest
 from pathlib import Path
 
-SCRIPT = Path(__file__).resolve().parent.parent / "scripts" / "update_zen_pricing.py"
-_spec = importlib.util.spec_from_file_location("update_zen_pricing", SCRIPT)
-zen_pricing = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(zen_pricing)
+from opencode_models import zen_pricing
 
 FIXTURE_HTML = """<!DOCTYPE html>
 <html><body>
@@ -82,6 +78,13 @@ class ParseTest(unittest.TestCase):
                 "limits": None,
                 "requests_per_month": None,
                 "assumptions": None,
+                "dropped": False,
+                "first_seen": None,
+                "deprecated": True,
+                "deprecation_date": "July 23, 2026",
+                "endpoint": "https://example/model-a",
+                "sdk_package": "@ai-sdk/x",
+                "notes": None,
             },
         )
 

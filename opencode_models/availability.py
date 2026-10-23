@@ -139,6 +139,34 @@ def free_slugs(data_dir: Path, tier: str) -> set[str]:
     return free
 
 
+def load_aliases(data_dir: Path) -> dict:
+    """Alias map: roster slug -> {"model_id", "source", "note"}.
+
+    Schema: ``{"<roster slug>": {"model_id": "<catalog model id>",
+    "source": "<url>", "note": "<why>"}}``. The shipped file (package
+    data) is unioned with an optional runtime ``data/aliases.json``; the
+    runtime entry wins on a slug conflict. Missing or unreadable files
+    yield ``{}`` without raising.
+    """
+    out: dict = {}
+    try:
+        shipped = resources.files("opencode_models") / "data" / "aliases.json"
+        data = json.loads(shipped.read_text())
+        if isinstance(data, dict):
+            out.update(data)
+    except (json.JSONDecodeError, OSError, FileNotFoundError, TypeError):
+        pass
+    try:
+        path = Path(data_dir) / "aliases.json"
+        if path.is_file():
+            data = json.loads(path.read_text())
+            if isinstance(data, dict):
+                out.update(data)
+    except (json.JSONDecodeError, OSError, TypeError):
+        pass
+    return out
+
+
 def slug_matches(model_id: str, candidate: str) -> bool:
     """Whether *model_id* and *candidate* name the same model.
 
@@ -196,6 +224,7 @@ __all__ = [
     "available_ids",
     "free_slugs",
     "load_available",
+    "load_aliases",
     "load_roster",
     "members",
     "offered",

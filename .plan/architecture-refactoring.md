@@ -268,6 +268,20 @@ Step 2+ — structural rework per the refactor inventory above
 Sequencing, ownership, and the three open mechanisms to be planned
 when Step 1 lands.
 
+Step 2 — service extraction (behavior-frozen, no open design decision
+needed, executed one chunk at a time with parent review + commit
+between chunks; worker pattern, TDD, no commits by workers):
+1. `load_curated` split (Storage reads + pure Domain merge).
+2. AvailabilityService extraction (pull + save + fallback + warnings).
+3. Shared row-pipeline service for `list`/`next`.
+4. Age-query primitive (`meta.fetched_at` vs per-source threshold).
+Deferred as churn-or-blocked: full renderer split (per-command, on
+demand only), `seed` changes (ride with consolidation), `measured/`
+writer (belongs to sync flow), unified schema (needs schema proposal +
+review), scripts thinning (needs mechanism decision), deprecated
+marking (needs flag-vs-sidecar), Curation entry point alone (fold into
+next overrides/boards behavior change).
+
 ## Prioritization
 
 Guiding risk rule: `list` / `next` / `scores` outputs are the product.

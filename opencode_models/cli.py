@@ -29,7 +29,7 @@ from .arena import ArenaCache, merge_from_file
 from .auth import load_key, save_key
 from .benchmarks import available
 from .boards import fetch_boards, load_boards, merge_boards, save_boards
-from .fetch import http_get, refresh
+from .fetch import SITEMAP_URL, http_get, refresh, urls_from_sitemap
 from .identity import canonical_id
 from .live import LIVE_CONFIG_URL, fetch_live, fetch_served, merge_served, save_live
 from .models import Model, load_models
@@ -552,8 +552,18 @@ def _cmd_fetch(args: argparse.Namespace) -> int:
             f"(--all for the full catalog)"
         )
     print("fetch model records from opencode.ai/data ...")
-    saved = refresh(data_dir, get=http_get, progress=_model_tick, only=only)
-    print(f"saved {len(saved)} model files to {data_dir / 'opencode'}")
+    # One extra sitemap GET per fetch run (vs. refresh doing it internally)
+    # is accepted: it lets us distinguish a real fetch failure from an
+    # `only` filter that matches nothing, without changing refresh's API.
+    try:
+        urls_from_sitemap(http_get(SITEMAP_URL))
+    except (OSError, ValueError, SyntaxError) as exc:  # sitemap down must not traceback
+        print(
+            f"warning: model catalog not refreshed ({exc}) — keeping existing records"
+        )
+    else:
+        saved = refresh(data_dir, get=http_get, progress=_model_tick, only=only)
+        print(f"saved {len(saved)} model files to {data_dir / 'opencode'}")
     print("fetch tier pricing from opencode.ai/docs ...")
     try:
         prices = refresh_prices(data_dir / "tier_prices", get=http_get)

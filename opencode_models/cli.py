@@ -1750,7 +1750,7 @@ def _cmd_usage(args: argparse.Namespace) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="opencode-models",
-        description="Price/score Pareto frontier of models from opencode.ai/data",
+        description="Ranked console of AI models: benchmark scores against real per-token prices",
     )
     parser.add_argument(
         "--data",

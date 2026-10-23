@@ -1667,17 +1667,30 @@ def _cmd_usage(args: argparse.Namespace) -> int:
     history = _read_usage_history(data_dir)
     key = load_key()
     get = _api_get(key) if key else None
-    usage, _ = _fetch_go_usage(get) if get else (None, "no OPENCODE_API_KEY")
+    if get:
+        usage, usage_error = _fetch_go_usage(get)
+    else:
+        usage, usage_error = None, "no OPENCODE_API_KEY"
     if usage is not None:
         record = _append_usage_history(data_dir, usage)
     else:
         if not history:
             return _fail("no usage data — set OPENCODE_API_KEY (`auth`) and retry")
         record = history[-1]
-    rows_export, _ = _fetch_go_export(get) if get else (None, "no OPENCODE_API_KEY")
-    balance = None
+        if usage_error is not None:
+            print(f"warning: window API unavailable ({usage_error}) — using last poll")
     if get:
-        balance, _ = _fetch_go_balance(get)
+        rows_export, export_error = _fetch_go_export(get)
+        if export_error is not None:
+            print(f"warning: usage export unavailable ({export_error})")
+    else:
+        rows_export, export_error = None, None
+    balance = None
+    balance_error = None
+    if get:
+        balance, balance_error = _fetch_go_balance(get)
+        if balance_error is not None:
+            print(f"warning: balance unavailable ({balance_error})")
     first_day = min((r["day"] for r in rows_export or []), default=None)
     starts = {
         w: _window_start((record.get(w) or {}).get("resetsAt"), w, first_day)

@@ -1,0 +1,22 @@
+{
+  "beam-free": {
+    "model_id": "reflection/beam-1.0-501b-a23b",
+    "source": "https://huggingface.co/reflection/Beam-1.0-501B-A23B",
+    "note": "beam-free is the free-tier serving of Reflection Beam 1.0 501B A23B weights."
+  },
+  "minimax-m3.1-flash": {
+    "model_id": "minimax/MiniMax-M3.1-Flash",
+    "source": "https://www.minimax.io/blog/minimax-m31f",
+    "note": "Docs slug is the dotted/lowercase form of upstream MiniMax-M3.1-Flash (same release, same prices); roster id differs only in separator/case."
+  },
+  "nemotron-3-ultra-free": {
+    "model_id": "nvidia/nemotron-3-ultra-550b-a55b",
+    "source": "https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B",
+    "note": "Free-tier serving of the Nemotron 3 Ultra 550B weights."
+  },
+  "nemotron-3.5-super-vl-free": {
+    "model_id": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+    "source": "https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16",
+    "note": "Free-tier serving of the Nemotron 3.5 Super VL 120B weights."
+  }
+}

@@ -227,3 +227,160 @@ class ModelsRosterCoverageTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AliasSynthesisTests(unittest.TestCase):
+    def _fixture(self, tmp, alias_target="l/m-alpha", alias_slug="orphan-free"):
+        import json
+        from pathlib import Path
+
+        d = Path(tmp)
+        (d / "opencode").mkdir(parents=True, exist_ok=True)
+        for mid, price, tb, swe in (
+            ("l/m-alpha", 1.0, 90.0, 80.0),
+            ("l/m-beta", 2.0, 70.0, 60.0),
+        ):
+            (d / "opencode" / f"{mid.replace('/', '__')}.json").write_text(
+                json.dumps(
+                    {
+                        "model": {
+                            "id": mid,
+                            "name": mid.split("/")[1].upper(),
+                            "lab": "l",
+                            "priceUsdPer1M": {
+                                "input": price,
+                                "output": price,
+                                "cachedInput": price,
+                            },
+                            "benchmarks": [
+                                {
+                                    "name": "Terminal-Bench",
+                                    "version": "2.1",
+                                    "score": tb,
+                                    "metric": "acc",
+                                    "source": "",
+                                },
+                                {
+                                    "name": "SWE-Bench",
+                                    "version": "Verified",
+                                    "score": swe,
+                                    "metric": "acc",
+                                    "source": "",
+                                },
+                            ],
+                        }
+                    }
+                )
+            )
+        (d / "tier_prices").mkdir(parents=True, exist_ok=True)
+        (d / "tier_prices" / "zen_prices.json").write_text(
+            json.dumps(
+                [
+                    {
+                        "tier": "zen",
+                        "model_id": "m-alpha",
+                        "name": "M-ALPHA",
+                        "input": 1.0,
+                        "output": 1.0,
+                        "cached_read": 1.0,
+                        "limit": None,
+                        "free": False,
+                    },
+                    {
+                        "tier": "zen",
+                        "model_id": "m-beta",
+                        "name": "M-BETA",
+                        "input": 2.0,
+                        "output": 2.0,
+                        "cached_read": 2.0,
+                        "limit": None,
+                        "free": False,
+                    },
+                    {
+                        "tier": "zen",
+                        "model_id": alias_slug,
+                        "name": "Orphan Free",
+                        "input": 0.0,
+                        "output": 0.0,
+                        "cached_read": 0.0,
+                        "limit": None,
+                        "free": True,
+                    },
+                ]
+            )
+        )
+        (d / "plans").mkdir(parents=True, exist_ok=True)
+        (d / "plans" / "zen.json").write_text(
+            json.dumps(
+                {
+                    "meta": {},
+                    "models": {
+                        "m-alpha": {"name": "M-ALPHA", "free": False},
+                        "m-beta": {"name": "M-BETA", "free": False},
+                        alias_slug: {"name": "Orphan Free", "free": True},
+                    },
+                }
+            )
+        )
+        (d / "available").mkdir(parents=True, exist_ok=True)
+        (d / "available" / "zen.json").write_text(
+            json.dumps(
+                {
+                    "meta": {},
+                    "models": {
+                        "m-alpha": True,
+                        "m-beta": True,
+                        alias_slug: True,
+                    },
+                }
+            )
+        )
+        (d / "aliases.json").write_text(
+            json.dumps(
+                {
+                    alias_slug: {
+                        "model_id": alias_target,
+                        "source": "http://example.com",
+                        "note": "test alias",
+                    }
+                }
+            )
+        )
+        return d
+
+    def test_alias_orphan_renders_with_target_score(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._fixture(tmp)
+            code, out = _run(
+                "--data", tmp, "list", "--source", "zen", "--tables", "all"
+            )
+        self.assertEqual(code, 0)
+        row = next(l for l in out.splitlines() if "Orphan Free" in l)
+        self.assertFalse(row.lstrip().startswith("·"), row)
+
+    def test_alias_target_missing_renders_scoreless(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._fixture(tmp, alias_target="l/missing")
+            code, out = _run(
+                "--data", tmp, "list", "--source", "zen", "--tables", "all"
+            )
+        self.assertEqual(code, 0)
+        row = next(l for l in out.splitlines() if "Orphan Free" in l)
+        self.assertTrue(row.lstrip().startswith("·"), row)
+
+    def test_snapshot_name_price_preserved(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._fixture(tmp)
+            code, out = _run(
+                "--data", tmp, "list", "--source", "zen", "--tables", "all"
+            )
+        self.assertEqual(code, 0)
+        row = next(l for l in out.splitlines() if "Orphan Free" in l)
+        self.assertIn("Orphan Free", row)
+
+    def test_endpoint_uses_roster_slug(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._fixture(tmp)
+            code, out = _run("--data", tmp, "next", "--source", "zen")
+        self.assertEqual(code, 0)
+        self.assertIn("opencode/orphan-free", out)

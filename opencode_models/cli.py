@@ -910,6 +910,8 @@ def _synthesize_roster_models(
         if entry.model_id and entry.model_id not in entry_by_slug:
             entry_by_slug[entry.model_id] = entry
     catalog_canonical = {canonical_id(m.model_id.split("/")[-1]) for m in models}
+    aliases = availability.load_aliases(data_dir)
+    catalog_by_id = {m.model_id: m for m in models}
     out: list[Model] = []
     for slug in sorted(roster):
         if slug not in _docs_known_slugs(data_dir, tier):
@@ -932,6 +934,20 @@ def _synthesize_roster_models(
             price_output = 0.0
             price_cached_input = 0.0
         lab = slug.split("/")[0] if "/" in slug else slug
+        # aliases are an explicit mapping layer consulted only here: the
+        # roster slug's own snapshot name/prices are kept, and the target
+        # catalog model's scores and sources are unioned in (synthetic
+        # records start scoreless, so the target provides all of them).
+        # A missing target leaves the row scoreless.
+        scores: dict = {}
+        sources: dict = {}
+        alias = aliases.get(slug)
+        if isinstance(alias, dict):
+            target_id = alias.get("model_id")
+            target = catalog_by_id.get(target_id) if target_id else None
+            if target is not None:
+                scores = {**target.scores, **scores}
+                sources = {**target.sources, **sources}
         out.append(
             Model(
                 model_id=slug,
@@ -940,8 +956,8 @@ def _synthesize_roster_models(
                 price_input=price_input,
                 price_output=price_output,
                 price_cached_input=price_cached_input,
-                scores={},
-                sources={},
+                scores=scores,
+                sources=sources,
             )
         )
     return out

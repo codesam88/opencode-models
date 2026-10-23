@@ -242,3 +242,27 @@ class OfferedCanonicalTest(unittest.TestCase):
         ids = {"m1": True, "m2": False}
         self.assertTrue(offered("a/m1", ids))
         self.assertFalse(offered("a/gone", ids))
+
+
+class ShippedAliasesGateTest(unittest.TestCase):
+    def test_shipped_aliases_keys_and_entries(self):
+        import json
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parents[1]
+        aliases = json.loads(
+            (root / "opencode_models" / "data" / "aliases.json").read_text()
+        )
+        go = json.loads(
+            (root / "opencode_models" / "data" / "plans" / "go.json").read_text()
+        )
+        zen = json.loads(
+            (root / "opencode_models" / "data" / "plans" / "zen.json").read_text()
+        )
+        keys = set(go.get("models", {})) | set(zen.get("models", {}))
+        self.assertTrue(aliases)
+        for slug, entry in aliases.items():
+            self.assertIn(slug, keys)
+            self.assertIsInstance(entry, dict)
+            self.assertIn("model_id", entry)
+            self.assertIn("source", entry)

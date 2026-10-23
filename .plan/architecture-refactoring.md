@@ -106,8 +106,12 @@ Zen endpoints table (roster identity) and deprecated-models table
 - Deprecated-model marking: `Model` field vs sidecar slug set.
 - `auth` verification for service keys: config API (403s) vs inference
   list (accepts).
-- Pricing-script mechanism: shared core imported by scripts vs scripts
-  kept standalone with sync invoking them.
+- Pricing-script mechanism: DECIDED 2026-10-23 for deletion —
+  `scripts/update_*.py` retired, package `go/zen_pricing` own the logic
+  with `--from/--out/--check` CLIs intact; justfile drives the package
+  (`sync`, `plans-sync/check/freeze`, no `-zen` variants); tests
+  retargeted to the package. Merge-idempotency fix included
+  (symmetric dropped/first_seen comparison).
 - `plan-snapshot-automation` rewrite owner.
 
 ## Refactor inventory (the work to arrive at the spec)

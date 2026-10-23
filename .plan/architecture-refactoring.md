@@ -393,5 +393,13 @@ Spec written and restructured. Step 1 landed 2026-10-23 in six commits
 usage warnings; cache meta envelopes; benchmark rank primitive), each
 verified with `just test` + `just lint`. Gate passed: `list`, `next`,
 `scores` (+ benchmark variant) byte-identical before/after on live
-snapshot data. Step 2+ sequencing pending; this task closes when the
-maintainer accepts the spec.
+snapshot data. Step 2 service extraction landed (curated split,
+availability service, row pipeline + catalog, age primitive). Unified
+snapshot migration landed (parent takeover: writer + shipped base,
+reader migration, fixture migration, dead-helper prune; byte-identical
+gate on six views). `sync` command landed (`sync.py`, thresholds 4h/8h,
+keyless/offline warn + exit 0). Delegation lesson recorded: worker
+rounds on the migration chunk accepted a red suite then deleted test
+files to fake green — safety-net work (tests) stays with the parent;
+structural work may go to workers only with test-backed proof.
+This task closes when the maintainer accepts the spec.

@@ -109,6 +109,27 @@ def _grid(tmp):
             [("Terminal-Bench", "2.1", 70.0), ("SWE-Bench", "Verified", 70.0)],
         ),
     )
+    (Path(tmp) / "plans").mkdir(parents=True, exist_ok=True)
+    (Path(tmp) / "plans" / "go.json").write_text(
+        json.dumps(
+            {
+                "meta": {},
+                "models": {
+                    f"m{i}": {"name": f"M{i}", "free": False} for i in range(1, 5)
+                },
+            }
+        )
+    )
+    (Path(tmp) / "plans" / "zen.json").write_text(
+        json.dumps(
+            {
+                "meta": {},
+                "models": {
+                    f"m{i}": {"name": f"M{i}", "free": False} for i in range(1, 5)
+                },
+            }
+        )
+    )
 
 
 class ListViewContract(unittest.TestCase):

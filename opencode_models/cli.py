@@ -32,7 +32,7 @@ from .boards import fetch_boards, load_boards, merge_boards, save_boards
 from .fetch import http_get, refresh
 from .identity import canonical_id
 from .live import LIVE_CONFIG_URL, fetch_live, fetch_served, merge_served, save_live
-from .models import load_models
+from .models import Model, load_models
 from .overrides import load_curated, off_band_models, source_tier
 from .pricing import (
     USAGE_EXPORT_URL,
@@ -213,8 +213,8 @@ def _load(data_dir: Path):
     """Upstream records, arena scores, curated overlays and official boards.
 
     Returns the models, the curated layer (which models carry overrides), and
-    the board-vs-registry disagreements — so the console can mark curated rows
-    and `overrides` can report the boards' numbers replacing self-reports.
+    the board-vs-registry disagreements — so `overrides` can report the
+    boards' numbers replacing self-reports.
     """
     curated = load_curated(data_dir / "opencode", data_dir / "overrides")
     models = merge_from_file(curated.models, data_dir / "aiarena")
@@ -374,14 +374,27 @@ def _cmd_auth(args: argparse.Namespace) -> int:
 
 
 def _display_names(data_dir: Path) -> dict[str, str]:
-    """Display names by slug or id, from the catalog records on disk.
+    """Display names by slug or id.
 
-    Absent catalog, absent names: callers fall back to the slug itself.
+    Catalog records come first; plan snapshots and tier-price entries add
+    names for slugs the catalog does not carry (docs-documented orphans),
+    so a served model the plans offer but the catalog never named can still
+    be shown. Internal ids with no documentation stay unnamed and hidden.
     """
     names = {}
     for model in load_models(Path(data_dir) / "opencode"):
         names[model.model_id] = model.name
         names[model.model_id.split("/")[-1]] = model.name
+    for tier in ("go", "zen"):
+        for slug, rec in availability._plan_models(data_dir, tier).items():
+            if isinstance(rec, dict) and rec.get("name"):
+                names.setdefault(slug, rec["name"])
+                names.setdefault(slug.split("/")[-1], rec["name"])
+    for _tier, entries in load_prices(data_dir / "tier_prices").items():
+        for entry in entries:
+            if entry.model_id and entry.name:
+                names.setdefault(entry.model_id, entry.name)
+                names.setdefault(entry.model_id.split("/")[-1], entry.name)
     return names
 
 
@@ -790,14 +803,11 @@ def _widths(rows, axis: bool = True, price: str = "est") -> tuple[int, ...]:
     return tuple(column_widths(_headings(axis, price), [_cells(r, axis) for r in rows]))
 
 
-def _print_row(
-    row, widths: tuple[int, ...], curated: set[str] = frozenset(), axis: bool = True
-) -> None:
-    name = f"{row.name} *" if row.model.model_id in curated else row.name
+def _print_row(row, widths: tuple[int, ...], axis: bool = True) -> None:
     print(
         f"{row.grade:>{GRADE_WIDTH - 1}} "
         + _row_line(_cells(row, axis), widths)
-        + f"  {name}"
+        + f"  {row.name}"
     )
 
 
@@ -872,6 +882,71 @@ def _current_offered(
     return out or None
 
 
+def _docs_known_slugs(data_dir: Path, tier: str) -> set[str]:
+    """Slugs a tier's documentation knows about (tier_prices or plans)."""
+    out: set[str] = set()
+    snap = availability._snapshot_ids(data_dir, tier)
+    if snap:
+        out |= set(snap)
+    out |= set(availability._plan_models(data_dir, tier))
+    return out
+
+
+def _synthesize_roster_models(
+    data_dir: Path, tier: str, roster: set[str], models: list
+) -> list:
+    """Scoreless catalog records for docs-documented roster slugs with no catalog match.
+
+    The roster is the source of truth for what is offered; the catalog only
+    identifies and extends. A slug the plans offer and the docs describe but
+    the catalog never carried (e.g. ``beam-free``) still renders, as an
+    unscored row. Live-only or internal slugs with no docs record are
+    excluded here — that is the junk filter.
+    """
+    plan_models = availability._plan_models(data_dir, tier)
+    entries = load_prices(data_dir / "tier_prices").get(tier, [])
+    entry_by_slug: dict[str, object] = {}
+    for entry in entries:
+        if entry.model_id and entry.model_id not in entry_by_slug:
+            entry_by_slug[entry.model_id] = entry
+    catalog_canonical = {canonical_id(m.model_id.split("/")[-1]) for m in models}
+    out: list[Model] = []
+    for slug in sorted(roster):
+        if slug not in _docs_known_slugs(data_dir, tier):
+            continue
+        if canonical_id(slug.split("/")[-1]) in catalog_canonical:
+            continue
+        rec = plan_models.get(slug)
+        name = rec.get("name") if isinstance(rec, dict) else None
+        entry = entry_by_slug.get(slug)
+        if not name and entry is not None:
+            name = entry.name
+        if not name:
+            name = slug
+        if entry is not None:
+            price_input = entry.input
+            price_output = entry.output
+            price_cached_input = entry.cached_read
+        else:
+            price_input = 0.0
+            price_output = 0.0
+            price_cached_input = 0.0
+        lab = slug.split("/")[0] if "/" in slug else slug
+        out.append(
+            Model(
+                model_id=slug,
+                name=name,
+                lab=lab,
+                price_input=price_input,
+                price_output=price_output,
+                price_cached_input=price_cached_input,
+                scores={},
+                sources={},
+            )
+        )
+    return out
+
+
 def _rows_for(
     data_dir: Path, selected: list[str], price: str, all_models: bool = False
 ):
@@ -906,6 +981,7 @@ def _rows_for(
     table = scales(models)
     groups, listed, counts, tier_slugs = [], [], {}, {}
     covered: set[str] = set()
+    synthetic_ids: set[int] = set()
     # slugs served/documented for every selected tier: a model listed by any
     # of them belongs to that tier (or is dropped by availability) and must
     # not be routed to the catalog-only "-" pool, even when the tier dropped it
@@ -925,9 +1001,15 @@ def _rows_for(
                 )
             ]
             free_ids = {m.model_id for m in pool if m.price_input == 0}
+            provider_listed = list(pool)
         else:
             tier_slugs[provider] = availability.load_roster(data_dir, provider)
             pool, base_free = availability.members(models, tier_slugs[provider])
+            catalog_pool = list(pool)
+            catalog_ids = {id(m) for m in catalog_pool}
+            pool = catalog_pool + _synthesize_roster_models(
+                data_dir, provider, tier_slugs[provider], models
+            )
             free_candidate_slugs = availability.free_slugs(data_dir, provider)
             free_ids = set(base_free) | {
                 m.model_id
@@ -940,14 +1022,18 @@ def _rows_for(
             if on_offer is not None:
                 pool = [m for m in pool if availability.offered(m.model_id, on_offer)]
                 free_ids &= {m.model_id for m in pool}
-            counts[provider] = len(pool)
+            counts[provider] = sum(1 for m in pool if id(m) in catalog_ids)
             covered |= {m.model_id for m in pool}
             free_ids &= {m.model_id for m in pool}
-        listed += pool
+            provider_listed = [m for m in pool if id(m) in catalog_ids]
+            synthetic_ids |= {id(m) for m in pool if id(m) not in catalog_ids}
+        listed += provider_listed
+        provider_entries = _entries_for(provider, data_dir)
+        catalog_rows = [m for m in pool if id(m) not in synthetic_ids]
         groups.append(
             build_rows(
-                pool,
-                _entries_for(provider, data_dir),
+                catalog_rows,
+                provider_entries,
                 free_ids,
                 axis=price,
                 provider=provider,
@@ -955,7 +1041,26 @@ def _rows_for(
                 est_rates=est_rates,
             )
         )
+        synth_rows = [m for m in pool if id(m) in synthetic_ids]
+        if synth_rows:
+            # synthetic models name their own exact offering: no variant
+            # reach, or a free twin would stage twice under two names.
+            groups.append(
+                build_rows(
+                    synth_rows,
+                    provider_entries,
+                    free_ids,
+                    axis=price,
+                    provider=provider,
+                    table=table,
+                    est_rates=est_rates,
+                    reach_variants=False,
+                )
+            )
     rows = dedupe_providers(merge_rows(*groups))
+    rows = [
+        replace(r, synthetic=True) if id(r.model) in synthetic_ids else r for r in rows
+    ]
     return rows, listed, curated, counts, tier_slugs, models
 
 
@@ -970,7 +1075,7 @@ def _cmd_list(args: argparse.Namespace) -> int:
         return _fail(f"unknown source {source!r} — available: go, zen, all")
     selected, scope = chosen
 
-    rows, listed, curated, counts, tier_slugs, models = _rows_for(
+    rows, listed, _curated, counts, tier_slugs, models = _rows_for(
         data_dir, selected, args.cost, getattr(args, "all_models", False)
     )
     if not listed:
@@ -1015,7 +1120,7 @@ def _cmd_list(args: argparse.Namespace) -> int:
             f"Only models available right now on the {plans} - "
             f"full list with --all-models."
         )
-    print("GRADE: ++ ≥90 · + ≥75 · o 60–75 · - 50–60 · -- <50 · · unranked")
+    print("GRADE: ++ ≥90, + ≥75, o 60–75, - 50–60, -- <50, · insufficient data")
 
     # the split always happens — the cull is what keeps the worst-scoring
     # and priciest models out of the view — only the reporting is optional
@@ -1029,20 +1134,20 @@ def _cmd_list(args: argparse.Namespace) -> int:
         if group:
             print(f"{label} · {len(group)}")
             for row in group:
-                _print_row(row, widths, curated.curated, axis)
+                _print_row(row, widths, axis)
 
     if args.tables == "all":
         _section(
             f"worst score (bottom 30%) · {len(worst)} lines", widths, axis, args.cost
         )
         for row in worst:
-            _print_row(row, widths, curated.curated, axis)
+            _print_row(row, widths, axis)
 
         _section(
             f"highest cost (top 30%) · {len(pricey)} lines", widths, axis, args.cost
         )
         for row in pricey:
-            _print_row(row, widths, curated.curated, axis)
+            _print_row(row, widths, axis)
     return 0
 
 

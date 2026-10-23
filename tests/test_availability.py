@@ -9,7 +9,9 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
+import opencode_models.availability as availability
 from opencode_models.availability import (
     _snapshot_ids,
     available_ids,
@@ -239,3 +241,91 @@ class ShippedAliasesGateTest(unittest.TestCase):
             self.assertIsInstance(entry, dict)
             self.assertIn("model_id", entry)
             self.assertIn("source", entry)
+
+
+class AvailabilityAgeGateTest(unittest.TestCase):
+    def _snapshot(self, data_dir, tier, hours_old):
+        import json
+        from datetime import datetime, timedelta, timezone
+
+        d = Path(data_dir) / "available"
+        d.mkdir(parents=True, exist_ok=True)
+        past = datetime.now(timezone.utc) - timedelta(hours=hours_old)
+        (d / f"{tier}.json").write_text(
+            json.dumps(
+                {
+                    "meta": {"fetched_at": past.isoformat(timespec="seconds")},
+                    "models": {"m-snap": True},
+                }
+            )
+        )
+
+    def test_stale_snapshot_pulls_live(self):
+        import os
+
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            self._snapshot(d, "go", 5)
+            self._snapshot(d, "zen", 5)
+            with mock.patch.dict(os.environ, {"OPENCODE_API_KEY": "oc_sk_test"}):
+                with mock.patch.object(
+                    availability,
+                    "fetch_served",
+                    return_value={"go": {"m-live"}, "zen": {"m-live"}},
+                ) as fs:
+                    with mock.patch.object(
+                        availability, "fetch_live", return_value={"go": {}, "zen": {}}
+                    ):
+                        res = availability.current_offered(d)
+            self.assertTrue(fs.called)
+            self.assertTrue(res.live)
+            self.assertEqual(res.offered, {"m-live"})
+
+    def test_fresh_snapshot_performs_no_network(self):
+        import os
+
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            self._snapshot(d, "go", 1)
+            self._snapshot(d, "zen", 1)
+            with mock.patch.dict(os.environ, {"OPENCODE_API_KEY": "oc_sk_test"}):
+                with mock.patch.object(
+                    availability, "fetch_served", side_effect=AssertionError("no net")
+                ):
+                    res = availability.current_offered(d)
+            self.assertFalse(res.live)
+            self.assertEqual(res.offered, {"m-snap"})
+
+    def test_missing_snapshot_pulls_live(self):
+        import os
+
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            with mock.patch.dict(os.environ, {"OPENCODE_API_KEY": "oc_sk_test"}):
+                with mock.patch.object(
+                    availability,
+                    "fetch_served",
+                    return_value={"go": {"m-live"}, "zen": {"m-live"}},
+                ) as fs:
+                    with mock.patch.object(
+                        availability, "fetch_live", return_value={"go": {}, "zen": {}}
+                    ):
+                        res = availability.current_offered(d)
+            self.assertTrue(fs.called)
+            self.assertTrue(res.live)
+
+    def test_unreachable_pull_warns_and_uses_snapshots(self):
+        import os
+
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            self._snapshot(d, "go", 5)
+            self._snapshot(d, "zen", 5)
+            with mock.patch.dict(os.environ, {"OPENCODE_API_KEY": "oc_sk_test"}):
+                with mock.patch.object(
+                    availability, "fetch_served", side_effect=OSError("down")
+                ):
+                    res = availability.current_offered(d)
+            self.assertFalse(res.live)
+            self.assertIn("m-snap", res.offered)
+            self.assertTrue(any("unreachable" in w for w in res.warnings))

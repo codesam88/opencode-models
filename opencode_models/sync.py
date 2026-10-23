@@ -15,13 +15,7 @@ from datetime import timedelta
 from pathlib import Path
 
 from . import availability, go_pricing, zen_pricing
-from .freshness import snapshot_age
-
-# Per-source staleness thresholds. See .plan/architecture-refactoring.md
-# (freshness tiers: T2 ~4h availability / ~8h pricing) and docs/architecture.md
-# section 7.
-AVAILABILITY_MAX_AGE = timedelta(hours=4)
-PLANS_MAX_AGE = timedelta(hours=8)
+from .freshness import AVAILABILITY_MAX_AGE, PLANS_MAX_AGE, snapshot_age
 
 _AVAILABILITY_TIERS = ("go", "zen")
 
@@ -48,6 +42,48 @@ def _count_models(path: Path) -> int | None:
     if not isinstance(models, dict):
         return None
     return len(models)
+
+
+def refresh_plan(data_dir, tier, get=None):
+    """Ensure one plan tier's snapshot is fresh; refresh if stale.
+
+    Returns ``(status, messages, age)`` where *status* is ``"fresh"``,
+    ``"refreshed"`` or ``"kept"`` and *messages* is a tuple of report lines
+    (up-to-date / refreshed / warning + kept) ready to print or collect.
+    Shared by ``sync`` and the read paths so refresh reporting stays one
+    implementation. *get* is an optional transport override (tests); defaults
+    to the module's own fetcher.
+    """
+    from pathlib import Path
+
+    if tier not in ("go", "zen"):
+        raise KeyError(tier)
+    module = go_pricing if tier == "go" else zen_pricing
+    data_dir = Path(data_dir)
+    source = f"plans/{tier}"
+    age = snapshot_age(data_dir, source)
+    if age is not None and age <= PLANS_MAX_AGE:
+        return "fresh", (f"{source}: up-to-date ({_age_str(age)})",), age
+    try:
+        if get is None:
+            module.refresh(data_dir)
+        else:
+            module.refresh(data_dir, get=get)
+    except (OSError, ValueError) as exc:  # docs down must not fail the run
+        return (
+            "kept",
+            (
+                f"warning: {tier} pricing docs not refreshed ({exc})",
+                f"{source}: kept existing snapshot",
+            ),
+            age,
+        )
+    count = _count_models(data_dir / "plans" / f"{tier}.json")
+    if count is None:
+        msg = f"{source}: refreshed"
+    else:
+        msg = f"{source}: refreshed ({count} models)"
+    return "refreshed", (msg,), age
 
 
 def sync(data_dir: Path, get=None) -> int:
@@ -97,30 +133,16 @@ def sync(data_dir: Path, get=None) -> int:
                 warned += 1
 
     # Plan pricing (public pages).
-    plan_modules = (("go", go_pricing), ("zen", zen_pricing))
-    for tier, module in plan_modules:
-        source = f"plans/{tier}"
-        age = snapshot_age(data_dir, source)
-        if age is not None and age <= PLANS_MAX_AGE:
-            print(f"{source}: up-to-date ({_age_str(age)})")
+    for tier in ("go", "zen"):
+        status, messages, _age = refresh_plan(data_dir, tier, get=get)
+        for message in messages:
+            print(message)
+        if status == "fresh":
             up_to_date += 1
-            continue
-        try:
-            if get is None:
-                module.refresh(data_dir)
-            else:
-                module.refresh(data_dir, get=get)
-        except (OSError, ValueError) as exc:  # docs down must not fail sync
-            print(f"warning: {tier} pricing docs not refreshed ({exc})")
-            print(f"{source}: kept existing snapshot")
-            warned += 1
-            continue
-        count = _count_models(data_dir / "plans" / f"{tier}.json")
-        if count is None:
-            print(f"{source}: refreshed")
+        elif status == "refreshed":
+            refreshed += 1
         else:
-            print(f"{source}: refreshed ({count} models)")
-        refreshed += 1
+            warned += 1
 
     print(f"summary: {refreshed} refreshed, {up_to_date} up-to-date, {warned} warned")
     return 0
@@ -129,5 +151,6 @@ def sync(data_dir: Path, get=None) -> int:
 __all__ = [
     "AVAILABILITY_MAX_AGE",
     "PLANS_MAX_AGE",
+    "refresh_plan",
     "sync",
 ]

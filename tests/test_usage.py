@@ -290,6 +290,12 @@ class UsageCase(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
+        self._refresh_patch = mock.patch(
+            "opencode_models.cli.sync_mod.refresh_plan",
+            return_value=("fresh", (), None),
+        )
+        self._refresh_patch.start()
+        self.addCleanup(self._refresh_patch.stop)
         now = datetime.now(timezone.utc)
         _write_plan(self.tmp.name, now - timedelta(days=2))
         self.get = _routes(

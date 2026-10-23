@@ -4,13 +4,17 @@ Synthetic tmp data dirs only; no network, no live API.
 """
 
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import opencode_models.availability as availability
+from opencode_models import go_pricing, zen_pricing
 from opencode_models.catalog import load_catalog
 from opencode_models.rows import rows_for
+from tests import test_zen_pricing as zen_fixture
 
 
 def _write_model(data_dir: Path, mid: str, price: float = 1.0, benches=None):
@@ -50,7 +54,7 @@ def _snapshot(data_dir: Path, tier: str, model_ids: list[str]) -> None:
             {
                 "meta": {
                     "source": "test",
-                    "fetched_at": "2026-01-01T00:00:00+00:00",
+                    "fetched_at": "2099-01-01T00:00:00+00:00",
                     "schema_rev": 1,
                     "plans": [tier],
                 },
@@ -221,3 +225,114 @@ class CatalogCompositionTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RowsForPlanRefreshTest(unittest.TestCase):
+    def _stale_snapshot(self, data_dir, tier, hours_old=30):
+        import json
+        from datetime import datetime, timedelta, timezone
+
+        out = data_dir / "plans"
+        out.mkdir(parents=True, exist_ok=True)
+        past = datetime.now(timezone.utc) - timedelta(hours=hours_old)
+        (out / f"{tier}.json").write_text(
+            json.dumps(
+                {
+                    "meta": {
+                        "source": "test",
+                        "fetched_at": past.isoformat(timespec="seconds"),
+                        "schema_rev": 1,
+                        "plans": [tier],
+                    },
+                    "models": {},
+                }
+            )
+        )
+
+    def test_stale_plans_refresh_from_docs_fixtures(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            self._stale_snapshot(d, "zen", 30)
+            with mock.patch.object(
+                zen_pricing, "_fetch", return_value=zen_fixture.FIXTURE_HTML
+            ):
+                result = rows_for(d, ["zen"], price="fix", all_models=True)
+            doc = json.loads((d / "plans" / "zen.json").read_text())
+            self.assertIn("model-a", doc["models"])
+            self.assertTrue(any("refreshed" in w for w in result.warnings))
+
+    def test_fresh_plans_perform_no_fetch(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            # fresh snapshot
+            import json
+            from datetime import datetime, timezone
+
+            out = d / "plans"
+            out.mkdir(parents=True, exist_ok=True)
+            (out / "zen.json").write_text(
+                json.dumps(
+                    {
+                        "meta": {
+                            "source": "test",
+                            "fetched_at": datetime.now(timezone.utc).isoformat(
+                                timespec="seconds"
+                            ),
+                            "schema_rev": 1,
+                            "plans": ["zen"],
+                        },
+                        "models": {},
+                    }
+                )
+            )
+            with mock.patch.object(
+                zen_pricing, "_fetch", side_effect=AssertionError("no net")
+            ):
+                rows_for(d, ["zen"], price="fix", all_models=True)
+
+    def test_keyless_run_performs_no_fetch_anywhere(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            # fresh snapshots so no refresh
+            import json
+            from datetime import datetime, timezone
+
+            out = d / "plans"
+            out.mkdir(parents=True, exist_ok=True)
+            (out / "zen.json").write_text(
+                json.dumps(
+                    {
+                        "meta": {
+                            "source": "test",
+                            "fetched_at": datetime.now(timezone.utc).isoformat(
+                                timespec="seconds"
+                            ),
+                            "schema_rev": 1,
+                            "plans": ["zen"],
+                        },
+                        "models": {},
+                    }
+                )
+            )
+            avail = d / "available"
+            avail.mkdir(parents=True, exist_ok=True)
+            (avail / "zen.json").write_text(
+                json.dumps(
+                    {
+                        "meta": {
+                            "fetched_at": datetime.now(timezone.utc).isoformat(
+                                timespec="seconds"
+                            )
+                        },
+                        "models": {"m": True},
+                    }
+                )
+            )
+            os.environ.pop("OPENCODE_API_KEY", None)
+            with mock.patch.object(
+                zen_pricing, "_fetch", side_effect=AssertionError("no net")
+            ):
+                with mock.patch.object(
+                    go_pricing, "_fetch", side_effect=AssertionError("no net")
+                ):
+                    rows_for(d, ["zen"], price="fix", all_models=True)

@@ -21,7 +21,7 @@ from dataclasses import replace
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
-from . import __version__, availability
+from . import __version__, availability, go_pricing, zen_pricing
 from . import arena as arena_mod
 from .allowance import WINDOW_FRACTIONS, cost_per_request
 from .arena import ArenaCache
@@ -37,8 +37,6 @@ from .models import load_models
 from .overrides import load_curated, off_band_models, source_tier
 from .pricing import (
     USAGE_EXPORT_URL,
-    load_prices,
-    refresh_prices,
 )
 from .ranking import (
     BAND_FREE,
@@ -361,11 +359,6 @@ def _display_names(data_dir: Path) -> dict[str, str]:
             if isinstance(rec, dict) and rec.get("name"):
                 names.setdefault(slug, rec["name"])
                 names.setdefault(slug.split("/")[-1], rec["name"])
-    for _tier, entries in load_prices(data_dir / "tier_prices").items():
-        for entry in entries:
-            if entry.model_id and entry.name:
-                names.setdefault(entry.model_id, entry.name)
-                names.setdefault(entry.model_id.split("/")[-1], entry.name)
     return names
 
 
@@ -507,19 +500,20 @@ def _cmd_fetch(args: argparse.Namespace) -> int:
     else:
         saved = refresh(data_dir, get=http_get, progress=_model_tick, only=only)
         print(f"saved {len(saved)} model files to {data_dir / 'opencode'}")
-    print("fetch tier pricing from opencode.ai/docs ...")
-    try:
-        prices = refresh_prices(data_dir / "tier_prices", get=http_get)
-    except (OSError, ValueError) as exc:  # docs down must not fail the fetch
-        print(f"warning: tier pricing docs not refreshed ({exc})")
-    else:
-        if prices:
-            print(f"saved {', '.join(prices)} to {data_dir / 'tier_prices'}")
+    print("fetch plan pricing from opencode.ai/docs ...")
+    for module, label in ((go_pricing, "go"), (zen_pricing, "zen")):
+        try:
+            saved = module.refresh(data_dir, get=http_get)
+        except (OSError, ValueError) as exc:  # docs down must not fail the fetch
+            print(f"warning: {label} pricing docs not refreshed ({exc})")
         else:
-            print(
-                "warning: tier pricing docs parsed to nothing, "
-                "keeping existing snapshots"
-            )
+            if saved:
+                print(f"saved {', '.join(saved)} to {data_dir / 'plans'}")
+            else:
+                print(
+                    "warning: plan pricing docs parsed to nothing, "
+                    "keeping existing snapshots"
+                )
     print("fetch arena Elo from datasets-server.huggingface.co ...")
     try:
         elo = arena_mod.lookup_arena_elo(get=http_get)
@@ -941,6 +935,8 @@ def _endpoint(row) -> str:
     """
     plans = plans_of(row)
     prefix = "opencode-go" if "go" in plans else "opencode"
+    if row.endpoint_id:
+        return f"{prefix}/{row.endpoint_id}"
     if row.entry is not None and row.entry.model_id:
         return f"{prefix}/{row.entry.model_id}"
     return f"{prefix}/{row.model.model_id.split('/')[-1]}"

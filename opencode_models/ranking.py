@@ -6,11 +6,13 @@ excluded — a ratio cannot be computed for them.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, replace
 
+from .allowance import cost_per_request
 from .identity import canonical_id
 from .models import Model
-from .pricing import variant_of, weighted_cost
+from .pricing import weighted_cost
 from .scoring import combined, derived_scores, scales, tracked
 
 _PRICE_FIELDS = ("price_input", "price_output")
@@ -98,7 +100,8 @@ class Row:
     benchmark: str | None  # the key `score` came from
     grade: str = "o"  # rank marker: ++ / + / o / -- / ·
     provider: str = "-"  # zen / go, "-" when in neither tier
-    entry: object | None = None  # pricing.PriceEntry when doc-priced
+    entry: object | None = None
+    endpoint_id: str | None = None  # plan-local id for API endpoints
     synthetic: bool = False  # roster-only row: offered, so always listed
 
 
@@ -152,91 +155,136 @@ def ratio(score: float, price: float) -> float:
     return float("inf") if price == 0 else score / price
 
 
+#: Parenthetical suffix in a documented variant name: "DS (Off-Peak)".
+_FREE_SUFFIX = re.compile(r"\(([^)]*)\)\s*$")
+
+
+def _stage_for_model(m, records, free_ids, axis, provider, reach_variants):
+    staged = []  # (model, display name, cost, free, monthly limit, endpoint slug)
+    slug = m.model_id.split("/")[-1]
+    rec = records.get(slug)
+    priced_tiers = []
+    if isinstance(rec, dict) and not rec.get("free"):
+        priced_tiers = list(rec.get("tiers") or [])
+    free_rec = None
+    if reach_variants:
+        free_rec = records.get(f"{slug}-free")
+    has_free_variant = bool(free_rec) or (isinstance(rec, dict) and rec.get("free"))
+
+    cost = None
+    if not priced_tiers and not has_free_variant:
+        # no documented offering: fall back to the catalog price
+        if axis == "input":
+            cost = m.price_input
+        elif axis == "output":
+            cost = m.price_output
+        else:
+            cost = weighted_cost(m.price_input, m.price_output, m.price_cached_input)
+        if cost is None:
+            return staged
+        staged.append(
+            (
+                m,
+                m.name,
+                cost,
+                slug in free_ids or (cost == 0),
+                None,
+                slug,
+            )
+        )
+        return staged
+
+    seen = set()
+    limits = rec.get("limits") if isinstance(rec, dict) else None
+    if isinstance(limits, dict):
+        # the allowance that funds this provider's line; the catalog-wide
+        # "-" view counts any plan's allowance, as documented entries did
+        limit = limits.get(provider)
+        if limit is None and provider == "-":
+            limit = next((v for v in limits.values() if v is not None), None)
+    else:
+        limit = limits
+    est_value = None
+    if axis == "est" and provider != "zen" and isinstance(rec, dict):
+        cpr = cost_per_request(rec.get("tiers") or [], rec.get("assumptions"))
+        if cpr is not None and cpr > 0:
+            est_value = cpr
+    for t in priced_tiers:
+        label = t.get("label")
+        key = (slug, label)
+        if key in seen:
+            continue
+        seen.add(key)
+        if axis == "input":
+            tier_cost = t.get("in")
+        elif axis == "output":
+            tier_cost = t.get("out")
+        elif axis == "est" and provider != "zen" and est_value is not None:
+            tier_cost = est_value
+        else:
+            tier_cost = weighted_cost(t.get("in"), t.get("out"), t.get("cached"))
+        display = f"{m.name} ({label})" if label else m.name
+        staged.append(
+            (
+                m,
+                display,
+                tier_cost,
+                False,
+                limit,
+                slug,
+            )
+        )
+
+    if has_free_variant:
+        # the free offering stages under the base model's name (a free
+        # designation names no variant of its own), exactly like priced
+        # variants above; the "[free]" tag follows below
+        free_name = m.name
+        free_slug = slug
+        if isinstance(free_rec, dict):
+            suffix = _FREE_SUFFIX.search(free_rec.get("name") or "")
+            if suffix:
+                free_name = f"{m.name} ({suffix.group(1)})"
+            free_slug = f"{slug}-free"
+        if "free" not in str(free_name).lower():
+            free_name = f"{free_name} [free]"
+        staged.append((m, free_name, 0.0, True, None, free_slug))
+
+    return staged
+
+
 def build_rows(
     models: list[Model],
-    entries=(),
+    records: dict[str, dict] | None = None,
     free_ids=frozenset(),
     axis: str = "est",
     provider: str = "-",
     table: dict | None = None,
-    est_rates: dict[str, float] | None = None,
     reach_variants: bool = True,
 ) -> list[Row]:
-    """Price every line of the console list.
+    """Price every line of the console list from unified plan records.
 
-    A documented line replaces the catalog price (the catalog has no notion
-    of tier: it carries the Zen rate for a model Go sells cheaper), and one
-    model can produce several rows — one per priced variant. Free rows are
-    really free: the export meters them at $0 and the throttle lives
-    elsewhere (unpublished rate limits, not the dollar math), so they
-    carry price 0, read "-" for score/$, and sort ahead of every
-    cost-based line.
-
-    *axis* picks what a line costs: ``fix`` (20/60/20 in/cached/out),
-    a single ``input`` / ``output`` rate, or ``est`` (the Go snapshot's
-    page-estimated $/req, plan-invariant like the page prices). ``est``
-    applies to Go and catalog lines; Zen lines and models missing from
-    the snapshot fall back to ``fix``.
+    *records* maps endpoint slug to its snapshot record (``tiers`` with
+    ``label/in/out/cached`` become one row per variant; ``free`` records
+    stage a free line). Absent records mean no documented offering, and
+    pricing falls back to the catalog. ``est`` derives per slug from the
+    record's tiers and assumptions via ``cost_per_request``.
     """
-    by_model: dict[str, list] = {}
-    for entry in entries:
-        if entry.model_id:
-            by_model.setdefault(entry.model_id, []).append(entry)
+    records = records or {}
+    free_ids = set(free_ids) | {
+        slug
+        for slug, rec in records.items()
+        if isinstance(rec, dict) and rec.get("free")
+    }
 
-    def cost_of(model: Model, entry) -> float | None:
-        if axis == "input":
-            return entry.input if entry else model.price_input
-        if axis == "output":
-            return entry.output if entry else model.price_output
-        if axis == "est" and provider != "zen" and est_rates:
-            est = est_rates.get(model.model_id.split("/")[-1])
-            if est is not None:
-                return est
-        if entry:
-            return weighted_cost(entry.input, entry.output, entry.cached_read)
-        return weighted_cost(
-            model.price_input, model.price_output, model.price_cached_input
+    staged = []  # (model, display name, cost, free, monthly limit, endpoint slug)
+    for m in models:
+        staged.extend(
+            _stage_for_model(m, records, free_ids, axis, provider, reach_variants)
         )
 
-    staged = []  # (model, entry, display name, cost, free, monthly limit)
-    for m in models:
-        slug = m.model_id.split("/")[-1]
-        documented = list(by_model.get(slug, []))
-        if reach_variants:
-            # a free designation reaches the catalog base record, which
-            # carries no variant of its own: the free offering still stages
-            # a row with the callable free id. Synthetic roster models name
-            # their own exact offering, so they need no reach.
-            documented += by_model.get(f"{slug}-free", [])
-        cost = cost_of(m, None)
-        if not documented:
-            if cost is None:
-                continue  # no price at all — nothing to rank it on
-            staged.append(
-                (m, None, m.name, cost, m.model_id in free_ids or cost == 0, None)
-            )
-            continue
-        seen = set()
-        for entry in documented:  # one row per documented offering
-            key = (entry.model_id, variant_of(entry.name))
-            if key in seen:
-                continue  # the same variant from a second tier is one line
-            seen.add(key)
-            suffix = variant_of(entry.name)
-            label = f"{m.name} {suffix}" if suffix else m.name
-            staged.append(
-                (
-                    m,
-                    entry,
-                    label,
-                    cost_of(m, entry),
-                    entry.free,
-                    entry.limit,
-                )
-            )
-
     rows = []
-    for model, entry, name, cost, free, limit in staged:
+    for model, name, cost, free, limit, endpoint_id in staged:
         if free:
             price, band = 0.0, BAND_FREE
             if "free" not in name.lower():
@@ -244,10 +292,6 @@ def build_rows(
         else:
             price = cost
             band = BAND_INCLUDED if limit is not None else BAND_PAYG
-        # the row's score is the model's own: every benchmark it carries on
-        # that benchmark's 0-100 scale, median across them. *table* is the
-        # scale of the whole catalog, passed in so every view grades against
-        # the same yardstick.
         derived = derived_scores(model, table or scales(models))
         score = combined(derived)
         strongest = max(derived, key=lambda k: derived[k]) if derived else None
@@ -261,7 +305,7 @@ def build_rows(
                 score=score,
                 benchmark=strongest,
                 provider=provider,
-                entry=entry,
+                endpoint_id=endpoint_id,
             )
         )
     return rows

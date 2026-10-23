@@ -27,7 +27,6 @@ from pathlib import Path
 #: nothing curated is ever written by `fetch`, so seeding it is safe.
 SEED_SUBDIRS = (
     "opencode",
-    "tier_prices",
     "boards",
     "aiarena",
     "usage",
@@ -153,6 +152,9 @@ def seed(target: Path, repo: Path) -> dict[str, int]:
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(text.encode("utf-8"))
             synced += 1
+        elif rel.startswith("tier_prices/"):
+            # legacy path: ignore on-disk leftovers
+            continue
         elif dest.exists():
             skipped += 1
         else:

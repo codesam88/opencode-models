@@ -28,9 +28,12 @@ def cost_per_request(tiers: list[dict], assumptions: dict | None) -> float | Non
     if assumptions is None or not tiers:
         return None
     base = tiers[0]
+    # absent cached pricing means no cache discount: cached reads are
+    # billed at the input rate, as in pricing.weighted_cost
+    cached = base["cached"] if base.get("cached") is not None else base["in"]
     return (
         assumptions["in"] * base["in"]
-        + assumptions["cached"] * (base["cached"] or 0)
+        + assumptions["cached"] * cached
         + assumptions["out"] * base["out"]
     ) / 1e6
 

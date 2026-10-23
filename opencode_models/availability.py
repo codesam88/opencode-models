@@ -1,8 +1,8 @@
 """Which models the plans actually offer right now.
 
 Availability resolves a tier's offered slugs newest-first along the chain
-``available/`` (live snapshot) -> ``tier_prices/`` (docs snapshot) ->
-``plans/`` (runtime snapshot) -> shipped plan fallback. ``load_roster``
+``available/`` (live snapshot) -> ``plans/`` (unified snapshot) ->
+shipped plan fallback. ``load_roster``
 returns that set; ``members`` filters the catalog to it and ``offered``
 checks a model against a set of ids. A tier absent from every layer is
 *unknown*, not empty, so callers treat unknown as "no restriction".
@@ -30,19 +30,20 @@ from .models import Model
 
 
 def _snapshot_ids(data_dir: Path, tier: str) -> set[str] | None:
-    """Model ids the provider's tier snapshot lists, or None if unknown."""
-    path = Path(data_dir) / "tier_prices" / f"{tier}_prices.json"
+    """Model slugs the provider's unified plan snapshot lists, or None if unknown."""
+    path = Path(data_dir) / "plans" / f"{tier}.json"
     if not path.exists():
         return None
     try:
-        rows = json.loads(path.read_text())
+        data = json.loads(path.read_text())
     except (json.JSONDecodeError, OSError):
         return None
-    if not isinstance(rows, list):
+    if not isinstance(data, dict):
         return None
-    return {
-        row["model_id"] for row in rows if isinstance(row, dict) and row.get("model_id")
-    }
+    models = data.get("models")
+    if not isinstance(models, dict):
+        return None
+    return set(models)
 
 
 def load_available(data_dir: Path) -> dict[str, set[str] | None]:
@@ -110,9 +111,9 @@ def _plan_models(data_dir: Path, tier: str) -> dict:
 def load_roster(data_dir: Path, tier: str) -> set[str]:
     """Slugs a tier offers, resolved newest-first.
 
-    Resolution order: live ``available/`` snapshot, then ``tier_prices/``
-    docs snapshot, then the runtime ``plans/`` snapshot, then the shipped
-    plan fallback. Unknown tiers raise ``KeyError``.
+    Resolution order: live ``available/`` snapshot, then the unified
+    ``plans/`` snapshot, then the shipped plan fallback. Unknown tiers raise
+    ``KeyError``.
     """
     if tier not in ("go", "zen"):
         raise KeyError(tier)
@@ -131,18 +132,8 @@ def load_roster(data_dir: Path, tier: str) -> set[str]:
 
 
 def free_slugs(data_dir: Path, tier: str) -> set[str]:
-    """Slugs flagged free in the tier's price/plan snapshots."""
+    """Slugs flagged free in the tier's unified plan snapshot."""
     free: set[str] = set()
-    path = Path(data_dir) / "tier_prices" / f"{tier}_prices.json"
-    if path.exists():
-        try:
-            rows = json.loads(path.read_text())
-        except (json.JSONDecodeError, OSError):
-            rows = None
-        if isinstance(rows, list):
-            for row in rows:
-                if isinstance(row, dict) and row.get("free") and row.get("model_id"):
-                    free.add(row["model_id"])
     for slug, rec in _plan_models(data_dir, tier).items():
         if isinstance(rec, dict) and rec.get("free"):
             free.add(slug)

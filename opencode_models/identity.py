@@ -15,9 +15,12 @@ in three places at once: the model's own record, the tier price entries keyed
 by id, and the availability record. Getting two of the three right still
 splits the model, so all three go through :func:`canonical_id`.
 
-The alias map is explicit rather than a suffix rule. ``-contributor`` is a
-Meta programme today and means nothing anywhere else, and a suffix rule would
-quietly merge a model whose name merely ends that way - while a designation
+Provider plan-option suffixes are stripped to find the base model. The suffixes
+``-free`` and ``-contributor`` on the slug (the last path segment of
+``lab/slug``) are plan designations, not different weights: a free or
+contributor variant carries the same benchmark scores as its base. The suffixes
+are stripped repeatedly, so ``X-contributor-free`` folds to ``X``, and only
+when the remainder is non-empty (a bare suffix is left alone). A designation
 with no twin in the catalog keeps its own identity rather than vanishing.
 """
 
@@ -27,27 +30,36 @@ from dataclasses import replace
 
 from .models import Model
 
-#: Designation id → the model it is a designation of.
-#:
-#: Added only where the two records carry identical benchmark values, so the
-#: merge cannot invent a difference. A pair that disagrees is a data problem
-#: to look at, not an alias to paper over.
-MODEL_ALIASES: dict[str, str] = {
-    "meta/muse-spark-1.2-contributor": "meta/muse-spark-1.2",
-    "meta/muse-spark-1.3-contributor": "meta/muse-spark-1.3",
-}
+#: Provider plan-option suffixes on the slug segment. Stripped repeatedly by
+#: :func:`canonical_id` to fold a variant onto its base model.
+VARIANT_SUFFIXES: tuple[str, ...] = ("-free", "-contributor")
+
+
+def _strip_suffixes(slug: str) -> str:
+    changed = True
+    while changed:
+        changed = False
+        for suffix in VARIANT_SUFFIXES:
+            if slug.endswith(suffix):
+                candidate = slug[: -len(suffix)]
+                if candidate:
+                    slug = candidate
+                    changed = True
+                    break
+    return slug
 
 
 def canonical_id(model_id: str) -> str:
     """The model *model_id* names, with any plan designation folded away."""
-    return MODEL_ALIASES.get(model_id, model_id)
+    if "/" in model_id:
+        lab, slug = model_id.rsplit("/", 1)
+        return f"{lab}/{_strip_suffixes(slug)}"
+    return _strip_suffixes(model_id)
 
 
 def plan_ids(model_id: str) -> set[str]:
     """Every catalog id that is this model, designation or not."""
-    ids = {model_id}
-    ids.update(alias for alias, plain in MODEL_ALIASES.items() if plain == model_id)
-    return ids
+    return {model_id, canonical_id(model_id)}
 
 
 def merge_aliases(models: list[Model]) -> list[Model]:
@@ -57,41 +69,46 @@ def merge_aliases(models: list[Model]) -> list[Model]:
     can never quietly restate a number), and the cheapest price is kept: the
     tier price tables replace it wherever they list the model, and where they
     do not, the price someone can actually pay is the honest one. Order is
-    the catalog's, so the tables do not reshuffle.
+    the catalog's, so the tables do not reshuffle. A designation with no twin
+    keeps its own identity.
     """
-    known = {m.model_id: m for m in models}
-    merged: list[Model] = []
-    seen: set[str] = set()
+    groups: dict[str, list[Model]] = {}
+    order: list[str] = []
     for model in models:
-        plain = canonical_id(model.model_id)
-        if plain in seen:
-            continue  # already emitted as part of its group
-        twin = known.get(plain)
-        group = (
-            [
-                known[alias]
-                for alias, target in MODEL_ALIASES.items()
-                if target == plain and alias in known
-            ]
-            if twin
-            else []
-        )
-        seen.add(model.model_id)
-        seen.update(m.model_id for m in group)
-        if twin is None or not group:
-            merged.append(model)  # no twin: renaming must not hide it
+        canonical = canonical_id(model.model_id)
+        if canonical not in groups:
+            groups[canonical] = []
+            order.append(canonical)
+        groups[canonical].append(model)
+
+    merged: list[Model] = []
+    for canonical in order:
+        group = groups[canonical]
+        if len(group) == 1:
+            merged.append(group[0])
             continue
-        scores, sources = dict(twin.scores), dict(twin.sources)
-        for other in group:
+        plain = next((m for m in group if m.model_id == canonical), None)
+        if plain is None:
+            # no twin in the catalog: keep each designation's own identity
+            merged.extend(group)
+            continue
+        variants = [m for m in group if m.model_id != canonical]
+        scores, sources = dict(plain.scores), dict(plain.sources)
+        for other in variants:
             scores = {**other.scores, **scores}  # plain record wins
             sources = {**other.sources, **sources}
         merged.append(
             replace(
-                twin,
-                price_input=min([twin.price_input] + [m.price_input for m in group]),
-                price_output=min([twin.price_output] + [m.price_output for m in group]),
+                plain,
+                price_input=min(
+                    [plain.price_input] + [m.price_input for m in variants]
+                ),
+                price_output=min(
+                    [plain.price_output] + [m.price_output for m in variants]
+                ),
                 price_cached_input=min(
-                    [twin.price_cached_input] + [m.price_cached_input for m in group]
+                    [plain.price_cached_input]
+                    + [m.price_cached_input for m in variants]
                 ),
                 scores=scores,
                 sources=sources,

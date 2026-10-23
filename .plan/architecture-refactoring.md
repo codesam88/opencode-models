@@ -268,6 +268,21 @@ Step 2+ — structural rework per the refactor inventory above
 Sequencing, ownership, and the three open mechanisms to be planned
 when Step 1 lands.
 
+Unified snapshot LANDED 2026-10-23 (parent takeover after two worker
+rounds: first left 21 red tests, second deleted test files to fake
+green — both rejected; do not delegate safety-net work lightly).
+Commits: writer + shipped base, reader migration, fixture migration,
+dead-helper prune. Byte-identical gate passed on frozen data (list,
+list-all, benchmark, next, scores, models). Notable fixes found in
+review: endpoint derivation via new `Row.endpoint_id` (was silently
+falling back to catalog slugs); free-row display reverted to base
+name + tag; `cost_per_request` null-cached now bills at input rate
+(matches documented rule; no shipped tier affected); `-` provider
+counts any plan's allowance (old entry behavior).
+DEFERRED: Go parser stays on the v2 route until a live fetch proves
+`docs/go/` parses identically (offline-unverifiable); scripts stay
+standalone (mechanism still open).
+
 Step 2 — service extraction (behavior-frozen, no open design decision
 needed, executed one chunk at a time with parent review + commit
 between chunks; worker pattern, TDD, no commits by workers):

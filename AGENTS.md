@@ -79,11 +79,12 @@ single-fix tasks skip the plan file; say so in one line and do the work.
 | `blocked`     | stuck                     | note the blocker in the body                  |
 | `done`        | complete                  | finished                                      |
 
+
 ### Task Management Workflow
 
 - **Discover work:** `plan list` lists all tasks; prefer priority high with status `in-progress` or `open`.
 - **Step back / plan:** consider `backlog` and `idea` items when deciding next big steps.
-- **Create:** use `.plan/.TEMPLATE.md` and its contained instructions for a new task file `.plan/<slug>.md`.
+- **Create:** read `.plan/.TEMPLATE.md` and any instructions therein to create a new task file `.plan/<slug>.md`.
 - **Update:** set `status` to match reality, and append refinements and decisions while keeping the task concise — problem, goal, implementation steps. Treat a task file as a WIP spec.
 - **Complete:** set `status: done` when finished. Do not delete the file.
 - **Block:** set `status: blocked` and note the blocker in the body.

@@ -7,6 +7,16 @@ area: cli
 
 ## Notes
 
+Status 2026-10-23: steps 1–3 are in (`allowance.py` core, shipped
+`plans/go.json` + fallback, `usage` command with `--go-pro`). Step 7b is
+done with a superseding decision: instead of keeping curated `zen.txt`,
+*both* tier lists were retired in favour of snapshot-derived rosters,
+and a `plans/zen.json` snapshot (same envelope, no windows/caps — Zen is
+credit-based) now exists alongside the Go one. Still open: step 4's
+automation gaps (Action cron, `page_sha256`, per-model limit deltas),
+step 5 plan identity (stored preference, `--plan`, fit hint — only
+`--go-pro` exists), step 6 free-tier diagnostics, step 7 verification.
+
 Integrate the Go allowance model (`docs/model-go-plan.md`, validator
 `/tmp/opencode/go_allowance.py`) into the recommendation system, with
 self-checks at every layer. Parent-drafted from the maintainer's four
@@ -79,10 +89,12 @@ page parsing is `html.parser`, with a maintainer-paste fallback).
   CI) → commit. Future Action: weekly cron runs plans-update;
   gate failure = red workflow, no PR; diff vs fallback = PR body; merge =
   promote. Gaps before automating: `page_sha256` in meta, per-model limit
-  deltas in the report.
+  deltas in the report. (Split out 2026-10-23 into the idea-level plan
+  `.plan/plan-snapshot-automation.md`, covering both the Go and Zen
+  update scripts; the manual workflow above stays the interim answer.)
 - [ ] 5. Plan identity: stored preference + `--plan` + fit hint.
 - [ ] 6. Free-tier diagnostic footnotes + error-signature collection.
-- [ ] 7b. Consolidation (single Go pricing file): declare
+- [x] 7b. Consolidation (single Go pricing file): declared
   `plans/go.json` the authority (caps, tiered prices, assumptions,
   estimates); derive `tier_prices/go` variant rows from its tiers instead
   of scraping `/docs/go/`; derive Go pool membership as page-keys ∪
@@ -93,6 +105,8 @@ page parsing is `html.parser`, with a maintainer-paste fallback).
   Location: `opencode_models/data/plans/go.json` (`data.py` became
   `models.py` for the record types; `data/` is a pure shipped-data
   namespace; import sites repointed mechanically, no behavior change).
+  Done 2026-10-23 with a superseding decision recorded above: both tier
+  lists retired (not just go.txt), and plans/zen.json added.
 - [ ] 7. Verification: full suite, ruff/zizmor, live matrix (keyed
   `usage` vs export vs page math), docs (README/LIMITS/CHANGELOG +
   `docs/model-go-plan.md` status flip per settled assumption).

@@ -1,11 +1,22 @@
 ---
-status: open
+status: done
 type: feature
 priority: high
 area: cli
 ---
 
 ## Notes
+
+**Closed 2026-10-23**: all six build steps landed and merged (live gateway
+availability, zero-Go warning, `models --all` with `[x]`/`[ ]`/`[?]`,
+served-only `list`/`next`, README/SECURITY/LIMITS/CHANGELOG docs).
+Verified against the tree: `fetch_served` is only ever called with an
+authed transport (no anonymous-list fallback), `models --all` and the
+zero-Go warning are in `cli.py`, CHANGELOG documents the change, and the
+usage probe shape is in LIMITS.md. Full suite + lint green in CI.
+One item not re-runnable here: the live key/no-key/wrong-key matrix
+needs a valid personal key (the environment key 401s); worth one
+maintainer pass with a good key if the gateway behavior is ever doubted.
 
 Switch availability to the inference gateway's model lists. Discovery
 journey (document as user guidance, per maintainer): first ran with **no

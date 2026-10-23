@@ -199,7 +199,13 @@ def build_rows(
     staged = []  # (model, entry, display name, cost, free, monthly limit)
     for m in models:
         slug = m.model_id.split("/")[-1]
-        documented = by_model.get(slug, []) + by_model.get(f"{slug}-free", [])
+        documented = sorted(
+            by_model.get(slug, []) + by_model.get(f"{slug}-free", []),
+            # first tier in *entries* owns a variant; within one variant
+            # the free entry wins, so the row's endpoint is the callable
+            # free id rather than the priced twin
+            key=lambda e: (variant_of(e.name), not e.free),
+        )
         cost = cost_of(m, None)
         if not documented:
             if cost is None:

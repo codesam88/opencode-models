@@ -26,9 +26,7 @@ an explicit --out, never by default:
     python3 scripts/update_zen_pricing.py --out opencode_models/data/plans/zen.json
 """
 
-import argparse
 import json
-import sys
 import urllib.request
 from datetime import datetime, timezone
 from importlib.metadata import PackageNotFoundError, version
@@ -230,95 +228,8 @@ def _read_models(path):
     return go_pricing._read_models(path)
 
 
-def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument(
-        "--from",
-        dest="source",
-        metavar="FILE",
-        help="parse a saved copy of the page instead of fetching",
-    )
-    parser.add_argument(
-        "--out",
-        default=DEFAULT_OUT,
-        metavar="PATH",
-        help=f"snapshot path (default: {DEFAULT_OUT})",
-    )
-    parser.add_argument(
-        "--check",
-        action="store_true",
-        help="validate the existing snapshot; no network, no write",
-    )
-    args = parser.parse_args(argv)
-    out = Path(args.out)
-    if args.check:
-        try:
-            models = _read_models(out)
-        except ValueError as exc:
-            print(f"error: {exc}", file=sys.stderr)
-            return 1
-        errors, warnings, checked = validate(models)
-        return _report(errors, warnings, checked)
-    if args.source:
-        source = args.source
-        try:
-            raw = Path(args.source).read_bytes()
-            html = raw.decode("utf-8")
-        except OSError as exc:
-            print(f"error: {exc}", file=sys.stderr)
-            return 2
-    else:
-        source = PAGE_URL
-        try:
-            html = _fetch(PAGE_URL)
-            raw = html.encode("utf-8")
-        except OSError as exc:
-            print(f"error: fetch failed: {exc}", file=sys.stderr)
-            return 2
-    try:
-        parsed, parse_warnings = parse_page(html)
-    except ValueError as exc:
-        print(f"error: parse failed: {exc}", file=sys.stderr)
-        return 2
-    existing = {}
-    if out.exists():
-        try:
-            existing = _read_models(out)
-        except ValueError as exc:
-            print(f"error: {exc}", file=sys.stderr)
-            return 2
-    merged, counts, merge_warnings = merge(existing, parsed)
-    errors, gate_warnings, checked = validate(merged)
-    warnings = parse_warnings + merge_warnings + gate_warnings
-    code = _report(errors, warnings, checked, merged_counts=counts, total=len(merged))
-    if code:
-        print("gate failed; not writing")
-        return code
-    import hashlib
-
-    doc = {
-        "meta": {
-            "source": source,
-            "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            "schema_rev": 1,
-            "page_sha256": hashlib.sha256(raw).hexdigest(),
-            "plans": list(PLANS),
-        },
-        "models": {slug: merged[slug] for slug in sorted(merged)},
-    }
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(doc, indent=2, ensure_ascii=False) + "\n")
-    print(f"wrote {out}")
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
-
-
 def refresh(directory, get=None):
     """Fetch/parse/merge/write the Zen plan snapshot; return files written."""
-    from pathlib import Path
 
     directory = Path(directory)
     out = directory / "plans" / "zen.json"
@@ -341,7 +252,6 @@ def refresh(directory, get=None):
     if errors:
         raise ValueError("; ".join(errors))
     import hashlib
-    from datetime import datetime, timezone
 
     doc = {
         "meta": {

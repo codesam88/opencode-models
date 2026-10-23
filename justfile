@@ -21,15 +21,13 @@ run *args:
 sync:
     uv run --no-sync opencode-models sync
 
-# Refresh data/plans/*.json from the docs pages (gate fails shut)
+# Refresh data/plans/*.json from the docs pages (gate fails shut on --check)
 plans-sync:
-    uv run --no-sync python -m opencode_models.go_pricing
-    uv run --no-sync python -m opencode_models.zen_pricing
+    uv run --no-sync opencode-models --data data sync --force
 
 # Validate the local snapshots offline (default: data/plans)
 plans-check:
-    uv run --no-sync python -m opencode_models.go_pricing --check
-    uv run --no-sync python -m opencode_models.zen_pricing --check
+    uv run --no-sync opencode-models --data data sync --check
 
 # Promote validated snapshots to the shipped fallback (curation: review, then PR)
 plans-freeze: plans-check

@@ -44,7 +44,7 @@ def _count_models(path: Path) -> int | None:
     return len(models)
 
 
-def refresh_plan(data_dir, tier, get=None):
+def refresh_plan(data_dir, tier, get=None, force: bool = False):
     """Ensure one plan tier's snapshot is fresh; refresh if stale.
 
     Returns ``(status, messages, age)`` where *status* is ``"fresh"``,
@@ -52,7 +52,7 @@ def refresh_plan(data_dir, tier, get=None):
     (up-to-date / refreshed / warning + kept) ready to print or collect.
     Shared by ``sync`` and the read paths so refresh reporting stays one
     implementation. *get* is an optional transport override (tests); defaults
-    to the module's own fetcher.
+    to the module's own fetcher. *force* refreshes regardless of age.
     """
     from pathlib import Path
 
@@ -62,7 +62,7 @@ def refresh_plan(data_dir, tier, get=None):
     data_dir = Path(data_dir)
     source = f"plans/{tier}"
     age = snapshot_age(data_dir, source)
-    if age is not None and age <= PLANS_MAX_AGE:
+    if not force and age is not None and age <= PLANS_MAX_AGE:
         return "fresh", (f"{source}: up-to-date ({_age_str(age)})",), age
     try:
         if get is None:
@@ -86,11 +86,12 @@ def refresh_plan(data_dir, tier, get=None):
     return "refreshed", (msg,), age
 
 
-def sync(data_dir: Path, get=None) -> int:
+def sync(data_dir: Path, get=None, force: bool = False) -> int:
     """Refresh stale T2 sources under *data_dir*, printing a per-source report.
 
-    Returns 0 on success; unreachable or keyless sources warn and keep their
-    last snapshots rather than raising.
+    Only sources older than their thresholds refresh, unless *force*
+    refreshes everything. Returns 0 on success; unreachable or keyless
+    sources warn and keep their last snapshots rather than raising.
     """
     data_dir = Path(data_dir)
     refreshed = 0
@@ -104,7 +105,7 @@ def sync(data_dir: Path, get=None) -> int:
     for tier in _AVAILABILITY_TIERS:
         source = f"available/{tier}"
         age = snapshot_age(data_dir, source)
-        if age is None or age > AVAILABILITY_MAX_AGE:
+        if force or age is None or age > AVAILABILITY_MAX_AGE:
             stale_avail.append(tier)
         else:
             print(f"{source}: up-to-date ({_age_str(age)})")
@@ -134,7 +135,7 @@ def sync(data_dir: Path, get=None) -> int:
 
     # Plan pricing (public pages).
     for tier in ("go", "zen"):
-        status, messages, _age = refresh_plan(data_dir, tier, get=get)
+        status, messages, _age = refresh_plan(data_dir, tier, get=get, force=force)
         for message in messages:
             print(message)
         if status == "fresh":
@@ -148,9 +149,33 @@ def sync(data_dir: Path, get=None) -> int:
     return 0
 
 
+def check_snapshots(data_dir: Path) -> int:
+    """Validate the local plan snapshots offline; no network, no writes.
+
+    Mirrors the validation gate: missing or unreadable files and gate
+    failures exit nonzero. Used by curation (`plans-check`) before
+    promoting snapshots to the shipped fallback.
+    """
+    data_dir = Path(data_dir)
+    code = 0
+    for tier, module in (("go", go_pricing), ("zen", zen_pricing)):
+        path = data_dir / "plans" / f"{tier}.json"
+        try:
+            models = module._read_models(path)
+        except ValueError as exc:
+            print(f"error: {exc}")
+            code = 1
+            continue
+        errors, warnings, checked = module.validate(models)
+        module_code = module._report(errors, warnings, checked)
+        code = code or module_code
+    return code
+
+
 __all__ = [
     "AVAILABILITY_MAX_AGE",
     "PLANS_MAX_AGE",
+    "check_snapshots",
     "refresh_plan",
     "sync",
 ]

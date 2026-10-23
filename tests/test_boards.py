@@ -1,6 +1,7 @@
 """Official benchmark boards fetched directly from their own sources."""
 
 import json
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -8,9 +9,11 @@ from opencode_models.boards import (
     SWE_URL,
     BoardRow,
     fetch_boards,
+    load_boards,
     match_model,
     match_models,
     merge_boards,
+    save_boards,
     swebench_rows,
     tbench_page_rows,
 )
@@ -729,3 +732,41 @@ class FetchBoardsProgressTest(unittest.TestCase):
         self.assertEqual(len(calls), 2)
         self.assertEqual([c[0] for c in calls], [1, 2])
         self.assertTrue(all(c[1] == 2 for c in calls))
+
+
+class BoardsCacheRoundTripTest(unittest.TestCase):
+    def test_save_load_round_trip_with_meta(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp) / "boards"
+            rows = [BoardRow(benchmark="TB", model_name="M", score=1.0, source="u")]
+            saved = save_boards(d, {"tbench": rows})
+            self.assertEqual(saved, ["tbench.json"])
+            raw = json.loads((d / "tbench.json").read_text())
+            self.assertIn("meta", raw)
+            self.assertEqual(raw["meta"]["schema_rev"], 1)
+            self.assertIn("fetched_at", raw["meta"])
+            self.assertIn("source", raw["meta"])
+            self.assertEqual(len(raw["rows"]), 1)
+            loaded = load_boards(d)
+            self.assertEqual(len(loaded), 1)
+            self.assertEqual(loaded[0].model_name, "M")
+
+    def test_legacy_bare_list_loads(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp) / "boards"
+            d.mkdir()
+            (d / "old.json").write_text(
+                json.dumps(
+                    [
+                        {
+                            "benchmark": "TB",
+                            "model_name": "M2",
+                            "score": 2.0,
+                            "source": "u",
+                        }
+                    ]
+                )
+            )
+            loaded = load_boards(d)
+            self.assertEqual(len(loaded), 1)
+            self.assertEqual(loaded[0].model_name, "M2")

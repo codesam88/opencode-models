@@ -10,6 +10,7 @@ into models at load time as an "LMArena Elo" benchmark axis.
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 from .models import Model
@@ -36,11 +37,34 @@ class ArenaCache:
             data = json.loads(self.path.read_text())
         except (json.JSONDecodeError, OSError):
             return {}
-        return data if isinstance(data, dict) else {}
+        if not isinstance(data, dict):
+            return {}
+        # Newer cache files wrap scores under ``scores`` beside a ``meta``
+        # envelope; legacy ones are a bare {slug: elo} dict.
+        if "meta" in data:
+            scores = data.get("scores")
+            return scores if isinstance(scores, dict) else {}
+        return data
 
     def save(self, scores: dict[str, float]) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(json.dumps(scores, indent=1, sort_keys=True) + "\n")
+        self.path.write_text(
+            json.dumps(
+                {
+                    "meta": {
+                        "source": ROWS_URL,
+                        "fetched_at": datetime.now(timezone.utc).isoformat(
+                            timespec="seconds"
+                        ),
+                        "schema_rev": 1,
+                    },
+                    "scores": scores,
+                },
+                indent=1,
+                sort_keys=True,
+            )
+            + "\n"
+        )
 
 
 def lookup_arena_elo(get) -> dict[str, float]:

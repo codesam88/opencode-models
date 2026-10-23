@@ -373,8 +373,17 @@ class ModelTableTest(UsageCase):
     def test_spend_implied_percent_and_remaining(self):
         code, out = self._run()
         self.assertEqual(code, 0)
-        # Week section header
-        self.assertIn("Week (~3 days since Monday 10-19 → resets 10-26 00:00 UTC)", out)
+        # Week section header (elapsed days tick with the real clock, so the
+        # expectation is computed the same way rather than hardcoded)
+        start = datetime(2026, 10, 19, tzinfo=timezone.utc)
+        elapsed = max(
+            0,
+            int((datetime.now(timezone.utc) - start).total_seconds() // 86400),
+        )
+        self.assertIn(
+            f"Week (~{elapsed} days since Monday 10-19 → resets 10-26 00:00 UTC)",
+            out,
+        )
         # muse: weekly excludes the 10-18 day
         self.assertIn("10.80", out)
         self.assertIn("36%", out)

@@ -50,9 +50,9 @@ freshness and failure policy.
   caller-supplied allow-list. Never-delete retention: dropped models
   keep records so scale ends don't move. Per-model skip-on-error.
 - **Pricing**: docs-table parsing (variant expansion, free-row marking)
-  feeding the unified per-tier snapshot. Primary sources: `docs/go/`
-  (rates, limits, estimates, assumptions, endpoints on one page) and
-  `docs/zen/`.
+  feeding the unified per-tier snapshot. Primary sources: the v2 Go
+  page (`https://opencode.ai/v2/docs/console/go`; rates, limits,
+  estimates, assumptions, endpoints on one page) and `docs/zen/`.
 - **Boards**: official board fetchers with label-to-catalog resolution
   (`labelmap` as source configuration). Browser-only or stale boards
   are an explicit documented exclusion, not a runtime failure.

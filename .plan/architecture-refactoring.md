@@ -50,8 +50,8 @@ snapshots, never a traceback.
 Pricing consolidation: `tier_prices/` and `plans/` merge into one
 pricing snapshot per tier (rates + variants + limits/allowances +
 assumptions + estimates; `est` derived, not joined by slug). Reasons:
-the live `docs/go/` page carries everything both layers extract in a
-single fetch; Zen's only source is `docs/zen/` (no v2 Zen page exists);
+the live v2 page (`https://opencode.ai/v2/docs/console/go`) carries
+everything both layers extract in a single fetch; Zen's only source is `docs/zen/` (no v2 Zen page exists);
 and the wheel ships `opencode_models/data/` but never `tier_prices/`,
 so fresh keyless installs already degrade until first fetch — the
 shippable snapshot closes that gap by construction. Legacy path
@@ -146,8 +146,11 @@ writes, diagnostics return (never print).
   dedup) is reused as the unified snapshot's rate/variant parser.
   Consider: build the unified writer alongside the old one and
   cross-check outputs per model before any reader switches.
-- Go parser switches v2 route → `docs/go/`; verify the v2 route serves
-  identical content first, else keep it as cross-check.
+- Go parser reads the v2 page (`go_pricing.PAGE_URL`, DECIDED
+  2026-10-24: v2 is the source of truth). Content surviving only on
+  the old `docs/go/` page is retained via the extend-not-replace
+  merge (`dropped`/`first_seen`) but unmaintained — no parsing effort
+  is spent on the old URL.
 - `fetch_boards` returns per-source status; parse-`None` surfaces as
   failure, never as an empty axis. Consider: add the failing-source
   warning before changing any merge behavior, so currently silent
@@ -308,9 +311,9 @@ Landed, in order:
   (`--force`/`--check`) instead of the deleted scripts; pinned by
   `tests/test_docs.py`.
 
-DEFERRED (still open, each blocked as noted): Go parser v2 route →
-`docs/go/` switch (needs a live-fetch identity check,
-offline-unverifiable). Declined as standalone projects — ride along
+DECIDED 2026-10-24: the Go parser reads the v2 page (it always has
+in this repo's history); old `docs/go/`-only content is retained via
+`dropped`/`first_seen`, unmaintained. Declined as standalone projects — ride along
 with real changes only: full renderer split, `seed` three-way split,
 `measured/` writer, single Curation entry point, fetch caller-side
 allow-list, deprecated marking (needs flag-vs-sidecar), unified

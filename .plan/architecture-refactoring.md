@@ -87,9 +87,10 @@ documented asymmetry.
 Cross-plan: `robustness.md` absorbed with modifications (failure-as-warning
 becomes the ingestion contract; its `tier_prices/`-mtime rule dies with
 that path; its auto-refresh exclusion reversed by lazy sync).
-`plan-snapshot-automation` must be rewritten against the unified schema
-+ sync flow (page_sha256/delta gaps carry over as sync-report
-requirements; owner TBD). No conflict with done plans
+`plan-snapshot-automation` lives as its own idea
+(`.plan/plan-snapshot-automation.md`; page_sha256/delta gaps carried
+over there as automation requirements; leaning manual-at-release, may
+never be promoted). No conflict with done plans
 (`inference-availability` personal-key story stands;
 `zen-snapshot-retire-txt` snapshot-derived rosters adopted).
 
@@ -113,15 +114,16 @@ Zen endpoints table (roster identity) and deprecated-models table
   2026-10-24 (README data table + Caveats, both pricing-module
   docstrings, `allowance`/`availability` comments; pinned by
   `tests/test_docs.py` against the retired names).
-- Alias-merge composition order: OPEN 2026-10-24 (critical review) —
-  spec (`docs/architecture.md` §4, this file's Domain inventory) says
-  merge runs first, before curation; the tree runs it last in
-  `load_catalog` (after curated + arena + boards). No current-data
-  effect (no designation-keyed overrides exist; the `overrides`
-  off-band check is output-identical), so this is a decision, not a
-  bug fix: either reorder with curation tests, or amend the spec to
-  record the tree order. Settle before any curation work touches
-  designation ids.
+- Alias-merge composition order: DECIDED 2026-10-24 for spec order —
+  merge runs first in `load_catalog` (via `curated_layer`: upstream
+  twins fold, then curated + arena + boards), so overlays apply to
+  canonical models once. A designation-keyed overlay matches nothing
+  and surfaces as an orphan instead of being silently dropped by
+  plain-wins (pinned by
+  `test_designation_keyed_override_is_reported_orphan`; base-keyed
+  application pinned by
+  `test_base_keyed_override_applies_to_the_merged_model`). The
+  `fetch` conflict preview uses the same choke point.
 - `plan-snapshot-automation` rewrite owner.
 
 ## Refactor inventory (the work to arrive at the spec)
@@ -205,9 +207,9 @@ Domain — direction: pure functions of loaded records; README rules map
   isolated from all other ranking changes): one canonical `Model` with
   a unioned score feeds scales, membership, and both priced lines;
   conflicts warn instead of staying silent; designation-keyed plan
-  records keep their display name and endpoint. Open: composition
-  order vs the spec (see Open questions) — merge currently runs after
-  curation/boards, not before.
+  records keep their display name and endpoint. Composition order per
+  the spec (merge before curation) via `curated_layer`, decided
+  2026-10-24; designation-keyed overlays orphan loudly.
 - Single `Curation(upstream, curated, boards)` entry point;
   `validate_estimates` → ingestion gate, `merge_snapshots` → Storage
   helper. Consider: extract with byte-identical conflict reports
@@ -372,11 +374,8 @@ risk rule paid for):
   for the sync flow (pinned by `tests/test_docs.py`).
 
 Open, highest first:
-- Alias-merge composition-order decision (see Open questions): one-line
-  call, gates future curation work. Decide before any change touches
-  designation-id handling.
-- `plan-snapshot-automation` rewrite: blocked on owner assignment;
-  next item producing user-visible output once unblocked.
+- `plan-snapshot-automation`: its own idea (leaning manual-at-release);
+  tracked in `.plan/plan-snapshot-automation.md`, not here.
 - Unified-schema minors (schema_rev policy, page_sha256 scope, Go
   deprecated parsing, endpoint form, `cached` nullability, dropped in
   base, notes split): each needs a decision; cheap individually.

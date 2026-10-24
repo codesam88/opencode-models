@@ -164,6 +164,54 @@ class RowsForAliasMergeTest(unittest.TestCase):
 
 
 class CatalogCompositionTest(unittest.TestCase):
+    def _write_override(self, d: Path, mid: str, score: float = 99.0) -> None:
+        out = d / "overrides"
+        out.mkdir(parents=True, exist_ok=True)
+        (out / f"{mid.replace('/', '__')}.json").write_text(
+            json.dumps(
+                {
+                    "model": {
+                        "id": mid,
+                        "benchmarks": [
+                            {
+                                "name": "Terminal-Bench",
+                                "version": "2.1",
+                                "score": score,
+                                "metric": "acc",
+                                "source": "https://example.com",
+                            }
+                        ],
+                    }
+                }
+            )
+        )
+
+    def test_base_keyed_override_applies_to_the_merged_model(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            _write_model(d, "meta/muse-spark-1.3")
+            _write_model(d, "meta/muse-spark-1.3-contributor")
+            self._write_override(d, "meta/muse-spark-1.3")
+            models, curated, _conflicts, _warnings = load_catalog(d)
+            self.assertEqual([m.model_id for m in models], ["meta/muse-spark-1.3"])
+            self.assertIn("meta/muse-spark-1.3", curated.curated)
+            self.assertNotIn("meta/muse-spark-1.3-contributor", curated.orphans)
+
+    def test_designation_keyed_override_is_reported_orphan(self):
+        # overlays apply to canonical models once: pinning an override to
+        # the designation id matches nothing post-merge, so it surfaces
+        # as an orphan instead of being silently dropped by plain-wins.
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            _write_model(d, "meta/muse-spark-1.3")
+            _write_model(d, "meta/muse-spark-1.3-contributor")
+            self._write_override(d, "meta/muse-spark-1.3-contributor")
+            models, curated, _conflicts, _warnings = load_catalog(d)
+            self.assertEqual([m.model_id for m in models], ["meta/muse-spark-1.3"])
+            self.assertIn("meta/muse-spark-1.3-contributor", curated.orphans)
+            merged = models[0]
+            self.assertNotEqual(merged.scores.get("Terminal-Bench 2.1"), 99.0)
+
     def test_designation_twins_merge_at_the_catalog_choke_point(self):
         import tempfile
 

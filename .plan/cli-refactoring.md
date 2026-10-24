@@ -95,3 +95,15 @@ workers never commit.
   `cli._fail` now re-exports it. Patch targets moved
   (`cli.fetch_served/live` → `commands.auth.*`); golden auth CLI
   tests passed unchanged. Full suite 611 green, lint clean.
+
+- 2026-10-24, step 3 done: `overrides` → `commands/overrides.py`
+  (decision + report printing at the edge; conflict-table pure core
+  in new `commands/render.py`: `conflict_rows`/`format_conflicts`,
+  plus `print_conflicts` shim for fetch until step 6 and `bold_head`
+  moved with its `_style` dependency). `cli` keeps `CONFLICT_HEADERS`
+  and `_print_conflicts` as re-exports for existing tests/fetch.
+  Two over-eager block cuts during the move deleted neighboring
+  helpers — caught by diff review, reverted, redone surgically; the
+  final diff is exactly the moved code (+4 import lines). Golden
+  `overrides` CLI tests passed unchanged. Full suite 615 green
+  (incl. new `tests/test_render.py`), lint clean.

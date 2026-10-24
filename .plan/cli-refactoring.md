@@ -139,3 +139,14 @@ workers never commit.
   the `sync`-step pattern, no test edits). `_model_tick` moved with
   it. Golden fetch CLI tests passed unchanged. Full suite 620
   green, lint clean.
+
+- 2026-10-24, step 7 done: `usage` → `commands/usage.py`. Decision
+  helpers kept verbatim; section tables moved to
+  `render.format_usage_tables`, header `_rule`/`_style` moved to
+  render with cli re-exports; single print at the edge. Two
+  test-suite hangs caught in review (moved transports broke the
+  `cli.http_get` / `cli._api_get` patch points — first fixed by
+  injecting `get` like the sync step, second by moving two patch
+  targets to `commands.usage`); ruff also stripped test-compat
+  re-exports twice, restored with noqa + comment. Golden usage CLI
+  tests passed unchanged. Full suite 620 green, lint clean.

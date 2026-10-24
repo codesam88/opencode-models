@@ -328,30 +328,40 @@ One file per tier (`plans/go.json` incl. Go Plus via per-plan-keyed
 `limits`/`requests_per_month`; `plans/zen.json` standalone, no windows).
 Envelope: `meta{source, fetched_at, schema_rev, page_sha256, plans}` +
 `windows` (Go only) + `models{slug: record}`. Per-model: `name`, `free`,
-`tiers[]` (`label,in,out,cached,cached_write`), `limits`,
-`requests_per_month`, `assumptions`, `dropped`, `first_seen` — all
-current, all traced to readers — plus optional forward metadata:
-`deprecated`, `deprecation_date`, `notes`, `catalog_model_id`,
-`endpoint_model_id`, `endpoint`, `sdk_package`, `alias_keys` (display
-context + cross-storage mapping keys). Non-goals held: no measured
-data, no availability status, write-once by sync. Dead on arrival:
-`PriceEntry.tier` (tests-only), per-variant `limit`, `variant_of()`,
-the `tier_prices/` path. Verified: `cached_write` already in plans
-tiers; Zen records carry null allowances; 1 dropped model ships in Go.
+`tiers[]` (`label,in,out,cached`), `limits`, `requests_per_month`,
+`assumptions`, `dropped`, `first_seen` — all current, all traced to
+readers (see `docs/snapshot-schema.md` for the contract:
+writers-strict, readers-tolerant, per-field consumers). Regime since
+2026-10-24: unread emissions are dropped, not kept —
+`cached_write`, `deprecated`, `deprecation_date`, `endpoint`,
+`sdk_package`, `notes` removed from both writers (Zen keeps parsing
+its Deprecated table for the still-priced diagnostic only).
+Non-goals held: no measured data, no availability status, write-once
+by sync. Dead on arrival: `PriceEntry.tier` (tests-only),
+per-variant `limit`, `variant_of()`, the `tier_prices/` path.
+Verified: Zen records carry null allowances; 1 dropped model ships
+in Go.
 
 Decided 2026-10-23: (5) sync MAY read current data (catalog, aliases,
 pages) and write the expanded snapshot back to `data/` — enrichment
 within the snapshot's own domain; no-write-back covers foreign kinds
 only; sync NEVER writes into the wheel (shipped base updates via
-plans-freeze + commit). Lifecycle keeps `first_seen` beside
-`deprecation_date` (both ends of a model's visible lifespan).
+plans-freeze + commit). Lifecycle keeps `first_seen` (first-appearance
+accounting for never-delete retention).
 (7) keep `requests_per_month` (no rename churn).
 
-Still open, minor: (1) schema_rev type/bump policy; (2) page_sha256
-bytes-vs-text scope; (3) Go deprecated parsing or Zen-only; (4) Zen
-nulls as bare null vs `{zen: null}`; (6) endpoint value form;
-(8) `cached` nullability; (9) dropped models in shipped base;
-(10) `notes` split.
+Decided 2026-10-24 (schema minors closed): `schema_rev` is an int,
+bumped on reader-visible breaking changes only; `page_sha256` is
+emitted on refresh, checked by nobody yet (check rides with the
+snapshot-automation idea); deprecation is parsed Zen-side for the
+still-priced diagnostic, with no stored marking until a triggering
+need; absent dimensions are null (bare or per-plan null maps, readers
+treat both as "no data"); null-cached input bills at the input rate;
+dropped models stay in the shipped base (never-delete retention);
+`notes` has no snapshot home (lives in overrides/manual).
+Forward-metadata reservation (`catalog_model_id`,
+`endpoint_model_id`, `alias_keys`) is dropped with the rest:
+re-add only with a named consumer.
 
 ## Prioritization
 
@@ -379,9 +389,10 @@ risk rule paid for):
 Open, highest first:
 - `plan-snapshot-automation`: its own idea (leaning manual-at-release);
   tracked in `.plan/plan-snapshot-automation.md`, not here.
-- Unified-schema minors (schema_rev policy, page_sha256 scope, Go
-  deprecated parsing, endpoint form, `cached` nullability, dropped in
-  base, notes split): each needs a decision; cheap individually.
+- Go parser note: v2 is the source of truth (DECIDED 2026-10-24; the
+  old "switch v2 → `docs/go/`" item was backwards — the parser always
+  read v2). Old-page content is retained via `dropped`/`first_seen`,
+  unmaintained.
 
 Churn — real rework with no product gain on its own; do NOT schedule
 as projects. Do incrementally (extract when a command is touched for a

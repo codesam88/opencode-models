@@ -18,7 +18,7 @@ from pathlib import Path
 from . import availability
 from . import sync as sync_mod
 from .catalog import load_catalog
-from .identity import canonical_id
+from .identity import canonical_id, merge_aliases
 from .models import Model
 from .ranking import build_rows, dedupe_providers, merge_rows
 from .scoring import scales
@@ -133,6 +133,7 @@ def rows_for(
     """
     data_dir = Path(data_dir)
     models, curated, _board_conflicts = load_catalog(data_dir)
+    models, merge_warnings = merge_aliases(models)
     plan_warnings: list[str] = []
     for _provider in selected:
         if _provider in ("go", "zen"):
@@ -141,7 +142,7 @@ def rows_for(
                 plan_warnings.extend(_messages)
     avail = availability.current_offered(data_dir, bypass=all_models)
     on_offer = avail.offered
-    warnings: list[str] = list(avail.warnings) + plan_warnings
+    warnings: list[str] = list(avail.warnings) + plan_warnings + merge_warnings
     # one scale for the whole catalog: per-tier scales would make the same
     # score mean two different things in the merged view
     table = scales(models)

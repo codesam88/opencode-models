@@ -62,7 +62,7 @@ def plan_ids(model_id: str) -> set[str]:
     return {model_id, canonical_id(model_id)}
 
 
-def merge_aliases(models: list[Model]) -> list[Model]:
+def merge_aliases(models: list[Model]) -> tuple[list[Model], list[str]]:
     """Fold designation records into the model they are a designation of.
 
     Benchmarks union (the plain record wins a disagreement, so a designation
@@ -71,6 +71,9 @@ def merge_aliases(models: list[Model]) -> list[Model]:
     do not, the price someone can actually pay is the honest one. Order is
     the catalog's, so the tables do not reshuffle. A designation with no twin
     keeps its own identity.
+
+    Returns ``(merged, warnings)``: one warning per same-key value conflict,
+    naming the canonical model and benchmark and which value was kept.
     """
     groups: dict[str, list[Model]] = {}
     order: list[str] = []
@@ -82,6 +85,7 @@ def merge_aliases(models: list[Model]) -> list[Model]:
         groups[canonical].append(model)
 
     merged: list[Model] = []
+    warnings: list[str] = []
     for canonical in order:
         group = groups[canonical]
         if len(group) == 1:
@@ -95,18 +99,31 @@ def merge_aliases(models: list[Model]) -> list[Model]:
         variants = [m for m in group if m.model_id != canonical]
         scores, sources = dict(plain.scores), dict(plain.sources)
         for other in variants:
+            for key, value in other.scores.items():
+                if key in scores and scores[key] != value:
+                    warnings.append(
+                        f"{canonical}: conflicting {key} "
+                        f"({other.model_id} {value!r} vs "
+                        f"{plain.model_id} {scores[key]!r}); "
+                        f"kept {plain.model_id}"
+                    )
             scores = {**other.scores, **scores}  # plain record wins
             sources = {**other.sources, **sources}
+
+        def _cheapest(values):
+            known = [v for v in values if v is not None]
+            return min(known) if known else None
+
         merged.append(
             replace(
                 plain,
-                price_input=min(
+                price_input=_cheapest(
                     [plain.price_input] + [m.price_input for m in variants]
                 ),
-                price_output=min(
+                price_output=_cheapest(
                     [plain.price_output] + [m.price_output for m in variants]
                 ),
-                price_cached_input=min(
+                price_cached_input=_cheapest(
                     [plain.price_cached_input]
                     + [m.price_cached_input for m in variants]
                 ),
@@ -114,4 +131,4 @@ def merge_aliases(models: list[Model]) -> list[Model]:
                 sources=sources,
             )
         )
-    return merged
+    return merged, warnings

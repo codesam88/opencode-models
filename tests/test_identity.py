@@ -13,6 +13,7 @@ model, the score is computed once, and each plan's price stays its own line.
 """
 
 import unittest
+from dataclasses import replace
 
 from opencode_models.identity import (
     VARIANT_SUFFIXES,
@@ -83,7 +84,7 @@ class IdentityTest(unittest.TestCase):
                 "meta/muse-spark-1.3-contributor", 0.1, **{"Terminal-Bench 2.1": 88.8}
             ),
         ]
-        merged = merge_aliases(models)
+        merged, _ = merge_aliases(models)
         self.assertEqual([m.model_id for m in merged], ["meta/muse-spark-1.3"])
         # the contributor record was missing the 4.0 run; the model had it
         self.assertEqual(merged[0].scores["Terminal-Bench 4.0"], 14.55)
@@ -96,20 +97,21 @@ class IdentityTest(unittest.TestCase):
                 "meta/muse-spark-1.3-contributor", 0.1, **{"Terminal-Bench 2.1": 88.8}
             ),
         ]
-        merged = merge_aliases(models)
+        merged, _ = merge_aliases(models)
         # the documented tier prices replace this in the tables; when they do
         # not, the price someone can actually pay is the honest one
         self.assertEqual(merged[0].price_input, 0.1)
 
-    def test_a_disagreement_is_the_plain_record_winning(self):
+    def test_a_disagreement_warns_but_keeps_the_plain_record(self):
         models = [
             _model("meta/muse-spark-1.3", 1.25, **{"Terminal-Bench 2.1": 88.8}),
             _model(
                 "meta/muse-spark-1.3-contributor", 0.1, **{"Terminal-Bench 2.1": 70.0}
             ),
         ]
-        merged = merge_aliases(models)
+        merged, warnings = merge_aliases(models)
         self.assertEqual(merged[0].scores["Terminal-Bench 2.1"], 88.8)
+        self.assertTrue(any("Terminal-Bench 2.1" in w for w in warnings))
 
     def test_models_without_a_designation_are_untouched(self):
         models = [
@@ -117,7 +119,7 @@ class IdentityTest(unittest.TestCase):
             _model("xai/grok-4.7", 1.0, **{"Terminal-Bench 2.1": 30.0}),
         ]
         self.assertEqual(
-            [m.model_id for m in merge_aliases(models)],
+            [m.model_id for m in merge_aliases(models)[0]],
             ["openai/gpt-6.1-sol", "xai/grok-4.7"],
         )
 
@@ -128,7 +130,7 @@ class IdentityTest(unittest.TestCase):
                 "meta/muse-spark-1.4-contributor", 0.1, **{"Terminal-Bench 2.1": 90.0}
             )
         ]
-        merged = merge_aliases(models)
+        merged, _ = merge_aliases(models)
         self.assertEqual(
             [m.model_id for m in merged], ["meta/muse-spark-1.4-contributor"]
         )
@@ -137,7 +139,7 @@ class IdentityTest(unittest.TestCase):
         models = [
             _model("lab/mimo-v2.6-flash-free", 0.0, **{"Terminal-Bench 2.1": 90.0})
         ]
-        merged = merge_aliases(models)
+        merged, _ = merge_aliases(models)
         self.assertEqual([m.model_id for m in merged], ["lab/mimo-v2.6-flash-free"])
 
     def test_variant_suffixes_are_the_plan_option_suffixes(self):
@@ -148,8 +150,17 @@ class IdentityTest(unittest.TestCase):
             _model("lab/mimo-v2.6-flash", 1.25, **{"Terminal-Bench 2.1": 80.0}),
             _model("lab/mimo-v2.6-flash-free", 0.0, **{"Terminal-Bench 2.1": 80.0}),
         ]
-        merged = merge_aliases(models)
+        merged, _ = merge_aliases(models)
         self.assertEqual([m.model_id for m in merged], ["lab/mimo-v2.6-flash"])
+        self.assertEqual(merged[0].price_input, 0.0)
+
+    def test_missing_output_prices_merge_without_crash(self):
+        plain = _model("lab/m", 1.0, **{"Terminal-Bench 2.1": 80.0})
+        plain = replace(plain, price_output=None, price_cached_input=None)
+        variant = _model("lab/m-free", 0.0, **{"Terminal-Bench 2.1": 80.0})
+        variant = replace(variant, price_output=None, price_cached_input=None)
+        merged, _ = merge_aliases([plain, variant])
+        self.assertEqual(merged[0].price_output, None)
         self.assertEqual(merged[0].price_input, 0.0)
 
     def test_benchmark_union_prefers_plain_on_disagreement(self):
@@ -157,7 +168,7 @@ class IdentityTest(unittest.TestCase):
             _model("lab/mimo-v2.6-flash", 1.25, **{"Terminal-Bench 2.1": 80.0}),
             _model("lab/mimo-v2.6-flash-free", 0.0, **{"Terminal-Bench 2.1": 70.0}),
         ]
-        merged = merge_aliases(models)
+        merged, _ = merge_aliases(models)
         self.assertEqual(merged[0].scores["Terminal-Bench 2.1"], 80.0)
 
 

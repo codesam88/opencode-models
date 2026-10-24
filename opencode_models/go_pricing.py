@@ -22,16 +22,14 @@ kimi-k2.7-code deviates 26% (bounded at 30% here), and
 gemini-4-argon-contributor publishes no token assumptions (reproduction
 impossible, warned not failed).
 
-Usage:
-    python3 scripts/update_go_pricing.py                 # fetch and write the snapshot
-    python3 scripts/update_go_pricing.py --from FILE     # parse a saved copy
-    python3 scripts/update_go_pricing.py --check         # validate the snapshot offline
+Usage (this module has no CLI of its own; refresh via the sync surface):
+    opencode-models sync            # refresh snapshots older than threshold
+    opencode-models sync --force    # refresh regardless of age
+    opencode-models sync --check    # validate snapshots offline, no network
 
 Snapshots: the runtime copy lives in data/plans/ (gitignored). The
-frozen fallback shipped inside the wheel is refreshed deliberately with
-an explicit --out, never by default:
-
-    python3 scripts/update_go_pricing.py --out opencode_models/data/plans/go.json
+frozen fallback shipped inside the wheel is promoted deliberately
+after validation (just plans-freeze), never by default.
 """
 
 import json

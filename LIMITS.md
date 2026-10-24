@@ -202,7 +202,7 @@ enforce against.
 | source | what it gives |
 |---|---|
 | `https://opencode.ai/docs/zen/` | model list, endpoints, per-token prices. **No limits.** |
-| `https://opencode.ai/docs/go/` | plans and prices, per-model monthly limits, the Go/Go Plus estimated-request tables |
+| `https://opencode.ai/v2/docs/console/go` | plans and prices, per-model monthly limits, the Go/Go Plus estimated-request tables |
 | `https://opencode.ai/docs/console/billing/` | credits, the 4.6% + $0.31 fee, auto-recharge, invoices, the 402 behaviour |
 | `https://opencode.ai/docs/console/api/` | the Console API overview — documents **only** Inference, Providers and Budgets |
 | `https://opencode.ai/console/assets/index-*.js` | undocumented clients (see below) |

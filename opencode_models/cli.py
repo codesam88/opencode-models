@@ -501,7 +501,7 @@ def _cmd_fetch(args: argparse.Namespace) -> int:
     else:
         saved = refresh(data_dir, get=http_get, progress=_model_tick, only=only)
         print(f"saved {len(saved)} model files to {data_dir / 'opencode'}")
-    print("fetch plan pricing from opencode.ai/docs ...")
+    print("fetch plan pricing from opencode.ai docs ...")
     for module, label in ((go_pricing, "go"), (zen_pricing, "zen")):
         try:
             saved = module.refresh(data_dir, get=http_get)

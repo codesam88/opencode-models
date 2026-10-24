@@ -119,7 +119,6 @@ class ParseTest(unittest.TestCase):
                         "in": 0.15,
                         "out": 0.5,
                         "cached": 0.03,
-                        "cached_write": None,
                     }
                 ],
                 "limits": {"go": 60, "go_plus": 180},
@@ -127,11 +126,6 @@ class ParseTest(unittest.TestCase):
                 "assumptions": {"in": 1000, "cached": 55000, "out": 200},
                 "dropped": False,
                 "first_seen": None,
-                "deprecated": False,
-                "deprecation_date": None,
-                "endpoint": "https://example/model-a",
-                "sdk_package": "@ai-sdk/x",
-                "notes": None,
             },
         )
 
@@ -143,7 +137,7 @@ class ParseTest(unittest.TestCase):
         self.assertEqual(b["tiers"][0]["label"], "≤ 256K tokens")
         self.assertEqual(b["tiers"][0]["in"], 0.4)
         self.assertEqual(b["tiers"][1]["label"], "> 256K tokens")
-        self.assertEqual(b["tiers"][1]["cached_write"], 1.5)
+        self.assertEqual(b["tiers"][1]["cached"], 0.12)
         self.assertEqual(b["limits"], {"go": 60, "go_plus": 180})
         self.assertEqual(b["requests_per_month"], {"go": 21600, "go_plus": 64800})
 
@@ -160,7 +154,6 @@ class ParseTest(unittest.TestCase):
                     "in": 1.0,
                     "out": 2.7,
                     "cached": 0.1,
-                    "cached_write": None,
                 }
             ],
         )
@@ -184,7 +177,7 @@ class ParseTest(unittest.TestCase):
         free = models["free-model"]
         self.assertTrue(free["free"])
         self.assertEqual(free["tiers"], [])
-        self.assertEqual(free["limits"], {"go": None, "go_plus": None})
+        self.assertIsNone(free["limits"])
         self.assertEqual(free["requests_per_month"], {"go": None, "go_plus": None})
         self.assertIsNone(free["assumptions"])
 
@@ -216,7 +209,6 @@ def _legacy_models():
                 "in": 0.15,
                 "out": 0.5,
                 "cached": 0.03,
-                "cached_write": None,
             }
         ],
         "limits": {"go": 30, "go_plus": 90},
@@ -232,7 +224,6 @@ def _legacy_models():
                 "in": 1.0,
                 "out": 3.0,
                 "cached": 0.1,
-                "cached_write": None,
             }
         ],
         "limits": {"go": 15, "go_plus": 60},
@@ -319,7 +310,6 @@ class GateTest(unittest.TestCase):
                     "in": 0.95,
                     "out": 4.0,
                     "cached": 0.19,
-                    "cached_write": None,
                 }
             ],
             "limits": {"go": 60, "go_plus": 180},

@@ -15,6 +15,9 @@ from tests import test_go_pricing as go_fixture
 from tests import test_zen_pricing as zen_fixture
 
 ENVELOPE_KEYS = ("source", "fetched_at", "schema_rev", "page_sha256", "plans")
+# Writers are strict: refresh output carries exactly these keys, no more.
+# Readers stay tolerant (ignore unknown keys) so old installs survive
+# newer files; see docs/snapshot-schema.md.
 RECORD_KEYS = (
     "name",
     "free",
@@ -22,7 +25,10 @@ RECORD_KEYS = (
     "limits",
     "requests_per_month",
     "assumptions",
+    "dropped",
+    "first_seen",
 )
+TIER_KEYS = ("label", "in", "out", "cached")
 
 
 class GoRefreshTest(unittest.TestCase):
@@ -33,13 +39,14 @@ class GoRefreshTest(unittest.TestCase):
             )
             self.assertEqual(written, ["go.json"])
             doc = json.loads((Path(tmp) / "plans" / "go.json").read_text())
-            for key in ENVELOPE_KEYS:
-                self.assertIn(key, doc["meta"])
+            self.assertEqual(set(doc["meta"]), set(ENVELOPE_KEYS))
             self.assertEqual(doc["meta"]["schema_rev"], 1)
             self.assertEqual(doc["meta"]["plans"], ["go", "go_plus"])
             self.assertIn("model-a", doc["models"])
-            for key in RECORD_KEYS:
-                self.assertIn(key, doc["models"]["model-a"])
+            for slug, rec in doc["models"].items():
+                self.assertEqual(set(rec), set(RECORD_KEYS), slug)
+                for tier in rec["tiers"]:
+                    self.assertEqual(set(tier), set(TIER_KEYS), slug)
 
     def test_rerun_preserves_first_seen(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -63,9 +70,12 @@ class ZenRefreshTest(unittest.TestCase):
             )
             self.assertEqual(written, ["zen.json"])
             doc = json.loads((Path(tmp) / "plans" / "zen.json").read_text())
-            for key in ENVELOPE_KEYS:
-                self.assertIn(key, doc["meta"])
+            self.assertEqual(set(doc["meta"]), set(ENVELOPE_KEYS))
             self.assertIn("model-a", doc["models"])
+            for slug, rec in doc["models"].items():
+                self.assertEqual(set(rec), set(RECORD_KEYS), slug)
+                for tier in rec["tiers"]:
+                    self.assertEqual(set(tier), set(TIER_KEYS), slug)
 
 
 if __name__ == "__main__":

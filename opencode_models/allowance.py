@@ -99,8 +99,8 @@ def validate_estimates(
     records = []
     for slug in sorted(models):
         rec = models[slug]
-        limit = rec.get("limits", {}).get("go")
-        published = rec.get("requests_per_month", {}).get("go")
+        limit = (rec.get("limits") or {}).get("go")
+        published = (rec.get("requests_per_month") or {}).get("go")
         cpr = cost_per_request(rec.get("tiers", []), rec.get("assumptions"))
         computed = request_cap(limit, cpr)
         if computed is None or published is None:

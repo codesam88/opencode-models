@@ -231,7 +231,6 @@ def _pricing_row(row, endpoints):
         "in": _money(row[1]),
         "out": _money(row[2]),
         "cached": _money(row[3]),
-        "cached_write": _money(row[4]),
     }
     return slug, base, False, tier, limit
 
@@ -318,8 +317,6 @@ def _assumptions(items, endpoints):
 
 def _collect_endpoints(tables):
     endpoints = {}
-    endpoint_urls = {}
-    sdk_packages = {}
     for _plan, header, rows in tables:
         if tuple(header) != ENDPOINTS_HEADER:
             continue
@@ -327,11 +324,7 @@ def _collect_endpoints(tables):
             if len(row) < 2:
                 continue
             endpoints[row[0]] = row[1]
-            if len(row) >= 3:
-                endpoint_urls[row[1]] = row[2]
-            if len(row) >= 4:
-                sdk_packages[row[1]] = row[3]
-    return endpoints, endpoint_urls, sdk_packages
+    return endpoints
 
 
 def parse_page(html):
@@ -346,7 +339,7 @@ def parse_page(html):
             pricing[PANEL_PLAN[plan]] = rows
         elif key == REQUESTS_HEADER and plan in PANEL_PLAN:
             estimates[PANEL_PLAN[plan]] = rows
-    endpoints, endpoint_urls, sdk_packages = _collect_endpoints(parser.tables)
+    endpoints = _collect_endpoints(parser.tables)
     if not endpoints:
         raise ValueError("Endpoints table not found")
     for plan in PLANS:
@@ -373,7 +366,7 @@ def parse_page(html):
                 "name": g["name"],
                 "free": True,
                 "tiers": [],
-                "limits": {"go": None, "go_plus": None},
+                "limits": None,
                 "requests_per_month": {
                     "go": est_by_plan[first][slug],
                     "go_plus": est_by_plan[second][slug],
@@ -381,11 +374,6 @@ def parse_page(html):
                 "assumptions": None,
                 "dropped": False,
                 "first_seen": None,
-                "deprecated": False,
-                "deprecation_date": None,
-                "endpoint": endpoint_urls.get(slug),
-                "sdk_package": sdk_packages.get(slug),
-                "notes": None,
             }
             continue
         if [t["label"] for t in g["tiers"]] != [t["label"] for t in p["tiers"]]:
@@ -404,11 +392,6 @@ def parse_page(html):
             "assumptions": assumptions.get(slug),
             "dropped": False,
             "first_seen": None,
-            "deprecated": False,
-            "deprecation_date": None,
-            "endpoint": endpoint_urls.get(slug),
-            "sdk_package": sdk_packages.get(slug),
-            "notes": None,
         }
     for slug in endpoints.values():
         if slug not in models:
@@ -474,9 +457,9 @@ def validate(models, known_deviations=KNOWN_DEVIATIONS, no_assumptions=NO_ASSUMP
         if rec["free"]:
             continue
         for plan in PLANS:
-            if rec["limits"].get(plan) is None:
+            if (rec.get("limits") or {}).get(plan) is None:
                 errors.append(f"{slug}: no monthly limit on plan {plan}")
-            if rec["requests_per_month"].get(plan) is None:
+            if (rec.get("requests_per_month") or {}).get(plan) is None:
                 errors.append(f"{slug}: no published estimate on plan {plan}")
         if rec["assumptions"] is None:
             if slug in no_assumptions:
@@ -500,10 +483,13 @@ def validate(models, known_deviations=KNOWN_DEVIATIONS, no_assumptions=NO_ASSUMP
             continue
         cap = known_deviations.get(slug, GATE_TOLERANCE)
         for plan in PLANS:
-            published = rec["requests_per_month"][plan]
+            published = (rec.get("requests_per_month") or {}).get(plan)
             if published is None:
                 continue
-            expected = rec["limits"][plan] / cpr
+            limit = (rec.get("limits") or {}).get(plan)
+            if limit is None:
+                continue  # already reported above as "no monthly limit"
+            expected = limit / cpr
             deviation = abs(expected - published) / published
             checked.append((slug, plan, expected, published, deviation))
             if deviation > cap:

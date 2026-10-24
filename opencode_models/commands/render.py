@@ -10,6 +10,7 @@ from __future__ import annotations
 import sys
 
 from ..overrides import source_tier
+from ..ranking import ratio
 from ..tables import column_widths, format_row, render
 
 #: `overrides` grid headings.
@@ -26,13 +27,26 @@ _TIER_SHORT = {1: "indep", 2: "board", 3: "self"}
 
 __all__ = [
     "CONFLICT_HEADERS",
+    "FIX_NOTE",
+    "EST_NOTE",
+    "GRADE_WIDTH",
     "bold_head",
     "column_label",
+    "bench_tag",
+    "cells",
     "conflict_rows",
+    "cost_unit",
     "format_conflicts",
+    "format_list_row",
     "format_usage_tables",
+    "header",
+    "headings",
+    "next_headings",
+    "pick_value",
+    "price_note",
     "print_conflicts",
     "rule",
+    "section",
     "style",
 ]
 
@@ -179,3 +193,127 @@ def print_conflicts(conflicts, orphans=(), manual_orphans=()) -> int:
     if text:
         print(text)
     return len(conflicts) + len(orphans) + len(manual_orphans)
+
+
+FIX_NOTE = "Pricing and score/$ rank based on fixed 20/60/20 tokens per request"
+#: `est` cost base: the Go snapshot's page-estimated ¢/req; Zen lines and
+#: snapshot-missing models fall back to the fix.
+EST_NOTE = (
+    "Pricing and score/$ rank based on page-estimated ¢/req from the Go "
+    "snapshot (zen + missing fall back to fix)"
+)
+
+#: Every row is prefixed by its rank marker, outside the column grid and
+#: without a header of its own: ++ at 90+, + at 75+, o at 60+, - at 50+,
+#: -- below that, · unranked (no score at all). The header line is indented
+#: by the same width so the columns still line up.
+GRADE_WIDTH = 5
+
+
+def cost_unit(price: str) -> str:
+    """The cost column's unit: ``fix`` and ``est`` count cents per request.
+
+    ``input`` and ``output`` show raw per-1M-token rates instead.
+    """
+    return "¢/req" if price in ("fix", "est") else "¢/1m"
+
+
+def price_note(price: str) -> str:
+    """The cost-basis note for the headline line, per `--cost` mode."""
+    if price == "est":
+        return EST_NOTE
+    if price == "input":
+        return "Pricing and score/$ rank based on input $/1M rate"
+    if price == "output":
+        return "Pricing and score/$ rank based on output $/1M rate"
+    return FIX_NOTE
+
+
+def headings(axis: bool, price: str) -> tuple[str, ...]:
+    """Column headings, title-cased; the unit follows the `--cost` mode.
+
+    Two layouts, both built around the one score: the default shows the
+    model's score beside its cost and plan, and ``--benchmark X`` ranks on
+    one benchmark and adds that benchmark's tag. The per-axis raw numbers
+    live in `scores`, not here.
+    """
+    unit = cost_unit(price)
+    if axis:
+        return ("Score", unit, "Score/$", "Prov")
+    return ("Score", "Bench", unit, "Score/$", "Prov")
+
+
+def next_headings(price: str) -> tuple[str, ...]:
+    """The `next` grid headings; the unit follows the `--cost` mode."""
+    return ("#", "Plan", "Score", cost_unit(price), "Score/$", "Endpoint", "Band")
+
+
+def header(widths: tuple[int, ...], axis: bool = True, price: str = "est") -> str:
+    """One grid header line, plain text: bolding happens at the print site."""
+    return format_row(headings(axis, price), widths) + "  Model"
+
+
+def section(
+    title: str, widths: tuple[int, ...], axis: bool = True, price: str = "est"
+) -> list[str]:
+    """Open a table: blank line, rule-wrapped title, then its column header.
+
+    Each ── section is its own table, so it carries its own header below
+    the rule; band labels and other intermediate headers live inside the
+    table, under that header.
+    """
+    return ["", rule(title), " " * GRADE_WIDTH + style(header(widths, axis, price))]
+
+
+def format_list_row(
+    cells: tuple[str, ...], widths: tuple[int, ...], grade: str, name: str
+) -> str:
+    """One ranked row: grade marker, cells, display name."""
+    return f"{grade:>{GRADE_WIDTH - 1}} " + format_row(cells, widths) + f"  {name}"
+
+
+def pick_value(row) -> str:
+    """A pick's score per dollar, free lines included.
+
+    Free lines are really free (metered $0, throttled separately), so
+    they read "-" for score/$ and sort ahead of every cost-based line
+    ($0 is cheaper than any price); "-" is also what an unscored line
+    reads, told apart by the 0 cost beside it.
+    """
+    if row.score is None:
+        return "-"
+    if row.free:
+        return "-"
+    if row.price == 0:
+        return "free"
+    return f"{round(ratio(row.score, row.price))}"
+
+
+def bench_tag(benchmark: str | None) -> str:
+    if not benchmark:
+        return "-"
+    folded = benchmark.lower().replace(" ", "-")
+    if folded.startswith("terminal-bench-4"):
+        return "TB4"  # harder scale, ranked on its own
+    if folded.startswith("terminal-bench"):
+        return "TB"
+    if folded.startswith("swe-bench"):
+        return "SWE"
+    return benchmark[:5]
+
+
+def cells(row, axis: bool = True) -> tuple[str, ...]:
+    """The fixed columns of one row, as text: score, cost, value, plan.
+
+    The score is the model's combined 0-100 number, rounded for the column;
+    the value is score per dollar — free lines are metered at $0 and read
+    "-" for score/$ ("free" only where a non-free line prices exactly
+    zero, "-" with no score). *axis* is kept for the single-benchmark
+    layout, which adds that benchmark's tag. Prices are cents, as elsewhere.
+    """
+    no_cost = row.free or row.price == 0
+    price = "0" if no_cost else f"{round(row.price * 100)}"
+    score = "-" if row.score is None else f"{round(row.score)}"
+    if axis:
+        return (score, price, pick_value(row), row.provider)
+    return (score, bench_tag(row.benchmark), price, pick_value(row), row.provider)

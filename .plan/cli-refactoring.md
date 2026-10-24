@@ -87,3 +87,11 @@ workers never commit.
   `cli.http_get` patch points keep working). Golden `sync --force` /
   `--check` CLI tests passed unchanged; full suite 608 green, lint
   clean.
+
+- 2026-10-24, step 2 done: `auth` → `commands/auth.py` with purified
+  `verify_key(key, get=None)` (decision as `VerifyResult`, no
+  printing) covered by `tests/test_auth_command.py`; `run` keeps
+  prompt/save/report. Shared `fail()` moved to `commands/__init__`,
+  `cli._fail` now re-exports it. Patch targets moved
+  (`cli.fetch_served/live` → `commands.auth.*`); golden auth CLI
+  tests passed unchanged. Full suite 611 green, lint clean.

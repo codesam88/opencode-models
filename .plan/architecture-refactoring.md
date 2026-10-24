@@ -394,10 +394,14 @@ Open, highest first:
   read v2). Old-page content is retained via `dropped`/`first_seen`,
   unmaintained.
 
-Further steps (ride-along, 2026-10-24): each is a real structural
-improvement with no product gain on its own, so none is scheduled as
-a project. Each lands only on its trigger, smallest slice first, with
-`just test` + `just lint` green throughout:
+Further steps, landed or riding along (2026-10-24): the renderer
+split is DONE as `opencode_models/commands/` (tracked in
+`.plan/cli-refactoring.md`, now closed) — all nine commands moved
+with decision/report separated and a shared `commands/render.py`;
+`cli.py` keeps parser + dispatch. Each remaining item is a real
+structural improvement with no product gain on its own, so none is
+scheduled as a project. Each lands only on its trigger, smallest
+slice first, with `just test` + `just lint` green throughout:
 - Renderer / use-case split: `cli.py` still mixes parsing, decisions,
   formatting, and `print` per command. Trigger: the next real change
   to a command — extract that command's use case (typed in/out,
@@ -442,7 +446,7 @@ one area, one triggering change at a time — per the Further steps
 list above, or not at all. Historical examples of the verdict:
 - Full eight-use-case extraction + renderer split as a standalone
   rewrite (~1900-line diff, zero behavior change, maximum regression
-  surface) — now tracked per-command under Further steps instead.
+  surface) — superseded: done per-command under Further steps instead.
 - `seed` three-way split beyond dropping `tier_prices`,
   `measured/` ahead of usage work,
   auth-verify swap, fetch allow-list, stored deprecation marking —

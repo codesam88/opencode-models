@@ -29,7 +29,7 @@ from .arena import ArenaCache
 from .auth import load_key
 from .benchmarks import available
 from .boards import fetch_boards, save_boards
-from .catalog import curated_layer, load_catalog
+from .catalog import curated_layer
 from .commands import fail as _fail
 from .commands.auth import run as _cmd_auth
 from .commands.models import MODELS_ALL_HEADERS, MODELS_HEADERS  # noqa: F401 (test compat)
@@ -37,7 +37,11 @@ from .commands.models import run as _cmd_models
 from .commands.overrides import run as _cmd_conflicts
 from .commands.render import CONFLICT_HEADERS  # noqa: F401 (test compat; moves with fetch)
 from .commands.render import bold_head as _bold_head
+from .commands.render import column_label as _column_label  # noqa: F401 (test compat)
 from .commands.render import print_conflicts as _print_conflicts
+from .commands.render import style as _style
+from .commands.scores import SCORES_STATIC_HEADERS  # noqa: F401 (test compat)
+from .commands.scores import run as _cmd_scores
 from .commands.sync import run as _cmd_sync
 from .fetch import SITEMAP_URL, http_get, refresh, urls_from_sitemap
 from .live import api_get as _api_get
@@ -51,7 +55,6 @@ from .ranking import (
     BAND_PAYG,
     RECOMMEND_FLOOR,
     by_score_per_price,
-    grade_for,
     grade_rows,
     next_up,
     order_rows,
@@ -61,13 +64,7 @@ from .ranking import (
 )
 from .rows import rows_for
 from .scoring import (
-    _TRACKED,
     MIN_AXES,
-    _folded,
-    canonical,
-    combined,
-    derived_scores,
-    scales,
 )
 from .tables import column_widths, format_row, render
 
@@ -129,11 +126,6 @@ GRADE_WIDTH = 5
 RULE_WIDTH = 60
 
 
-def _style(text: str) -> str:
-    """Bold when talking to a terminal, plain when piped or captured."""
-    return f"\033[1m{text}\033[0m" if sys.stdout.isatty() else text
-
-
 def _row_line(cells: tuple[str, ...], widths: tuple[int, ...]) -> str:
     return format_row(cells, widths)
 
@@ -163,10 +155,6 @@ USAGE_RIGHT_HEADERS = ("Reqs", "In", "Out", "Cached", "¢/req", "Est.")
 def _next_headings(price: str) -> tuple[str, ...]:
     """The `next` grid headings; the unit follows the `--cost` mode."""
     return ("#", "Plan", "Score", _cost_unit(price), "Score/$", "Endpoint", "Band")
-
-
-#: `scores` fixed columns; benchmark labels append after these.
-SCORES_STATIC_HEADERS = ("Model", "Grade", "Score")
 
 
 def _header(widths: tuple[int, ...], axis: bool = True, price: str = "est") -> str:
@@ -293,168 +281,6 @@ def _cmd_fetch(args: argparse.Namespace) -> int:
         print(
             f"saved {rows} board rows from {', '.join(saved)} to {data_dir / 'boards'}"
         )
-    return 0
-
-
-def _column_label(name: str) -> str:
-    """The short name a benchmark column carries: "Terminal Bench 2.1" → "Tb 2.1".
-
-    Column headers have to fit beside each other, and there are enough
-    benchmarks to score on that the full names run past any terminal width.
-    Labels are title-cased like every other grid header.
-    """
-    if name == "LMArena Elo":
-        return "Arena"
-    if name == "DeepSWE 1.1":
-        # the version lives in the legend ("Deepswe = DeepSWE 1.1"):
-        # exact match, so a future revision keeps its number until renamed
-        return "Deepswe"
-    for family, short in (("Terminal Bench", "Tb"), ("SWE Bench", "Swe")):
-        if name.startswith(family):
-            rest = name[len(family) :]
-            if short == "Swe":
-                # "Swe vrfd" is the widest header in the scores table;
-                # "Vrfd" keeps the column parseable at a glance
-                rest = rest.replace("Verified", "Vrfd")
-            return short + rest
-    return name
-
-
-def _score_columns(models, table: dict) -> list[tuple[str, str, str]]:
-    """The benchmarks worth a column, as ``(key, header, full name)``.
-
-    One column per benchmark we score on, in the order ``scoring._TRACKED``
-    lists them — the axis the console ranks on first — and only where the
-    catalog actually has numbers. Two registries spelling one benchmark
-    differently share a column.
-    """
-    spellings: dict[str, set[str]] = {}
-    for model in models:
-        for name in derived_scores(model, table):
-            spellings.setdefault(canonical(name), set()).add(name)
-    columns = []
-    for key in _TRACKED:
-        folded = _folded(key)
-        if folded not in spellings:
-            continue
-        # prefer the hyphenated spelling for the full name: it is how the
-        # benchmark is written everywhere else, including in the README
-        name = sorted(spellings[folded], key=lambda n: (n.count("-") == 0, n))[0]
-        columns.append((folded, _column_label(folded), name))
-    return columns
-
-
-def _score_cells(model, table: dict, columns: list[tuple[str, str, str]]) -> list[str]:
-    """One cell per column: each raw number with where it lands, best first.
-
-    The raw number is what the evaluator published; the derived number is
-    where that sits on the benchmark's 0-100 scale across this catalog.
-    Both are shown, because a score without its position in the field says
-    nothing on its own. A column the model was not measured on is blank
-    rather than zero — zero would read as "worst in the catalog".
-    """
-    derived = derived_scores(model, table)
-    cells = []
-    for key, _label, _name in columns:
-        parts = sorted(
-            ((name, derived[name]) for name in derived if canonical(name) == key),
-            key=lambda part: (-part[1], part[0]),
-        )
-        cells.append(" ".join(f"{model.scores[n]:g}→{d:.0f}" for n, d in parts))
-    return cells
-
-
-def _cmd_scores(args: argparse.Namespace) -> int:
-    """Every model's score, one column per benchmark we score on.
-
-    Each cell holds the raw number and where it lands on that benchmark's
-    0-100 scale, because the raw numbers do not compare across benchmarks.
-    How a model's score is derived from those cells is documented rather
-    than printed: see the README's "How a model's score is computed" and
-    ``scoring.py``. This command only reads: `fetch` owns every network call,
-    including the arena Elo cache.
-    """
-    data_dir = Path(args.data)
-    models, _curated, _boards, _merge_warnings = load_catalog(data_dir)
-    table = scales(models)
-    on_offer = availability.available_ids(data_dir)
-    shown = (
-        models
-        if getattr(args, "all_models", False) or not on_offer
-        else [m for m in models if availability.offered(m.model_id, on_offer)]
-    )
-    ranked = sorted(
-        (m for m in shown if m.scores),
-        key=lambda m: -(combined(derived_scores(m, table)) or 0),
-    )
-    unscored = [m for m in shown if not m.scores]
-    columns = _score_columns(models, table)
-
-    # four counts, because "models with scores" used to mean "models with
-    # any benchmark" - which overstated the scored field by a third - and
-    # "on one benchmark" used to fold in models with no scored benchmark
-    # at all
-    counts = {}
-    for m in ranked:
-        counts.setdefault(len(derived_scores(m, table)), []).append(m)
-    scored = [m for m in ranked if combined(derived_scores(m, table)) is not None]
-    one = counts.get(1, [])
-    zerod = [m for m in ranked if not derived_scores(m, table)]
-    print(
-        f"{len(models)} models · {len(columns)} benchmarks scored on · "
-        f"{len(scored)} with scores · {len(one)} on one benchmark · "
-        f"{len(zerod)} with none scored · {len(unscored)} without any"
-    )
-    print()
-    cells = [_score_cells(m, table, columns) for m in ranked]
-    # the same markers as `list`, over the models shown here: rank position
-    # in this ordering, · where there is no score to rank
-    marks = {id(m): grade_for(combined(derived_scores(m, table))) for m in ranked}
-    heads = list(SCORES_STATIC_HEADERS) + [
-        label.capitalize() for _k, label, _n in columns
-    ]
-    grid = []
-    for model, row in zip(ranked, cells, strict=True):
-        derived = derived_scores(model, table)
-        score = combined(derived)
-        grid.append(
-            [
-                model.name,
-                marks.get(id(model), "·"),
-                f"{score:.0f}" if score is not None else "-",
-            ]
-            + row
-        )
-    # measured, not fixed: MODEL fits the shown rows (not the whole
-    # catalog) and the fixed columns fit their headers. The benchmark
-    # columns keep double gaps — their labels hold single spaces
-    # ("Swe vrfd"), so the gap is what delimits them.
-    fixed_aligns = ["<", ">", ">"]
-    widths = column_widths(heads, grid)
-    lines = []
-    for cells in [heads] + grid:
-        left = format_row(cells[:3], widths[:3], fixed_aligns, gap=" ")
-        right = format_row(cells[3:], widths[3:], "<", gap="  ")
-        lines.append(("  " + left + ("  " + right if right else "")).rstrip())
-    lines[0] = _style(lines[0])
-    print("\n".join(lines))
-    # footnotes: the grade key first, then the column legend and the
-    # tail notes, as one block after a single blank line
-    print()
-    print("  GRADE: ++ ≥90 · + ≥75 · o 60–75 · - 50–60 · -- <50 · · unranked")
-    legend = [
-        f"{label.capitalize()} = {name}"
-        for _key, label, name in columns
-        if label != name
-    ]
-    if legend:
-        print("  " + " · ".join(legend))
-    if unscored:
-        print(
-            f"  {len(unscored)} with no benchmarks: "
-            + ", ".join(sorted(m.name for m in unscored)[:10])
-        )
-    print('  how a score is derived: README, "How a model\'s score is computed"')
     return 0
 
 

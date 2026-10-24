@@ -25,6 +25,7 @@ _TIER_SHORT = {1: "indep", 2: "board", 3: "self"}
 __all__ = [
     "CONFLICT_HEADERS",
     "bold_head",
+    "column_label",
     "conflict_rows",
     "format_conflicts",
     "print_conflicts",
@@ -48,6 +49,30 @@ def bold_head(text: str) -> str:
 
 def tier_word(source) -> str:
     return _TIER_SHORT[source_tier(source)]
+
+
+def column_label(name: str) -> str:
+    """The short name a benchmark column carries: "Terminal Bench 2.1" → "Tb 2.1".
+
+    Column headers have to fit beside each other, and there are enough
+    benchmarks to score on that the full names run past any terminal width.
+    Labels are title-cased like every other grid header.
+    """
+    if name == "LMArena Elo":
+        return "Arena"
+    if name == "DeepSWE 1.1":
+        # the version lives in the legend ("Deepswe = DeepSWE 1.1"):
+        # exact match, so a future revision keeps its number until renamed
+        return "Deepswe"
+    for family, short in (("Terminal Bench", "Tb"), ("SWE Bench", "Swe")):
+        if name.startswith(family):
+            rest = name[len(family) :]
+            if short == "Swe":
+                # "Swe vrfd" is the widest header in the scores table;
+                # "Vrfd" keeps the column parseable at a glance
+                rest = rest.replace("Verified", "Vrfd")
+            return short + rest
+    return name
 
 
 def conflict_note(c) -> str:

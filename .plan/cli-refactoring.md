@@ -107,3 +107,11 @@ workers never commit.
   final diff is exactly the moved code (+4 import lines). Golden
   `overrides` CLI tests passed unchanged. Full suite 615 green
   (incl. new `tests/test_render.py`), lint clean.
+
+- 2026-10-24, step 4 done: `models` → `commands/models.py`
+  (delegated to worker; parent-reviewed). Decision functions
+  `_roster`/`_rows` vs formatting `_summary`/`_table`, single print;
+  helpers moved verbatim; `cli` keeps header re-exports for tests.
+  Three golden tests added first (failure path, no-token notice
+  suppression, header/warning pass-through), then move. Full suite
+  618 green, lint clean.

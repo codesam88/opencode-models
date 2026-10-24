@@ -394,20 +394,59 @@ Open, highest first:
   read v2). Old-page content is retained via `dropped`/`first_seen`,
   unmaintained.
 
-Churn — real rework with no product gain on its own; do NOT schedule
-as projects. Do incrementally (extract when a command is touched for a
-real reason) or not at all:
+Further steps (ride-along, 2026-10-24): each is a real structural
+improvement with no product gain on its own, so none is scheduled as
+a project. Each lands only on its trigger, smallest slice first, with
+`just test` + `just lint` green throughout:
+- Renderer / use-case split: `cli.py` still mixes parsing, decisions,
+  formatting, and `print` per command. Trigger: the next real change
+  to a command — extract that command's use case (typed in/out,
+  result object) and its renderers (pure result + tty → string) with
+  golden tests locking current output first. Never a standalone
+  rewrite.
+- `seed` three-way split: install-time deploy vs runtime fallback
+  (loaders → shipped base) vs branch reads still share one path.
+  Trigger: the next change touching seed — split then, fold in the
+  `tier_prices/` ignore-migration note.
+- `measured/` layer: export-derived spend has no home; sync-overwrite,
+  latest-only, joined to plan records at view time only (ranking never
+  sees it). Trigger: the first usage feature needing workspace-local
+  measurements.
+- Single Curation entry point: overrides + manual + boards compose at
+  three call sites with one implicit order. Trigger: the next
+  overrides/boards behavior change — extract
+  `Curation(upstream, curated, boards)` with byte-identical conflict
+  reports.
+- Fetch caller-side allow-list: `fetch.refresh` still owns the
+  `availability` import and `only` filter. Trigger: the next fetch
+  change — caller builds scope from roster + `offered` and passes it
+  in, so nothing outside the roster downloads.
+- Stored deprecation marking: Zen parses the table but only warns;
+  nothing is stored, no view marks deprecated models. Trigger: the
+  first deprecated-but-listed model that confuses a recommendation —
+  then decide `Model` field vs sidecar slug set and mark (never
+  delete).
+- Auth-verify endpoint swap: verification hits the config API (403s
+  on service keys) instead of the inference list. Trigger: the next
+  auth change — verify against the endpoint that accepts the keys the
+  tool documents (personal keys).
+
+Future hooks, not rework (from `docs/architecture.md` §8, no action):
+cache seam between Storage and Application/Domain, atomic snapshot
+overwrites, new plans/tiers as a snapshot section + roster source +
+plan label, new benchmarks as a deliberate act.
+
+Churn rule (standing): real rework with no product gain on its own is
+never scheduled as a project. It lands incrementally — one command,
+one area, one triggering change at a time — per the Further steps
+list above, or not at all. Historical examples of the verdict:
 - Full eight-use-case extraction + renderer split as a standalone
-  rewrite: ~1900-line diff with zero behavior change and maximum
-  regression surface. The value (maintainability) accrues only when
-  someone must modify a command — so extract per command, on demand.
-- `seed` three-way split beyond dropping `tier_prices`: hygiene with
-  no user-visible effect; fold into whatever change next touches seed.
-- Single `Curation` entry point as its own task: same verdict — do it
-  inside the next overrides/boards behavior change, not alone.
-- Deprecated-model marking, `data/measured/` layer ahead of any usage
-  work, auth-verify endpoint swap: nice-to-haves waiting for a
-  triggering need.
+  rewrite (~1900-line diff, zero behavior change, maximum regression
+  surface) — now tracked per-command under Further steps instead.
+- `seed` three-way split beyond dropping `tier_prices`, single
+  Curation entry point alone, `measured/` ahead of usage work,
+  auth-verify swap, fetch allow-list, stored deprecation marking —
+  all moved to Further steps with explicit triggers.
 
 ## Acceptance
 
@@ -420,11 +459,11 @@ real reason) or not at all:
 ## Status
 
 Current state 2026-10-24: the product pipeline is consolidated —
-service extraction, unified snapshot, `sync` + lazy trigger, and alias
-wiring are all landed and green (`just test` 601, `just lint` clean),
-with golden outputs held byte-identical except where a fix
-intentionally changed them. Remaining work is decisions plus
-deferred churn (see Prioritization): composition-order call,
-snapshot-automation owner, schema minors. This task stays open while
-structural work lands incrementally; it closes when no sequenced
-rework remains, not on spec acceptance.
+service extraction, unified snapshot, `sync` + lazy trigger, alias
+wiring + composition order, docs realignment, v2 source-of-truth, and
+the snapshot schema contract are all landed and green, with golden
+outputs held byte-identical except where a fix intentionally changed
+them. Remaining: the snapshot-automation idea (own file) and the
+Further steps above, each gated on its trigger. This task stays open
+while structural work lands incrementally; it closes when no
+sequenced rework remains, not on spec acceptance.

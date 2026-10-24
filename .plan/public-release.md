@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: done
 type: chore
 priority: high
 area: devops
@@ -50,18 +50,17 @@ gitleaks.
 - `git config core.hooksPath` untouched when already set to something
   else (bootstrap must not clobber an existing hooks setup).
 
-## Remaining scope (reopened 2026-10-20 — not started, needs direction)
+## Remaining scope (landed after 2026-10-20 — verified 2026-10-24)
 
-- [ ] Release process: reserve the PyPI name with a first publish;
-  single-source the version (currently hardcoded in `pyproject.toml`
-  and as the `opencode-rank/0.1` User-Agent); add CHANGELOG.md;
-  tag-triggered publish workflow.
-- [ ] Repo hygiene: CONTRIBUTING.md only — decided against issue/PR
-  templates and against a CODE_OF_CONDUCT (small single-maintainer tool;
-  GitHub issues + private security advisories already cover reporting).
+- [x] Release process: tag-triggered publish workflow
+  (`.github/workflows/release.yml`, tag `v*` + version-match gate +
+  trusted publishing); single-sourced version (`pyproject.toml`
+  `version`, User-Agent via `__version__`); `CHANGELOG.md` with
+  `Unreleased` + `0.1.0`; `CONTRIBUTING.md` "Releasing" checklist.
+  First PyPI publish + trusted-publisher setup remain external.
+- [x] Repo hygiene: `CONTRIBUTING.md` only (no issue/PR templates,
+  no CODE_OF_CONDUCT per decision).
 - [ ] GitHub push protection + secret scanning at public-launch time
-  (free for public repos; the local grep and CI gitleaks stay as the
-  pre-launch layers).
-- [ ] Source-site Terms of Service review for republished benchmark
-  numbers — deferred counsel work; the README due-diligence note is the
-  interim public stance.
+  (external; local grep + CI gitleaks stay as the pre-launch layers).
+- [ ] Source-site Terms of Service review (deferred counsel work;
+  README due-diligence note is the interim stance).

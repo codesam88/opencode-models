@@ -165,6 +165,7 @@ class PresentationTest(unittest.TestCase):
 
     def _run_usage(self):
         from opencode_models import cli as C
+        from opencode_models.commands import usage as usage_cmd
         from tests import test_usage as TU
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -179,7 +180,7 @@ class PresentationTest(unittest.TestCase):
             buf = io.StringIO()
             with (
                 mock.patch.dict(os.environ, {"OPENCODE_API_KEY": "oc_sk_test"}),
-                mock.patch.object(C, "_api_get", lambda k: get),
+                mock.patch.object(usage_cmd, "_api_get", lambda k: get),
                 contextlib.redirect_stdout(buf),
             ):
                 code = main(["--data", tmp, "usage"])

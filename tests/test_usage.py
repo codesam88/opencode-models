@@ -28,6 +28,7 @@ from unittest import mock
 
 from opencode_models import cli as cli_mod
 from opencode_models.cli import main
+from opencode_models.commands import usage as usage_cmd
 
 #: Fixture tests must be hermetic: no key in the environment and none in
 #: the user config file, so the no-key paths are actually reachable.
@@ -309,7 +310,7 @@ class UsageCase(unittest.TestCase):
     def _run(self, *extra, get=None, key="oc_sk_test"):
         buf = io.StringIO()
         patches = [
-            mock.patch.object(cli_mod, "_api_get", lambda k: get or self.get),
+            mock.patch.object(usage_cmd, "_api_get", lambda k: get or self.get),
         ]
         if key is not None:
             patches.append(mock.patch.dict(os.environ, {"OPENCODE_API_KEY": key}))
@@ -681,7 +682,7 @@ class UsageWidthTest(unittest.TestCase):
                 )
                 buf = io.StringIO()
                 with (
-                    mock.patch.object(cli_mod, "_api_get", lambda k: get),
+                    mock.patch.object(usage_cmd, "_api_get", lambda k: get),
                     mock.patch.dict(os.environ, {"OPENCODE_API_KEY": "oc_sk_test"}),
                     contextlib.redirect_stdout(buf),
                 ):

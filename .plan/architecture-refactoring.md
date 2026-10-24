@@ -315,7 +315,7 @@ DECIDED 2026-10-24: the Go parser reads the v2 page (it always has
 in this repo's history); old `docs/go/`-only content is retained via
 `dropped`/`first_seen`, unmaintained. Declined as standalone projects — ride along
 with real changes only: full renderer split, `seed` three-way split,
-`measured/` writer, single Curation entry point, fetch caller-side
+`measured/` writer, fetch caller-side
 allow-list, deprecated marking (needs flag-vs-sidecar), unified
 schema minors (schema_rev policy, page_sha256 scope, Go deprecated
 parsing, notes split). Delegation lesson stands: safety-net work
@@ -412,11 +412,11 @@ a project. Each lands only on its trigger, smallest slice first, with
   latest-only, joined to plan records at view time only (ranking never
   sees it). Trigger: the first usage feature needing workspace-local
   measurements.
-- Single Curation entry point: overrides + manual + boards compose at
-  three call sites with one implicit order. Trigger: the next
-  overrides/boards behavior change — extract
-  `Curation(upstream, curated, boards)` with byte-identical conflict
-  reports.
+- Single Curation entry point (`catalog.compose_catalog`, landed
+  2026-10-24): alias → curation → arena → boards as one pure,
+  synthetic-tested function with byte-identical conflict reports;
+  `load_catalog` is I/O + delegation. Pinned by
+  `tests/test_catalog.py` (order, orphan, warnings).
 - Fetch caller-side allow-list: `fetch.refresh` still owns the
   `availability` import and `only` filter. Trigger: the next fetch
   change — caller builds scope from roster + `offered` and passes it
@@ -443,8 +443,8 @@ list above, or not at all. Historical examples of the verdict:
 - Full eight-use-case extraction + renderer split as a standalone
   rewrite (~1900-line diff, zero behavior change, maximum regression
   surface) — now tracked per-command under Further steps instead.
-- `seed` three-way split beyond dropping `tier_prices`, single
-  Curation entry point alone, `measured/` ahead of usage work,
+- `seed` three-way split beyond dropping `tier_prices`,
+  `measured/` ahead of usage work,
   auth-verify swap, fetch allow-list, stored deprecation marking —
   all moved to Further steps with explicit triggers.
 

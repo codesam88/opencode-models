@@ -3794,6 +3794,51 @@ class ModelsTableTest(unittest.TestCase):
         self.assertNotIn("m-ghost", out)  # junk like the served "test" id
         self.assertNotIn("m-ghost", out_all)
 
+    def test_models_head_lines_name_the_origin_and_the_counts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._snapshot(tmp, "zen", ["m-alpha", "m-bravo"])
+            self._catalog(tmp, {"l/m-alpha": "Alpha", "l/m-bravo": "Bravo"})
+            code, out = self._run("--data", tmp, "models")
+        self.assertEqual(code, 0)
+        lines = out.splitlines()
+        self.assertEqual(lines[0], f"snapshots in {tmp} (run `fetch` to refresh)")
+        self.assertEqual(lines[1], "2 models · 2 zen · go unknown")
+        self.assertEqual(lines[2], "")
+
+    def test_models_fails_when_nothing_is_known(self):
+        # empty data dir, no key: nothing to rank, so exit 1 with the
+        # fetch hint — and the no-key stale notice stays down, so the
+        # failure message is the whole of stdout
+        with tempfile.TemporaryDirectory() as tmp:
+            code, out = self._run("--data", tmp, "models")
+        self.assertEqual(code, 1)
+        self.assertEqual(
+            out.splitlines(),
+            [
+                f"no availability known in {Path(tmp)} — run `fetch` first "
+                "(with OPENCODE_API_KEY for the live set)"
+            ],
+        )
+
+    def test_models_prints_live_warnings_and_keeps_going(self):
+        # an unreachable live list warns, then the view falls back to
+        # the snapshots instead of failing
+        with tempfile.TemporaryDirectory() as tmp:
+            self._snapshot(tmp, "zen", ["m-known"])
+            self._catalog(tmp, {"l/m-known": "Known"})
+            with mock.patch.dict(os.environ, {"OPENCODE_API_KEY": "oc_sk_test"}):
+                with mock.patch.object(
+                    availability, "fetch_served", side_effect=OSError("down")
+                ):
+                    code, out = self._run("--data", tmp, "models")
+        self.assertEqual(code, 0)
+        lines = out.splitlines()
+        self.assertEqual(
+            lines[0],
+            "warning: live model list unreachable (down) — using the last snapshots",
+        )
+        self.assertEqual(lines[1], f"snapshots in {tmp} (run `fetch` to refresh)")
+
     def test_deepswe_version_survives_in_the_legend(self):
         import json
 

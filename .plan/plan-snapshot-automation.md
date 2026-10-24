@@ -12,17 +12,23 @@ of `model-go-allowance.md` step 4 (2026-10-23); that step keeps the
 manual workflow as the interim answer.
 
 Where things stand today (all manual, all working):
-- `scripts/update_go_pricing.py` / `scripts/update_zen_pricing.py` fetch,
-  parse, validate (go: 10%-tolerance estimate reproduction; zen:
-  structural), and merge extend-not-replace into gitignored
-  `data/plans/<tier>.json`. `--from` parses a saved copy, `--out`
-  selects the target, `--check` validates offline with no network.
-- `just plans-update[-zen]` (fetch+validate; exit nonzero writes
-  nothing), human confirmation (dropped real? assumptions present?
-  limit deltas plausible?), `just plans-freeze[-zen]` (re-check, copy
+- `just plans-sync` (unconditional refresh of both plans via
+  `sync --force`: fetch, parse, validate, extend-not-replace merge
+  into gitignored `data/plans/<tier>.json`), human confirmation
+  (dropped real? assumptions present? limit deltas plausible?),
+  `just plans-freeze` (`plans-check` re-validates offline, then copies
   over the shipped fallback in `opencode_models/data/plans/`), commit.
   The committed fallback is what the wheel ships and what offline runs
-  fall back to.
+  fall back to. The old `scripts/update_*.py` are retired; the package
+  modules own the logic behind the sync surface.
+
+Open leaning 2026-10-24: automation may be unnecessary — manual
+refresh as part of releases (download + freeze when cutting a
+release, plus on-demand when a page change is suspected) could be the
+permanent answer. Snapshots already self-report age, and lazy sync
+keeps read paths fresh without any cron. This idea stays open only
+until that call is made: either close it (manual-at-release wins) or
+promote it (automation gaps below become requirements).
 
 What automation would add (the gaps listed in the parent step):
 - `page_sha256` in snapshot meta, so a silent page rewrite is detectable

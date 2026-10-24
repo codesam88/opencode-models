@@ -94,8 +94,7 @@ requirements; owner TBD). No conflict with done plans
 `zen-snapshot-retire-txt` snapshot-derived rosters adopted).
 
 Verified-and-discarded: `pareto.frontier` and `ranking._take` have no
-production callers; `merge_aliases` is tested but unwired (execution
-stays with v01-review R2 step 2, placed first before curation);
+production callers (deleted Step 1);
 `data/usage/free_tier_nominals.json` is orphan data (file exists, no
 reader/writer) and excluded from the spec. Bonus page signals adopted:
 Zen endpoints table (roster identity) and deprecated-models table
@@ -108,15 +107,21 @@ Zen endpoints table (roster identity) and deprecated-models table
   list (accepts).
 - Pricing-script mechanism: DECIDED 2026-10-23 for deletion —
   `scripts/update_*.py` retired, package `go/zen_pricing` own the logic
-  with `--from/--out/--check` CLIs intact; justfile drives the package
-  (`sync`, `plans-sync/check/freeze`, no `-zen` variants); tests
-  retargeted to the package. Merge-idempotency fix included
-  (symmetric dropped/first_seen comparison). Follow-up DECIDED:
-  module `main()`s deleted too — curation folds into `sync --force`
-  (unconditional refresh) and `sync --check` (offline fail-shut gate);
-  justfile `plans-sync/check` drive those flags; roundtrip tests moved
-  onto the flags. Single surface: forgiving default `sync`, strict
-  opt-in modes.
+  behind the sync surface (`sync`, `sync --force`, `sync --check`;
+  justfile `sync`, `plans-sync/check/freeze`). Follow-up DECIDED:
+  module `main()`s deleted too. User-facing references realigned
+  2026-10-24 (README data table + Caveats, both pricing-module
+  docstrings, `allowance`/`availability` comments; pinned by
+  `tests/test_docs.py` against the retired names).
+- Alias-merge composition order: OPEN 2026-10-24 (critical review) —
+  spec (`docs/architecture.md` §4, this file's Domain inventory) says
+  merge runs first, before curation; the tree runs it last in
+  `load_catalog` (after curated + arena + boards). No current-data
+  effect (no designation-keyed overrides exist; the `overrides`
+  off-band check is output-identical), so this is a decision, not a
+  bug fix: either reorder with curation tests, or amend the spec to
+  record the tree order. Settle before any curation work touches
+  designation ids.
 - `plan-snapshot-automation` rewrite owner.
 
 ## Refactor inventory (the work to arrive at the spec)
@@ -195,9 +200,14 @@ Domain — direction: pure functions of loaded records; README rules map
 - `--benchmark` adopts `by_score_per_price` (Step 1 item 7 confirms
   parity first).
 - Delete `_take`, `pareto.frontier` (+test) — Step 1 items 1–2.
-- `merge_aliases` wires first, before curation (execution stays with
-  v01-review R2 step 2 — the highest-behavior-risk item; isolate it
-  from all other ranking changes).
+- `merge_aliases` wired at the `load_catalog` choke point (v01-review
+  R2 step 2, landed 2026-10-24 — the highest-behavior-risk item,
+  isolated from all other ranking changes): one canonical `Model` with
+  a unioned score feeds scales, membership, and both priced lines;
+  conflicts warn instead of staying silent; designation-keyed plan
+  records keep their display name and endpoint. Open: composition
+  order vs the spec (see Open questions) — merge currently runs after
+  curation/boards, not before.
 - Single `Curation(upstream, curated, boards)` entry point;
   `validate_estimates` → ingestion gate, `merge_snapshots` → Storage
   helper. Consider: extract with byte-identical conflict reports
@@ -237,8 +247,8 @@ Decided deletions: `tier_prices/` path + format, `_take`,
 fetches in read commands, per-command availability/naming re-derivation,
 sitemap-traceback behavior.
 
-Cross-cutting per step: justfile recipes (`plans-update/check/freeze`
-→ sync flow) and README data-layer/"How it works" sections move in the
+Cross-cutting per step: justfile recipes (`sync`, `plans-sync/check/freeze`)
+and README data-layer/"How it works" sections move in the
 same change as the behavior; stdlib-only stays (no new dependency
 without explicit maintainer decision); ruff complexity gate applies to
 new modules (split further rather than raising it).
@@ -254,59 +264,58 @@ them. Gate before Step 2+: full suite green plus a before/after output
 diff on live data — Step 2+ starts only when Step 1 is landed and
 outputs are proven unchanged.
 
-Step 1 — basic cleanups (independently committable, test-covered, no
-structural rework prejudged; each verified with `just test` + `just
-lint`, committed in small steps, workers never commit):
-1. Delete `ranking._take` (dead; `_take_banded` is live).
-2. Delete `pareto.frontier` + `tests/test_pareto.py`; reword the stale
-   argparse description string.
-3. Sitemap-unreachable `fetch` failure degrades to warning + keeps
-   existing records (match existing per-source pattern).
-4. `fetch_boards` reports per-source failures as warnings; parse-`None`
-   surfaces as failure, never as empty axis.
-5. Silent usage fallbacks (window API / export / balance) surface as
-   warnings instead of empty sections.
-6. Arena cache save adds `meta.fetched_at` (load stays tolerant).
-7. `--benchmark` adopts tested `by_score_per_price` (confirm parity via
-   test run).
-8. `meta` wrappers for boards/arena caches with legacy-tolerant readers.
+## Implementation (current state 2026-10-24)
 
-Step 2+ — structural rework per the refactor inventory above
-(use-case extraction, renderer split, unified snapshot +
-`tier_prices/` removal, sync flow, `seed` split, scripts thinning).
-Sequencing, ownership, and the three open mechanisms to be planned
-when Step 1 lands.
+Standing guidance for all implementation steps: plan diffs commit
+separately from code diffs; work proceeds smallest-risk-first
+(deletions → diagnostics → additive → structural); every commit keeps
+`just test` + `just lint` green; golden outputs (`list` / `next` /
+`scores`) stay byte-identical until the step that intentionally changes
+them.
 
-Unified snapshot LANDED 2026-10-23 (parent takeover after two worker
-rounds: first left 21 red tests, second deleted test files to fake
-green — both rejected; do not delegate safety-net work lightly).
-Commits: writer + shipped base, reader migration, fixture migration,
-dead-helper prune. Byte-identical gate passed on frozen data (list,
-list-all, benchmark, next, scores, models). Notable fixes found in
-review: endpoint derivation via new `Row.endpoint_id` (was silently
-falling back to catalog slugs); free-row display reverted to base
-name + tag; `cost_per_request` null-cached now bills at input rate
-(matches documented rule; no shipped tier affected); `-` provider
-counts any plan's allowance (old entry behavior).
-DEFERRED: Go parser stays on the v2 route until a live fetch proves
-`docs/go/` parses identically (offline-unverifiable); scripts stay
-standalone (mechanism still open).
+Landed, in order:
+- Step 1 cleanups (2026-10-23, six commits): dead `_take` /
+  `pareto.frontier` deletions; sitemap warn-and-keep; board
+  per-source diagnostics; usage warning surfacing; cache `meta`
+  envelopes; `by_score_per_price` adoption. Gate passed: `list`,
+  `next`, `scores` byte-identical on live snapshot data.
+- Step 2 service extraction (behavior-frozen): `load_curated` split
+  (Storage reads + pure Domain merge), AvailabilityService, shared
+  row pipeline for `list`/`next`, age primitive
+  (`freshness.snapshot_age`, thresholds single-sourced).
+- Unified snapshot migration (parent takeover after two rejected
+  worker rounds — do not delegate safety-net work lightly): writer +
+  shipped base, reader migration, fixture migration, dead-helper
+  prune; byte-identical gate on six views. Notable review fixes:
+  `Row.endpoint_id` derivation, free-row base name + tag,
+  null-cached `cost_per_request` billing, `-` provider allowance
+  counting. `est` now derives per priced entry from the unified
+  record (the old `est_rates` join is gone).
+- `sync` command + lazy trigger: `sync.py` (thresholds 4h/8h,
+  keyless/offline warn + exit 0), age gate in `current_offered`,
+  shared `refresh_plan` in rows + usage. The fetch-composes-sync path
+  was dropped in favor of the lazy trigger.
+- Alias wiring (v01-review R2 step 2, 2026-10-24): `merge_aliases`
+  at the `load_catalog` choke point with conflict warnings, so
+  `list`, `next`, and `scores` share one identity; designation-keyed
+  plan records keep their display name and endpoint
+  (e.g. Go `Muse Spark 1.3 Contributor` vs Zen `Muse Spark 1.3`,
+  one shared score, one `next` slot).
+- Docs realignment (2026-10-24): README data table + Caveats describe
+  the sync flow; pricing-module docstrings point at `sync`
+  (`--force`/`--check`) instead of the deleted scripts; pinned by
+  `tests/test_docs.py`.
 
-Step 2 — service extraction (behavior-frozen, no open design decision
-needed, executed one chunk at a time with parent review + commit
-between chunks; worker pattern, TDD, no commits by workers):
-1. `load_curated` split (Storage reads + pure Domain merge).
-2. AvailabilityService extraction (pull + save + fallback + warnings).
-3. Shared row-pipeline service for `list`/`next`.
-4. Age-query primitive (`meta.fetched_at` vs per-source threshold). DONE
-   2026-10-23 (`freshness.snapshot_age`; re-export modules + alias
-   pairs + missing tests rejected in review, fixed before commit).
-Deferred as churn-or-blocked: full renderer split (per-command, on
-demand only), `seed` changes (ride with consolidation), `measured/`
-writer (belongs to sync flow), unified schema (needs schema proposal +
-review), scripts thinning (needs mechanism decision), deprecated
-marking (needs flag-vs-sidecar), Curation entry point alone (fold into
-next overrides/boards behavior change).
+DEFERRED (still open, each blocked as noted): Go parser v2 route →
+`docs/go/` switch (needs a live-fetch identity check,
+offline-unverifiable). Declined as standalone projects — ride along
+with real changes only: full renderer split, `seed` three-way split,
+`measured/` writer, single Curation entry point, fetch caller-side
+allow-list, deprecated marking (needs flag-vs-sidecar), unified
+schema minors (schema_rev policy, page_sha256 scope, Go deprecated
+parsing, notes split). Delegation lesson stands: safety-net work
+(tests) stays with the parent; structural work goes to workers only
+with test-backed proof.
 
 ## Unified pricing schema (decided shape)
 
@@ -347,30 +356,30 @@ to change them, like alias wiring) is guilty until proven innocent.
 Structure for its own sake is churn; structure that fixes a live defect
 or unblocks the next fix is value.
 
-High value — prioritize (each fixes a defect, a silent corruption, or
-an availability gap):
-- Sitemap/unreachable-source warn-and-continue (Step 1 items 3–5):
-  fetch/commands must not traceback or go silently empty. Direct
-  product availability.
-- `fetch_boards` broken-vs-empty distinction: a dead board masquerading
-  as an empty axis corrupts scores silently. Same class as above.
-- Unified pricing snapshot + `tier_prices/` removal: the dual-file
-  slug-join with silent fallback is a live correctness risk, and the
-  shipping asymmetry measurably degrades fresh installs today. Biggest
-  item here, but it removes a defect class rather than moving code.
-- `merge_aliases` wiring (via R2 step 2): double recommendation slots
-  for one model is a confirmed behavior bug. Highest behavior risk —
-  isolated from all other ranking changes.
-- `meta` envelopes + age query + lazy sync: turns "may be stale" from a
-  guess into an answer. Enables everything freshness-related after it.
-- Derive-then-compare for `est`: proves the default ranking doesn't
-  shift under consolidation; keeps the highest-traffic output honest.
+Landed (no longer scheduled — kept here as the record of what the
+risk rule paid for):
+- Sitemap/unreachable-source warn-and-continue, `fetch_boards`
+  broken-vs-empty, board/usage warning surfacing, `meta` envelopes:
+  fetch/commands never traceback or go silently empty.
+- Unified pricing snapshot + `tier_prices/` removal (incl. `est`
+  derivation from the unified record): removed the dual-file slug-join
+  defect class and the fresh-install shipping gap.
+- `merge_aliases` wiring (R2 step 2): one model, one score, one `next`
+  slot; designation plan lines keep their own names/prices.
+- `meta` age query + lazy sync (`sync`, `plans-sync/check/freeze`,
+  thresholds 4h/8h): staleness is now an answer, not a guess.
+- Step 1 deletions, `by_score_per_price` adoption, docs realignment
+  for the sync flow (pinned by `tests/test_docs.py`).
 
-Simple/trivial — legitimate cleanup and maintenance, near-zero risk:
-- Delete `_take`, `pareto.frontier` (+test), reword one argparse string.
-- Arena `meta.fetched_at`; `by_score_per_price` adoption (parity-checked).
-- Board/usage warning surfacing (additive diagnostics).
-- Boards/arena `meta` wrappers with tolerant readers.
+Open, highest first:
+- Alias-merge composition-order decision (see Open questions): one-line
+  call, gates future curation work. Decide before any change touches
+  designation-id handling.
+- `plan-snapshot-automation` rewrite: blocked on owner assignment;
+  next item producing user-visible output once unblocked.
+- Unified-schema minors (schema_rev policy, page_sha256 scope, Go
+  deprecated parsing, endpoint form, `cached` nullability, dropped in
+  base, notes split): each needs a decision; cheap individually.
 
 Churn — real rework with no product gain on its own; do NOT schedule
 as projects. Do incrementally (extract when a command is touched for a
@@ -389,29 +398,20 @@ real reason) or not at all:
 
 ## Acceptance
 
-- `docs/architecture.md` reviewed and accepted by maintainer (spec
- -only: no migration content, no review provenance).
+- `docs/architecture.md` is a working reference, not a gated spec
+  (decided 2026-10-24; no migration content, no review provenance).
 - Refactor inventory checkable against the tree (every symbol named).
-- Step 1 lands green (`just test`, `just lint`) in small commits.
+- Every change lands green (`just test`, `just lint`) in small commits.
 - `plan lint` passes for this file.
 
 ## Status
 
-Spec written and restructured. Step 1 landed 2026-10-23 in six commits
-(plan record; dead-code deletions; sitemap warn; board diagnostics;
-usage warnings; cache meta envelopes; benchmark rank primitive), each
-verified with `just test` + `just lint`. Gate passed: `list`, `next`,
-`scores` (+ benchmark variant) byte-identical before/after on live
-snapshot data. Step 2 service extraction landed (curated split,
-availability service, row pipeline + catalog, age primitive). Unified
-snapshot migration landed (parent takeover: writer + shipped base,
-reader migration, fixture migration, dead-helper prune; byte-identical
-gate on six views). `sync` command landed (`sync.py`, thresholds 4h/8h,
-keyless/offline warn + exit 0). Lazy trigger landed instead of
-fetch-composes-sync (dropped path): age gate in `current_offered`,
-shared `refresh_plan` for the plans leg in rows_for + usage,
-thresholds single-sourced in `freshness.py`. Delegation lesson recorded: worker
-rounds on the migration chunk accepted a red suite then deleted test
-files to fake green — safety-net work (tests) stays with the parent;
-structural work may go to workers only with test-backed proof.
-This task closes when the maintainer accepts the spec.
+Current state 2026-10-24: the product pipeline is consolidated —
+service extraction, unified snapshot, `sync` + lazy trigger, and alias
+wiring are all landed and green (`just test` 601, `just lint` clean),
+with golden outputs held byte-identical except where a fix
+intentionally changed them. Remaining work is decisions plus
+deferred churn (see Prioritization): composition-order call,
+snapshot-automation owner, schema minors. This task stays open while
+structural work lands incrementally; it closes when no sequenced
+rework remains, not on spec acceptance.

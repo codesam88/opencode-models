@@ -169,12 +169,13 @@ def _designation_keys(slug: str, records: dict, reach_variants: bool) -> list[st
     return keys
 
 
-def _priced_tiers(designations: list[str], records: dict) -> list[dict]:
-    tiers: list[dict] = []
+def _priced_tiers(designations: list[str], records: dict) -> list[tuple[dict, str]]:
+    tiers: list[tuple[dict, str]] = []
     for key in designations:
         candidate = records.get(key)
         if isinstance(candidate, dict) and not candidate.get("free"):
-            tiers.extend(list(candidate.get("tiers") or []))
+            for tier in list(candidate.get("tiers") or []):
+                tiers.append((tier, key))
     return tiers
 
 
@@ -258,9 +259,9 @@ def _stage_for_model(m, records, free_ids, axis, provider, reach_variants):
         cpr = cost_per_request(rec.get("tiers") or [], rec.get("assumptions"))
         if cpr is not None and cpr > 0:
             est_value = cpr
-    for t in priced_tiers:
+    for t, tier_key in priced_tiers:
         label = t.get("label")
-        key = (slug, label)
+        key = (tier_key, label)
         if key in seen:
             continue
         seen.add(key)
@@ -272,7 +273,12 @@ def _stage_for_model(m, records, free_ids, axis, provider, reach_variants):
             tier_cost = est_value
         else:
             tier_cost = weighted_cost(t.get("in"), t.get("out"), t.get("cached"))
-        display = f"{m.name} ({label})" if label else m.name
+        base_name = m.name
+        if tier_key != slug:
+            tier_rec = records.get(tier_key)
+            if isinstance(tier_rec, dict) and tier_rec.get("name"):
+                base_name = tier_rec.get("name")
+        display = f"{base_name} ({label})" if label else base_name
         staged.append(
             (
                 m,
@@ -280,7 +286,7 @@ def _stage_for_model(m, records, free_ids, axis, provider, reach_variants):
                 tier_cost,
                 False,
                 limit,
-                slug,
+                tier_key,
             )
         )
 

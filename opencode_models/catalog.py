@@ -15,12 +15,16 @@ from .models import Model
 from .overrides import Conflict, Curated, load_curated
 
 
-def load_catalog(data_dir: Path) -> tuple[list[Model], Curated, list[Conflict]]:
+def load_catalog(
+    data_dir: Path,
+) -> tuple[list[Model], Curated, list[Conflict], list[str]]:
     """Upstream records with curated overlays and official boards applied.
 
-    Returns ``(models, curated, board_conflicts)``: the merged model list,
+    Returns ``(models, curated, board_conflicts, merge_warnings)``: the merged model list,
     the curated layer (which models carry overrides, conflicts, orphans),
-    and the board-vs-registry disagreements.
+    the board-vs-registry disagreements, and alias-merge conflict warnings.
+    Designation twins (``-free``/``-contributor``) fold to one canonical
+    model here, so every consumer shares the same identity.
     """
     data_dir = Path(data_dir)
     curated = load_curated(
@@ -28,7 +32,10 @@ def load_catalog(data_dir: Path) -> tuple[list[Model], Curated, list[Conflict]]:
     )
     models = merge_from_file(curated.models, data_dir / "aiarena")
     models, board_conflicts = merge_boards(models, load_boards(data_dir / "boards"))
-    return models, curated, board_conflicts
+    from .identity import merge_aliases
+
+    models, merge_warnings = merge_aliases(models)
+    return models, curated, board_conflicts, merge_warnings
 
 
 __all__ = ["load_catalog"]

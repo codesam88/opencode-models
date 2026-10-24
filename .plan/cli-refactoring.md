@@ -129,3 +129,13 @@ workers never commit.
   `derived_scores`, `combined`, `scales`, `grade_for` in `cli`).
   Golden `scores` tests passed unchanged. Full suite 620 green,
   lint clean.
+
+- 2026-10-24, step 6 done: `fetch` → `commands/fetch.py`
+  (verbatim move; progress prints intentionally stream — buffering a
+  minutes-long fetch would hide stalls. Transport injectable as
+  `run(args, get=None)`, `cli` passes `http_get`, so the existing
+  `cli.http_get` patch points keep working: first attempt bound the
+  transport at import and hung the suite on real network; fixed to
+  the `sync`-step pattern, no test edits). `_model_tick` moved with
+  it. Golden fetch CLI tests passed unchanged. Full suite 620
+  green, lint clean.

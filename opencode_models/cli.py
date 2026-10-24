@@ -32,13 +32,16 @@ from .boards import fetch_boards, save_boards
 from .catalog import curated_layer, load_catalog
 from .commands import fail as _fail
 from .commands.auth import run as _cmd_auth
+from .commands.overrides import run as _cmd_conflicts
+from .commands.render import CONFLICT_HEADERS  # noqa: F401 (test compat; moves with fetch)
+from .commands.render import bold_head as _bold_head
+from .commands.render import print_conflicts as _print_conflicts
 from .commands.sync import run as _cmd_sync
 from .fetch import SITEMAP_URL, http_get, refresh, urls_from_sitemap
 from .identity import canonical_id
 from .live import api_get as _api_get
 from .live import fetch_live, fetch_served, merge_served, save_live
 from .models import load_models
-from .overrides import off_band_models, source_tier
 from .pricing import (
     USAGE_EXPORT_URL,
 )
@@ -143,15 +146,6 @@ def _cost_unit(price: str) -> str:
     return "¢/req" if price in ("fix", "est") else "¢/1m"
 
 
-def _bold_head(text: str) -> str:
-    """Bold the first (header) line when talking to a terminal.
-
-    Piped or captured output is untouched, so tests read plain text.
-    """
-    head, *rest = text.splitlines()
-    return "\n".join([_style(head), *rest])
-
-
 def _headings(axis: bool, price: str) -> tuple[str, ...]:
     """Column headings, title-cased; the unit follows the `--cost` mode."""
     unit = _cost_unit(price)
@@ -174,9 +168,6 @@ def _next_headings(price: str) -> tuple[str, ...]:
 #: `models` grid headings, with and without the availability column.
 MODELS_HEADERS = ("Endpoint", "Model")
 MODELS_ALL_HEADERS = ("Avail", "Endpoint", "Model")
-
-#: `overrides` grid headings.
-CONFLICT_HEADERS = ("Model", "Benchmark", "Catalog", "Reported", "Used", "Note")
 
 #: `scores` fixed columns; benchmark labels append after these.
 SCORES_STATIC_HEADERS = ("Model", "Grade", "Score")
@@ -204,98 +195,6 @@ def _section(
     print()
     print(_rule(title))
     print(" " * GRADE_WIDTH + _style(_header(widths, axis, price)))
-
-
-#: How much of a board row's provenance the NOTE column carries.
-_NOTE_WIDTH = 52
-
-#: Source tiers, short enough to sit beside a number without dominating the
-#: column. The long names are in the footer rather than in every row.
-_TIER_SHORT = {1: "indep", 2: "board", 3: "self"}
-
-
-def _tier_word(source) -> str:
-    return _TIER_SHORT[source_tier(source)]
-
-
-def _note_text(c) -> str:
-    """A conflict's provenance, trimmed to one line.
-
-    The board rows carry the run that produced the number - agent, effort,
-    rank, CI and trial count - and that is the part worth reading, so it
-    goes in the table rather than on a second line under it. A longer note
-    is cut: the full record is in ``data/boards/``.
-    """
-    text = " ".join((c.reason or "").split())
-    return text if len(text) <= _NOTE_WIDTH else text[: _NOTE_WIDTH - 1] + "…"
-
-
-def _print_conflicts(conflicts, orphans=(), manual_orphans=()) -> int:
-    """Disagreements between two sources, as a table with the value used.
-
-    Three numbers per row would be one too many, so the two reported values
-    carry their source tier and USED says which of them is in the view.
-    The arrow used to run upstream → override, which read as if the console
-    had taken the second number even where it kept the first.
-    """
-    rows = []
-    for c in conflicts:
-        rows.append(
-            (
-                c.model_id,
-                c.benchmark,
-                f"{c.upstream:g} {_tier_word(c.upstream_source)}",
-                f"{c.override:g} {_tier_word(c.override_source)}",
-                f"{c.used:g}",
-                _note_text(c),
-            )
-        )
-    orphans = [
-        (model_id, "", "", "", "", "override file has no upstream record")
-        for model_id in sorted(orphans)
-    ]
-    rows += orphans
-    manual_orphans = [
-        (model_id, "", "", "", "", "manual record shadowed by upstream record")
-        for model_id in sorted(manual_orphans)
-    ]
-    rows += manual_orphans
-    if not rows:
-        return 0
-    print(_bold_head(render(CONFLICT_HEADERS, rows, aligns="<", indent="  ")))
-    return len(conflicts) + len(orphans) + len(manual_orphans)
-
-
-def _cmd_conflicts(args: argparse.Namespace) -> int:
-    """Curated overrides that disagree with upstream, ranked by provenance.
-
-    Each disagreement shows both values with the tier of their source, and
-    whether the override applies (its source is at least as good as
-    upstream's) or is merely recorded. To accept upstream, delete the
-    entry in data/overrides/.
-    """
-    data_dir = Path(args.data)
-    if not data_dir.is_dir():
-        return _fail(f"no data directory at {data_dir} — run `fetch` first")
-    models, curated, board_conflicts, _merge_warnings = load_catalog(data_dir)
-    n = _print_conflicts(curated.conflicts, curated.orphans, curated.manual_orphans)
-    if board_conflicts:
-        print("— official boards —")
-        _print_conflicts(board_conflicts)
-    for mid, s21, s40, resid in off_band_models(curated.models):
-        print(
-            f"{mid}  Terminal-Bench 2.1 {s21} vs 4.0 {s40} — "
-            f"{resid:+.0f} off the 2.1→4.0 band, check the run"
-        )
-    print(
-        f"{len(curated.curated)} curated models · {n} curated "
-        f"disagreements · {len(board_conflicts)} from official boards"
-    )
-    print(
-        "tiers: self = vendor self-report · board = official board · "
-        "indep = independent evaluator"
-    )
-    return 0
 
 
 #: How often the long model-file walk reports: one line per file would bury

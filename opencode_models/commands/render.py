@@ -10,10 +10,12 @@ from __future__ import annotations
 import sys
 
 from ..overrides import source_tier
-from ..tables import render
+from ..tables import column_widths, format_row, render
 
 #: `overrides` grid headings.
 CONFLICT_HEADERS = ("Model", "Benchmark", "Catalog", "Reported", "Used", "Note")
+
+RULE_WIDTH = 60
 
 #: How much of a board row's provenance the NOTE column carries.
 _NOTE_WIDTH = 52
@@ -28,7 +30,9 @@ __all__ = [
     "column_label",
     "conflict_rows",
     "format_conflicts",
+    "format_usage_tables",
     "print_conflicts",
+    "rule",
     "style",
 ]
 
@@ -49,6 +53,47 @@ def bold_head(text: str) -> str:
 
 def tier_word(source) -> str:
     return _TIER_SHORT[source_tier(source)]
+
+
+def rule(title: str) -> str:
+    """A section title with a closing rule, like the list view tables."""
+    return f"── {title} " + "─" * max(4, RULE_WIDTH - len(title))
+
+
+def format_usage_tables(sections, left_headers, right_headers) -> list[str]:
+    """Week/Month window grids as text, one width set across sections.
+
+    One width set fits both tables so the Week and Month grids line up
+    with each other, the way the list view's tables do.
+    """
+    left_aligns = ("<", "<", ">")
+    right_aligns = (">", ">", ">", ">", ">", "<")
+    left_widths = column_widths(
+        left_headers, [line for _, left, _ in sections for line in left]
+    )
+    right_widths = column_widths(
+        right_headers, [line for _, _, right in sections for line in right]
+    )
+    lines = []
+    for title, left_rows, right_rows in sections:
+        lines.append("")
+        lines.append(rule(title))
+        lines.append(
+            "  "
+            + style(
+                format_row(left_headers, left_widths, left_aligns, gap=" ").rstrip()
+                + "   "
+                + format_row(right_headers, right_widths, right_aligns, gap=" ")
+            )
+        )
+        for left, right in zip(left_rows, right_rows, strict=True):
+            lines.append(
+                "  "
+                + format_row(left, left_widths, left_aligns, gap=" ").rstrip()
+                + "   "
+                + format_row(right, right_widths, right_aligns, gap=" ")
+            )
+    return lines
 
 
 def column_label(name: str) -> str:

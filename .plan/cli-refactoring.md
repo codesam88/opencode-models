@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: done
 type: feature
 priority: high
 area: cli
@@ -162,3 +162,10 @@ workers never commit.
   headings, notes). cli.py is 253 lines: parser + dispatch +
   re-exports. Golden list/next suites passed unchanged. Full suite
   620 green, lint clean.
+
+- 2026-10-24, done: all nine commands moved (`sync`, `auth`,
+  `overrides`, `models`, `scores`, `fetch`, `usage`, `list`,
+  `next`). cli.py is parser + dispatch + re-exports (253 lines).
+  No behavior change anywhere: every step verified byte-identical
+  via existing golden tests (only patch-target updates where a
+  helper moved modules). Suite 620 green, lint clean throughout.

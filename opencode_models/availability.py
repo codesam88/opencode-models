@@ -339,9 +339,10 @@ def load_plan_snapshot(data_dir) -> tuple[dict, str]:
     """The Go plan snapshot (limits, prices, assumptions) and its origin.
 
     Resolution order: the data dir's ``plans/go.json`` first -- that is
-    the copy ``plans-update`` refreshes -- then the snapshot shipped
-    inside the package, so an installed tool with no data dir still
-    resolves. A corrupt local file falls through to the shipped one.
+    the copy ``sync`` refreshes (``just plans-sync`` forces it) -- then
+    the snapshot shipped inside the package, so an installed tool with
+    no data dir still resolves. A corrupt local file falls through to
+    the shipped one.
     """
     from importlib import resources
 

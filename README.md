@@ -364,7 +364,7 @@ committed**. They are third-party records, they go stale, and they are large;
 | `opencode/` | upstream records, one JSON per model, verbatim from `https://opencode.ai/data/<lab>/<model>.json` | `fetch` only | no — `.gitignore`d |
 | `aiarena/` | arena.ai (LMArena) Elo cache, `{slug: elo}` | `fetch` | no — `.gitignore`d |
 | `available/` | the live model set per tier from the inference gateway lists (served = callable), annotated with the Console config API's known set | keyed `fetch` / `models` | no — `.gitignore`d |
-| `plans/` | validated plan allowance snapshots: per-model token prices, monthly limits per plan, token/req assumptions, request estimates (`update_go_pricing.py` + gate) | `just plans-update` on cadence | no — `.gitignore`d |
+| `plans/` | validated plan allowance snapshots: per-model token prices, monthly limits per plan, token/req assumptions, request estimates (gated by estimate reproduction + structural checks) | `sync` refreshes stale snapshots on each run (~4h availability, ~8h pricing); `just plans-sync` forces a refresh, `just plans-freeze` promotes to the shipped fallback | no — `.gitignore`d |
 | `boards/` | official benchmark boards, fetched from whoever runs them (see below) | `fetch` | no — `.gitignore`d |
 | `usage/` | Go window poll history (`go_windows.jsonl`, appended by keyed `usage` runs for the offline fallback) | keyed `usage` | no — `.gitignore`d |
 | `overrides/` | hand-pinned benchmark values (see `data/overrides/README.md`) | nobody — `overrides` reports disagreements | **yes** (the directory, no data) |
@@ -487,8 +487,10 @@ correct or remove it.
 ## Caveats
 
 - Prices are list prices from one catalog (OpenCode's); they can lag provider
-  price changes. Tier pricing is snapshotted offline (`data/plans/`),
-  so a stale snapshot is stale prices until the next `fetch`.
+  price changes. Tier pricing is snapshotted offline (`data/plans/`):
+  read commands refresh a stale snapshot automatically (availability
+  ~4h, plans ~8h; `sync` reports per source) and warn instead of
+  failing when offline, proceeding on the last snapshots.
 - Benchmarks are heterogeneous (metric, harness, conditions differ per source).
   `list` orders Terminal-Bench rows and SWE-Bench rows separately rather than
   mixing their scores; compare within one benchmark.

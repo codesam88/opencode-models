@@ -4,10 +4,10 @@ Equations and window fractions come from ``docs/model-go-plan.md``:
 ``cpr = (t_in*p_in + t_cache*p_cached + t_out*p_out) / 1e6`` ($/req),
 ``R_month = limit / cpr``, windows as fractions of the monthly limit.
 
-The gate/merge logic here intentionally duplicates
-``scripts/update_go_pricing.py`` (which stays standalone by design): the
-script works on a live page snapshot while this module works on parsed
-dicts handed in by callers. This module never reads files or the network.
+The gate/merge logic here intentionally duplicates the validation in
+``go_pricing`` (which works on a live page snapshot while this module
+works on parsed dicts handed in by callers). This module never reads
+files or the network.
 
 This core's assumption-based ``cost_per_request`` is a different thing
 from ``pricing.weighted_cost`` (the fixed-mix representative cost used

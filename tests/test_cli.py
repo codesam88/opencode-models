@@ -4136,7 +4136,7 @@ class ModelsListCoverageTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             catalog(tmp, "l/m1", 1.0, 50.0)
             catalog(tmp, "l/m2", 3.0, 90.0)
-            # m2-free is in the tier_prices snapshot (the roster now) and
+            # m2-free is in the plans snapshot (the roster now) and
             # catalog-nameable via l/m2, so it must render in the full list.
             self._snapshot(tmp, "zen", ["m1", "m2-free"])
             self._snapshot(tmp, "go", [])

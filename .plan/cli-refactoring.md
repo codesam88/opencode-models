@@ -115,3 +115,17 @@ workers never commit.
   Three golden tests added first (failure path, no-token notice
   suppression, header/warning pass-through), then move. Full suite
   618 green, lint clean.
+
+- 2026-10-24, step 5 done: `scores` → `commands/scores.py`.
+  Decision functions (`_columns`, `_select`, `_ranked`, `_counts`,
+  `_grid`) vs pure rendering (`_cells`, `_render_table`,
+  `_footnotes`), single print at the edge; `_column_label` moved to
+  `commands/render.py` (test re-exports kept in `cli`). Unit tests
+  (`tests/test_scores_command.py`: column coverage, blank-not-zero)
+  failed first on the missing module, then on a real scoring rule
+  (single-carrier benchmarks have no spread, so fixtures gained a
+  third model) — both genuine REDs. Ruff removed 11 newly-dead
+  cli imports (scores was the last user of `load_catalog`,
+  `derived_scores`, `combined`, `scales`, `grade_for` in `cli`).
+  Golden `scores` tests passed unchanged. Full suite 620 green,
+  lint clean.

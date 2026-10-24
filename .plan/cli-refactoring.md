@@ -150,3 +150,15 @@ workers never commit.
   targets to `commands.usage`); ruff also stripped test-compat
   re-exports twice, restored with noqa + comment. Golden usage CLI
   tests passed unchanged. Full suite 620 green, lint clean.
+
+- 2026-10-24, step 8 done: `list` + `next` → `commands/list.py` +
+  `commands/next.py`; row/table machinery consolidated in
+  `commands/render.py` (`headings`, `header`, `section`,
+  `format_list_row`, `cells`, `pick_value`, `bench_tag`,
+  `GRADE_WIDTH`), shared by both. Single print per command; fail
+  paths replay buffered warnings first to stay byte-identical.
+  Re-exports kept in `cli` for tests (`_current_offered`,
+  `_endpoint`, `_next_table`, `_pick_value`, `_style`, `_header`,
+  headings, notes). cli.py is 253 lines: parser + dispatch +
+  re-exports. Golden list/next suites passed unchanged. Full suite
+  620 green, lint clean.

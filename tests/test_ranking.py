@@ -268,6 +268,25 @@ class RowBuildingTest(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         self.assertAlmostEqual(rows[0].price, 0.2 * 0.1 + 0.6 * 0.002 + 0.2 * 0.2)
 
+    def test_designation_priced_line_keeps_the_plan_record_name(self):
+        # the Go offering is documented as "Muse Spark 1.3 Contributor":
+        # the staged row must keep that plan name and endpoint, not fold
+        # to the base catalog name.
+        models = [_m("meta/muse-spark-1.3", 1.25, tb=50.0, name="Muse Spark 1.3")]
+        entries = [
+            _entry(
+                "muse-spark-1.3-contributor",
+                0.1,
+                0.2,
+                cached=0.002,
+                name="Muse Spark 1.3 Contributor",
+            )
+        ]
+        rows = build_rows(models, _records(entries))
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0].name, "Muse Spark 1.3 Contributor")
+        self.assertEqual(rows[0].endpoint_id, "muse-spark-1.3-contributor")
+
     def test_a_model_is_scored_across_every_benchmark_it_carries(self):
         # no family wins: 2.1 and SWE are read on their own scales and the
         # score is the median of the two

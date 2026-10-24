@@ -279,7 +279,7 @@ def _cmd_conflicts(args: argparse.Namespace) -> int:
     data_dir = Path(args.data)
     if not data_dir.is_dir():
         return _fail(f"no data directory at {data_dir} — run `fetch` first")
-    models, curated, board_conflicts = load_catalog(data_dir)
+    models, curated, board_conflicts, _merge_warnings = load_catalog(data_dir)
     n = _print_conflicts(curated.conflicts, curated.orphans, curated.manual_orphans)
     if board_conflicts:
         print("— official boards —")
@@ -632,7 +632,7 @@ def _cmd_scores(args: argparse.Namespace) -> int:
     including the arena Elo cache.
     """
     data_dir = Path(args.data)
-    models, _curated, _boards = load_catalog(data_dir)
+    models, _curated, _boards, _merge_warnings = load_catalog(data_dir)
     table = scales(models)
     on_offer = availability.available_ids(data_dir)
     shown = (

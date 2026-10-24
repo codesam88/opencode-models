@@ -164,6 +164,17 @@ class RowsForAliasMergeTest(unittest.TestCase):
 
 
 class CatalogCompositionTest(unittest.TestCase):
+    def test_designation_twins_merge_at_the_catalog_choke_point(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            _write_model(d, "meta/muse-spark-1.3")
+            _write_model(d, "meta/muse-spark-1.3-contributor")
+            models, _curated, _conflicts, warnings = load_catalog(d)
+            self.assertEqual([m.model_id for m in models], ["meta/muse-spark-1.3"])
+            self.assertEqual(warnings, [])
+
     def test_curated_arena_boards_compose(self):
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
@@ -227,7 +238,7 @@ class CatalogCompositionTest(unittest.TestCase):
                     }
                 )
             )
-            models, curated, conflicts = load_catalog(d)
+            models, curated, conflicts, _warnings = load_catalog(d)
             ids = {m.model_id for m in models}
             self.assertIn("l/m1", ids)
             self.assertIn("x/m2", ids)

@@ -70,7 +70,6 @@ class ParseTest(unittest.TestCase):
                         "in": 0.15,
                         "out": 0.5,
                         "cached": 0.03,
-                        "cached_write": None,
                     }
                 ],
                 "limits": None,
@@ -78,11 +77,6 @@ class ParseTest(unittest.TestCase):
                 "assumptions": None,
                 "dropped": False,
                 "first_seen": None,
-                "deprecated": True,
-                "deprecation_date": "July 23, 2026",
-                "endpoint": "https://example/model-a",
-                "sdk_package": "@ai-sdk/x",
-                "notes": None,
             },
         )
 
@@ -94,7 +88,7 @@ class ParseTest(unittest.TestCase):
         self.assertEqual(b["tiers"][0]["label"], "≤ 256K tokens")
         self.assertEqual(b["tiers"][0]["in"], 0.4)
         self.assertEqual(b["tiers"][1]["label"], "> 256K tokens")
-        self.assertEqual(b["tiers"][1]["cached_write"], 1.5)
+        self.assertEqual(b["tiers"][1]["cached"], 0.12)
 
     def test_free_model(self):
         models, _ = parse_fixture()
@@ -148,7 +142,6 @@ def _legacy_models():
                 "in": 0.2,
                 "out": 0.5,
                 "cached": 0.03,
-                "cached_write": None,
             }
         ],
         "limits": None,
@@ -164,7 +157,6 @@ def _legacy_models():
                 "in": 1.0,
                 "out": 3.0,
                 "cached": 0.1,
-                "cached_write": None,
             }
         ],
         "limits": None,

@@ -72,7 +72,6 @@ def _pricing_row(row, endpoints):
         "in": go_pricing._money(row[1]),
         "out": go_pricing._money(row[2]),
         "cached": go_pricing._money(row[3]),
-        "cached_write": go_pricing._money(row[4]),
     }
     return slug, base, False, tier
 
@@ -100,8 +99,6 @@ def parse_page(html):
     parser = go_pricing._SectionParser()
     parser.feed(html)
     endpoints = {}
-    endpoint_urls = {}
-    sdk_packages = {}
     pricing_rows = None
     deprecated_rows = None
     for _plan, header, rows in parser.tables:
@@ -110,10 +107,6 @@ def parse_page(html):
             for row in rows:
                 if len(row) >= 2:
                     endpoints[row[0]] = row[1]
-                    if len(row) >= 3:
-                        endpoint_urls[row[1]] = row[2]
-                    if len(row) >= 4:
-                        sdk_packages[row[1]] = row[3]
         elif key == PRICING_HEADER:
             pricing_rows = rows
         elif key == DEPRECATED_HEADER:
@@ -133,7 +126,6 @@ def parse_page(html):
     warnings = []
     models = {}
     for slug, g in plan_rows.items():
-        dep_date = deprecated_map.get(slug)
         models[slug] = {
             "name": g["name"],
             "free": g["free"],
@@ -143,11 +135,6 @@ def parse_page(html):
             "assumptions": None,
             "dropped": False,
             "first_seen": None,
-            "deprecated": slug in deprecated_map,
-            "deprecation_date": dep_date,
-            "endpoint": endpoint_urls.get(slug),
-            "sdk_package": sdk_packages.get(slug),
-            "notes": None,
         }
     # deprecated slugs that still have a pricing row -> warn
     for row in deprecated_rows or []:
@@ -204,7 +191,7 @@ def validate(models, *args, **kwargs):
         if (not free) and not tiers:
             errors.append(f"{slug}: priced model without tiers")
         for t in tiers:
-            for k in ("label", "in", "out", "cached", "cached_write"):
+            for k in ("label", "in", "out", "cached"):
                 if k not in t:
                     errors.append(f"{slug}: tier missing {k}")
     return errors, warnings, checked

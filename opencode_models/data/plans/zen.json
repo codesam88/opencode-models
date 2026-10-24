@@ -35,8 +35,7 @@
           "label": null,
           "in": 10,
           "out": 50,
-          "cached": 1,
-          "cached_write": 12.5
+          "cached": 1
         }
       ],
       "limits": null,
@@ -52,8 +51,7 @@
           "label": null,
           "in": 10,
           "out": 50,
-          "cached": 0.25,
-          "cached_write": 12.5
+          "cached": 0.25
         }
       ],
       "limits": null,
@@ -69,8 +67,7 @@
           "label": null,
           "in": 1,
           "out": 5,
-          "cached": 0.1,
-          "cached_write": 1.25
+          "cached": 0.1
         }
       ],
       "limits": null,
@@ -86,15 +83,13 @@
           "label": "≤ 100K tokens",
           "in": 0.1,
           "out": 0.5,
-          "cached": 0.01,
-          "cached_write": 0.125
+          "cached": 0.01
         },
         {
           "label": "> 100K tokens",
           "in": 0.5,
           "out": 2.5,
-          "cached": 0.05,
-          "cached_write": 0.625
+          "cached": 0.05
         }
       ],
       "limits": null,
@@ -110,8 +105,7 @@
           "label": null,
           "in": 5,
           "out": 25,
-          "cached": 0.5,
-          "cached_write": 6.25
+          "cached": 0.5
         }
       ],
       "limits": null,
@@ -127,8 +121,7 @@
           "label": null,
           "in": 5,
           "out": 25,
-          "cached": 0.5,
-          "cached_write": 6.25
+          "cached": 0.5
         }
       ],
       "limits": null,
@@ -144,8 +137,7 @@
           "label": null,
           "in": 5,
           "out": 25,
-          "cached": 0.5,
-          "cached_write": 6.25
+          "cached": 0.5
         }
       ],
       "limits": null,
@@ -161,8 +153,7 @@
           "label": null,
           "in": 5,
           "out": 25,
-          "cached": 0.5,
-          "cached_write": 6.25
+          "cached": 0.5
         }
       ],
       "limits": null,
@@ -178,8 +169,7 @@
           "label": null,
           "in": 5,
           "out": 25,
-          "cached": 0.5,
-          "cached_write": 6.25
+          "cached": 0.5
         }
       ],
       "limits": null,
@@ -195,8 +185,7 @@
           "label": null,
           "in": 4,
           "out": 20,
-          "cached": 0.2,
-          "cached_write": 5
+          "cached": 0.2
         }
       ],
       "limits": null,
@@ -212,15 +201,13 @@
           "label": "≤ 200K tokens",
           "in": 3,
           "out": 15,
-          "cached": 0.3,
-          "cached_write": 3.75
+          "cached": 0.3
         },
         {
           "label": "> 200K tokens",
           "in": 6,
           "out": 22.5,
-          "cached": 0.6,
-          "cached_write": 7.5
+          "cached": 0.6
         }
       ],
       "limits": null,
@@ -236,8 +223,7 @@
           "label": null,
           "in": 3,
           "out": 15,
-          "cached": 0.3,
-          "cached_write": 3.75
+          "cached": 0.3
         }
       ],
       "limits": null,
@@ -253,8 +239,7 @@
           "label": null,
           "in": 2,
           "out": 10,
-          "cached": 0.2,
-          "cached_write": 2.5
+          "cached": 0.2
         }
       ],
       "limits": null,
@@ -270,8 +255,7 @@
           "label": null,
           "in": 2,
           "out": 10,
-          "cached": 0.2,
-          "cached_write": 2.5
+          "cached": 0.2
         }
       ],
       "limits": null,
@@ -287,8 +271,7 @@
           "label": null,
           "in": 1.74,
           "out": 3.48,
-          "cached": 0.145,
-          "cached_write": null
+          "cached": 0.145
         }
       ],
       "limits": null,
@@ -304,8 +287,7 @@
           "label": null,
           "in": 0.3,
           "out": 1.2,
-          "cached": 0.006,
-          "cached_write": null
+          "cached": 0.006
         }
       ],
       "limits": null,
@@ -348,8 +330,7 @@
           "label": null,
           "in": 0.5,
           "out": 3,
-          "cached": 0.05,
-          "cached_write": null
+          "cached": 0.05
         }
       ],
       "limits": null,
@@ -365,15 +346,13 @@
           "label": "≤ 200K tokens",
           "in": 2,
           "out": 12,
-          "cached": 0.2,
-          "cached_write": null
+          "cached": 0.2
         },
         {
           "label": "> 200K tokens",
           "in": 4,
           "out": 18,
-          "cached": 0.4,
-          "cached_write": null
+          "cached": 0.4
         }
       ],
       "limits": null,
@@ -389,8 +368,7 @@
           "label": null,
           "in": 1.5,
           "out": 9,
-          "cached": 0.15,
-          "cached_write": null
+          "cached": 0.15
         }
       ],
       "limits": null,
@@ -406,8 +384,7 @@
           "label": null,
           "in": 0.3,
           "out": 2.5,
-          "cached": 0.03,
-          "cached_write": null
+          "cached": 0.03
         }
       ],
       "limits": null,
@@ -423,8 +400,7 @@
           "label": null,
           "in": 1.5,
           "out": 7.5,
-          "cached": 0.15,
-          "cached_write": null
+          "cached": 0.15
         }
       ],
       "limits": null,
@@ -440,8 +416,7 @@
           "label": null,
           "in": 1.5,
           "out": 7.5,
-          "cached": 0.15,
-          "cached_write": null
+          "cached": 0.15
         }
       ],
       "limits": null,
@@ -457,8 +432,7 @@
           "label": null,
           "in": 1.5,
           "out": 7.5,
-          "cached": 0.15,
-          "cached_write": null
+          "cached": 0.15
         }
       ],
       "limits": null,
@@ -474,8 +448,7 @@
           "label": "50% off",
           "in": 2,
           "out": 10,
-          "cached": 0.1,
-          "cached_write": null
+          "cached": 0.1
         }
       ],
       "limits": null,
@@ -491,8 +464,7 @@
           "label": null,
           "in": 1,
           "out": 3.2,
-          "cached": 0.2,
-          "cached_write": null
+          "cached": 0.2
         }
       ],
       "limits": null,
@@ -508,8 +480,7 @@
           "label": null,
           "in": 1.4,
           "out": 4.4,
-          "cached": 0.26,
-          "cached_write": null
+          "cached": 0.26
         }
       ],
       "limits": null,
@@ -525,8 +496,7 @@
           "label": null,
           "in": 1.4,
           "out": 4.4,
-          "cached": 0.26,
-          "cached_write": null
+          "cached": 0.26
         }
       ],
       "limits": null,
@@ -542,8 +512,7 @@
           "label": null,
           "in": 1.4,
           "out": 4.4,
-          "cached": 0.26,
-          "cached_write": null
+          "cached": 0.26
         }
       ],
       "limits": null,
@@ -559,8 +528,7 @@
           "label": null,
           "in": 0.15,
           "out": 0.5,
-          "cached": 0.03,
-          "cached_write": null
+          "cached": 0.03
         }
       ],
       "limits": null,
@@ -585,8 +553,7 @@
           "label": null,
           "in": 1.07,
           "out": 8.5,
-          "cached": 0.107,
-          "cached_write": null
+          "cached": 0.107
         }
       ],
       "limits": null,
@@ -602,8 +569,7 @@
           "label": null,
           "in": 1.07,
           "out": 8.5,
-          "cached": 0.107,
-          "cached_write": null
+          "cached": 0.107
         }
       ],
       "limits": null,
@@ -619,8 +585,7 @@
           "label": null,
           "in": 0.05,
           "out": 0.4,
-          "cached": 0.005,
-          "cached_write": null
+          "cached": 0.005
         }
       ],
       "limits": null,
@@ -636,8 +601,7 @@
           "label": null,
           "in": 1.07,
           "out": 8.5,
-          "cached": 0.107,
-          "cached_write": null
+          "cached": 0.107
         }
       ],
       "limits": null,
@@ -653,8 +617,7 @@
           "label": null,
           "in": 1.07,
           "out": 8.5,
-          "cached": 0.107,
-          "cached_write": null
+          "cached": 0.107
         }
       ],
       "limits": null,
@@ -670,8 +633,7 @@
           "label": null,
           "in": 1.25,
           "out": 10,
-          "cached": 0.125,
-          "cached_write": null
+          "cached": 0.125
         }
       ],
       "limits": null,
@@ -687,8 +649,7 @@
           "label": null,
           "in": 0.25,
           "out": 2,
-          "cached": 0.025,
-          "cached_write": null
+          "cached": 0.025
         }
       ],
       "limits": null,
@@ -704,8 +665,7 @@
           "label": null,
           "in": 1.75,
           "out": 14,
-          "cached": 0.175,
-          "cached_write": null
+          "cached": 0.175
         }
       ],
       "limits": null,
@@ -721,8 +681,7 @@
           "label": null,
           "in": 1.75,
           "out": 14,
-          "cached": 0.175,
-          "cached_write": null
+          "cached": 0.175
         }
       ],
       "limits": null,
@@ -738,8 +697,7 @@
           "label": null,
           "in": 1.75,
           "out": 14,
-          "cached": 0.175,
-          "cached_write": null
+          "cached": 0.175
         }
       ],
       "limits": null,
@@ -755,8 +713,7 @@
           "label": null,
           "in": 1.75,
           "out": 14,
-          "cached": 0.175,
-          "cached_write": null
+          "cached": 0.175
         }
       ],
       "limits": null,
@@ -772,15 +729,13 @@
           "label": "≤ 272K tokens",
           "in": 2.5,
           "out": 15,
-          "cached": 0.25,
-          "cached_write": null
+          "cached": 0.25
         },
         {
           "label": "> 272K tokens",
           "in": 5,
           "out": 22.5,
-          "cached": 0.5,
-          "cached_write": null
+          "cached": 0.5
         }
       ],
       "limits": null,
@@ -796,8 +751,7 @@
           "label": null,
           "in": 0.75,
           "out": 4.5,
-          "cached": 0.075,
-          "cached_write": null
+          "cached": 0.075
         }
       ],
       "limits": null,
@@ -813,8 +767,7 @@
           "label": null,
           "in": 0.2,
           "out": 1.25,
-          "cached": 0.02,
-          "cached_write": null
+          "cached": 0.02
         }
       ],
       "limits": null,
@@ -830,8 +783,7 @@
           "label": null,
           "in": 30,
           "out": 180,
-          "cached": 30,
-          "cached_write": null
+          "cached": 30
         }
       ],
       "limits": null,
@@ -847,15 +799,13 @@
           "label": "≤ 272K tokens",
           "in": 5,
           "out": 30,
-          "cached": 0.5,
-          "cached_write": null
+          "cached": 0.5
         },
         {
           "label": "> 272K tokens",
           "in": 10,
           "out": 45,
-          "cached": 1,
-          "cached_write": null
+          "cached": 1
         }
       ],
       "limits": null,
@@ -871,8 +821,7 @@
           "label": null,
           "in": 30,
           "out": 180,
-          "cached": 30,
-          "cached_write": null
+          "cached": 30
         }
       ],
       "limits": null,
@@ -888,15 +837,13 @@
           "label": "≤ 272K tokens",
           "in": 0.2,
           "out": 1.2,
-          "cached": 0.02,
-          "cached_write": 0.25
+          "cached": 0.02
         },
         {
           "label": "> 272K tokens",
           "in": 0.4,
           "out": 1.8,
-          "cached": 0.04,
-          "cached_write": 0.5
+          "cached": 0.04
         }
       ],
       "limits": null,
@@ -912,15 +859,13 @@
           "label": "≤ 272K tokens",
           "in": 4,
           "out": 20,
-          "cached": 0.4,
-          "cached_write": 5
+          "cached": 0.4
         },
         {
           "label": "> 272K tokens",
           "in": 8,
           "out": 30,
-          "cached": 0.8,
-          "cached_write": 10
+          "cached": 0.8
         }
       ],
       "limits": null,
@@ -936,15 +881,13 @@
           "label": "≤ 272K tokens",
           "in": 2,
           "out": 12,
-          "cached": 0.2,
-          "cached_write": 2.5
+          "cached": 0.2
         },
         {
           "label": "> 272K tokens",
           "in": 4,
           "out": 18,
-          "cached": 0.4,
-          "cached_write": 5
+          "cached": 0.4
         }
       ],
       "limits": null,
@@ -960,15 +903,13 @@
           "label": "≤ 272K tokens",
           "in": 10,
           "out": 50,
-          "cached": 1,
-          "cached_write": 12.5
+          "cached": 1
         },
         {
           "label": "> 272K tokens",
           "in": 20,
           "out": 75,
-          "cached": 2,
-          "cached_write": 25
+          "cached": 2
         }
       ],
       "limits": null,
@@ -984,15 +925,13 @@
           "label": "≤ 272K tokens",
           "in": 0.1,
           "out": 0.5,
-          "cached": 0.01,
-          "cached_write": 0.125
+          "cached": 0.01
         },
         {
           "label": "> 272K tokens",
           "in": 0.2,
           "out": 0.75,
-          "cached": 0.02,
-          "cached_write": 0.25
+          "cached": 0.02
         }
       ],
       "limits": null,
@@ -1008,15 +947,13 @@
           "label": "≤ 272K tokens",
           "in": 2,
           "out": 10,
-          "cached": 0.2,
-          "cached_write": 2.5
+          "cached": 0.2
         },
         {
           "label": "> 272K tokens",
           "in": 4,
           "out": 15,
-          "cached": 0.4,
-          "cached_write": 5
+          "cached": 0.4
         }
       ],
       "limits": null,
@@ -1032,15 +969,13 @@
           "label": "≤ 272K tokens",
           "in": 2,
           "out": 10,
-          "cached": 0.1,
-          "cached_write": 2.5
+          "cached": 0.1
         },
         {
           "label": "> 272K tokens",
           "in": 4,
           "out": 15,
-          "cached": 0.2,
-          "cached_write": 5
+          "cached": 0.2
         }
       ],
       "limits": null,
@@ -1056,15 +991,13 @@
           "label": "≤ 200K tokens",
           "in": 2,
           "out": 6,
-          "cached": 0.3,
-          "cached_write": null
+          "cached": 0.3
         },
         {
           "label": "> 200K tokens",
           "in": 4,
           "out": 12,
-          "cached": 0.6,
-          "cached_write": null
+          "cached": 0.6
         }
       ],
       "limits": null,
@@ -1080,15 +1013,13 @@
           "label": "≤ 200K tokens",
           "in": 2,
           "out": 6,
-          "cached": 0.5,
-          "cached_write": null
+          "cached": 0.5
         },
         {
           "label": "> 200K tokens",
           "in": 4,
           "out": 12,
-          "cached": 1,
-          "cached_write": null
+          "cached": 1
         }
       ],
       "limits": null,
@@ -1104,15 +1035,13 @@
           "label": "≤ 200K tokens",
           "in": 2,
           "out": 6,
-          "cached": 0.5,
-          "cached_write": null
+          "cached": 0.5
         },
         {
           "label": "> 200K tokens",
           "in": 4,
           "out": 12,
-          "cached": 1,
-          "cached_write": null
+          "cached": 1
         }
       ],
       "limits": null,
@@ -1128,8 +1057,7 @@
           "label": null,
           "in": 1,
           "out": 2,
-          "cached": 0.2,
-          "cached_write": null
+          "cached": 0.2
         }
       ],
       "limits": null,
@@ -1163,8 +1091,7 @@
           "label": null,
           "in": 0.6,
           "out": 3,
-          "cached": 0.1,
-          "cached_write": null
+          "cached": 0.1
         }
       ],
       "limits": null,
@@ -1180,8 +1107,7 @@
           "label": null,
           "in": 0.95,
           "out": 4,
-          "cached": 0.16,
-          "cached_write": null
+          "cached": 0.16
         }
       ],
       "limits": null,
@@ -1197,8 +1123,7 @@
           "label": null,
           "in": 0.95,
           "out": 4,
-          "cached": 0.19,
-          "cached_write": null
+          "cached": 0.19
         }
       ],
       "limits": null,
@@ -1214,8 +1139,7 @@
           "label": null,
           "in": 3,
           "out": 15,
-          "cached": 0.3,
-          "cached_write": null
+          "cached": 0.3
         }
       ],
       "limits": null,
@@ -1258,8 +1182,7 @@
           "label": null,
           "in": 0.3,
           "out": 1.2,
-          "cached": 0.06,
-          "cached_write": null
+          "cached": 0.06
         }
       ],
       "limits": null,
@@ -1275,8 +1198,7 @@
           "label": null,
           "in": 0.3,
           "out": 1.2,
-          "cached": 0.06,
-          "cached_write": null
+          "cached": 0.06
         }
       ],
       "limits": null,
@@ -1292,8 +1214,7 @@
           "label": null,
           "in": 0.3,
           "out": 1.2,
-          "cached": 0.06,
-          "cached_write": null
+          "cached": 0.06
         }
       ],
       "limits": null,
@@ -1309,8 +1230,7 @@
           "label": "50% off",
           "in": 0.68,
           "out": 2.09,
-          "cached": 0.07,
-          "cached_write": null
+          "cached": 0.07
         }
       ],
       "limits": null,
@@ -1326,8 +1246,7 @@
           "label": null,
           "in": 1.25,
           "out": 4.25,
-          "cached": 0.15,
-          "cached_write": null
+          "cached": 0.15
         }
       ],
       "limits": null,
@@ -1343,8 +1262,7 @@
           "label": null,
           "in": 1.25,
           "out": 4.25,
-          "cached": 0.15,
-          "cached_write": null
+          "cached": 0.15
         }
       ],
       "limits": null,
@@ -1360,8 +1278,7 @@
           "label": null,
           "in": 4,
           "out": 20,
-          "cached": 0.2,
-          "cached_write": null
+          "cached": 0.2
         }
       ],
       "limits": null,
@@ -1404,8 +1321,7 @@
           "label": null,
           "in": 0.2,
           "out": 1.2,
-          "cached": 0.02,
-          "cached_write": 0.25
+          "cached": 0.02
         }
       ],
       "limits": null,
@@ -1421,8 +1337,7 @@
           "label": null,
           "in": 0.5,
           "out": 3,
-          "cached": 0.05,
-          "cached_write": 0.625
+          "cached": 0.05
         }
       ],
       "limits": null,
@@ -1438,8 +1353,7 @@
           "label": null,
           "in": 2.5,
           "out": 7.5,
-          "cached": 0.5,
-          "cached_write": 3.125
+          "cached": 0.5
         }
       ],
       "limits": null,
@@ -1455,8 +1369,7 @@
           "label": null,
           "in": 0.4,
           "out": 1.6,
-          "cached": 0.04,
-          "cached_write": 0.5
+          "cached": 0.04
         }
       ],
       "limits": null,
@@ -1472,8 +1385,7 @@
           "label": null,
           "in": 0.15,
           "out": 0.47,
-          "cached": 0.016,
-          "cached_write": 0.2
+          "cached": 0.016
         }
       ],
       "limits": null,
@@ -1489,8 +1401,7 @@
           "label": null,
           "in": 2,
           "out": 6,
-          "cached": 0.25,
-          "cached_write": 2.5
+          "cached": 0.25
         }
       ],
       "limits": null,

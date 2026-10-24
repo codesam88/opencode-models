@@ -19,10 +19,7 @@
       "name": "Beam Free",
       "free": true,
       "tiers": [],
-      "limits": {
-        "go": null,
-        "go_plus": null
-      },
+      "limits": null,
       "requests_per_month": {
         "go": null,
         "go_plus": null
@@ -38,15 +35,13 @@
           "label": "≤ 100K tokens",
           "in": 0.1,
           "out": 0.5,
-          "cached": 0.01,
-          "cached_write": 0.125
+          "cached": 0.01
         },
         {
           "label": "> 100K tokens",
           "in": 0.5,
           "out": 2.5,
-          "cached": 0.05,
-          "cached_write": 0.625
+          "cached": 0.05
         }
       ],
       "limits": {
@@ -72,15 +67,13 @@
           "label": "Off-Peak",
           "in": 0.66,
           "out": 1.98,
-          "cached": 0.022,
-          "cached_write": null
+          "cached": 0.022
         },
         {
           "label": "Peak",
           "in": 1.32,
           "out": 3.96,
-          "cached": 0.044,
-          "cached_write": null
+          "cached": 0.044
         }
       ],
       "limits": {
@@ -106,15 +99,13 @@
           "label": "Off-Peak",
           "in": 0.15,
           "out": 0.6,
-          "cached": 0.003,
-          "cached_write": null
+          "cached": 0.003
         },
         {
           "label": "Peak",
           "in": 0.3,
           "out": 1.2,
-          "cached": 0.006,
-          "cached_write": null
+          "cached": 0.006
         }
       ],
       "limits": {
@@ -140,8 +131,7 @@
           "label": null,
           "in": 4,
           "out": 20,
-          "cached": 0.2,
-          "cached_write": null
+          "cached": 0.2
         }
       ],
       "limits": {
@@ -163,8 +153,7 @@
           "label": null,
           "in": 1.4,
           "out": 4.4,
-          "cached": 0.26,
-          "cached_write": null
+          "cached": 0.26
         }
       ],
       "limits": {
@@ -190,8 +179,7 @@
           "label": null,
           "in": 1.4,
           "out": 4.4,
-          "cached": 0.26,
-          "cached_write": null
+          "cached": 0.26
         }
       ],
       "limits": {
@@ -217,8 +205,7 @@
           "label": null,
           "in": 0.15,
           "out": 0.5,
-          "cached": 0.03,
-          "cached_write": null
+          "cached": 0.03
         }
       ],
       "limits": {
@@ -244,15 +231,13 @@
           "label": "≤ 272K tokens",
           "in": 0.2,
           "out": 1.2,
-          "cached": 0.02,
-          "cached_write": 0.25
+          "cached": 0.02
         },
         {
           "label": "> 272K tokens",
           "in": 0.4,
           "out": 1.8,
-          "cached": 0.04,
-          "cached_write": 0.5
+          "cached": 0.04
         }
       ],
       "limits": {
@@ -278,15 +263,13 @@
           "label": "≤ 272K tokens",
           "in": 0.1,
           "out": 0.5,
-          "cached": 0.01,
-          "cached_write": 0.125
+          "cached": 0.01
         },
         {
           "label": "> 272K tokens",
           "in": 0.2,
           "out": 0.75,
-          "cached": 0.02,
-          "cached_write": 0.25
+          "cached": 0.02
         }
       ],
       "limits": {
@@ -312,15 +295,13 @@
           "label": "≤ 200K tokens",
           "in": 2,
           "out": 6,
-          "cached": 0.5,
-          "cached_write": null
+          "cached": 0.5
         },
         {
           "label": "> 200K tokens",
           "in": 4,
           "out": 12,
-          "cached": 1,
-          "cached_write": null
+          "cached": 1
         }
       ],
       "limits": {
@@ -346,8 +327,7 @@
           "label": null,
           "in": 0.14,
           "out": 0.58,
-          "cached": 0.035,
-          "cached_write": null
+          "cached": 0.035
         }
       ],
       "limits": {
@@ -373,8 +353,7 @@
           "label": null,
           "in": 0.834,
           "out": 2.501,
-          "cached": 0.042,
-          "cached_write": null
+          "cached": 0.042
         }
       ],
       "limits": {
@@ -400,8 +379,7 @@
           "label": null,
           "in": 0.95,
           "out": 4,
-          "cached": 0.19,
-          "cached_write": null
+          "cached": 0.19
         }
       ],
       "limits": {
@@ -427,8 +405,7 @@
           "label": null,
           "in": 3,
           "out": 15,
-          "cached": 0.3,
-          "cached_write": null
+          "cached": 0.3
         }
       ],
       "limits": {
@@ -454,8 +431,7 @@
           "label": null,
           "in": 0.3,
           "out": 1.2,
-          "cached": 0.006,
-          "cached_write": null
+          "cached": 0.006
         }
       ],
       "limits": {
@@ -477,10 +453,7 @@
       "name": "LongCat 2.5 Preview Free",
       "free": true,
       "tiers": [],
-      "limits": {
-        "go": null,
-        "go_plus": null
-      },
+      "limits": null,
       "requests_per_month": {
         "go": null,
         "go_plus": null
@@ -496,8 +469,7 @@
           "label": null,
           "in": 0.14,
           "out": 0.28,
-          "cached": 0.0028,
-          "cached_write": null
+          "cached": 0.0028
         }
       ],
       "limits": {
@@ -523,8 +495,7 @@
           "label": null,
           "in": 0.435,
           "out": 0.87,
-          "cached": 0.003625,
-          "cached_write": null
+          "cached": 0.003625
         }
       ],
       "limits": {
@@ -550,8 +521,7 @@
           "label": null,
           "in": 0.14,
           "out": 0.28,
-          "cached": 0.0028,
-          "cached_write": null
+          "cached": 0.0028
         }
       ],
       "limits": {
@@ -577,8 +547,7 @@
           "label": null,
           "in": 0.435,
           "out": 0.87,
-          "cached": 0.003625,
-          "cached_write": null
+          "cached": 0.003625
         }
       ],
       "limits": {
@@ -604,8 +573,7 @@
           "label": null,
           "in": 0.3,
           "out": 1.2,
-          "cached": 0.06,
-          "cached_write": null
+          "cached": 0.06
         }
       ],
       "limits": {
@@ -631,8 +599,7 @@
           "label": null,
           "in": 0.15,
           "out": 0.6,
-          "cached": 0.015,
-          "cached_write": null
+          "cached": 0.015
         }
       ],
       "limits": {
@@ -654,10 +621,7 @@
       "name": "MiniMax M3.1 Flash Free",
       "free": true,
       "tiers": [],
-      "limits": {
-        "go": null,
-        "go_plus": null
-      },
+      "limits": null,
       "requests_per_month": {
         "go": null,
         "go_plus": null
@@ -674,8 +638,7 @@
           "label": null,
           "in": 0.1,
           "out": 0.2,
-          "cached": 0.002,
-          "cached_write": null
+          "cached": 0.002
         }
       ],
       "limits": {
@@ -701,8 +664,7 @@
           "label": null,
           "in": 0.1,
           "out": 0.2,
-          "cached": 0.002,
-          "cached_write": null
+          "cached": 0.002
         }
       ],
       "limits": {
@@ -728,15 +690,13 @@
           "label": "≤ 256K tokens",
           "in": 0.4,
           "out": 1.6,
-          "cached": 0.04,
-          "cached_write": 0.5
+          "cached": 0.04
         },
         {
           "label": "> 256K tokens",
           "in": 1.2,
           "out": 4.8,
-          "cached": 0.12,
-          "cached_write": 1.5
+          "cached": 0.12
         }
       ],
       "limits": {
@@ -762,8 +722,7 @@
           "label": null,
           "in": 0.15,
           "out": 0.47,
-          "cached": 0.016,
-          "cached_write": 0.2
+          "cached": 0.016
         }
       ],
       "limits": {
@@ -789,8 +748,7 @@
           "label": null,
           "in": 2,
           "out": 6,
-          "cached": 0.25,
-          "cached_write": 2.5
+          "cached": 0.25
         }
       ],
       "limits": {
@@ -816,8 +774,7 @@
           "label": null,
           "in": 1,
           "out": 2.7,
-          "cached": 0.1,
-          "cached_write": null
+          "cached": 0.1
         }
       ],
       "limits": {

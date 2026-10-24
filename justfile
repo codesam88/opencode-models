@@ -38,14 +38,15 @@ plans-freeze: plans-check
 test:
     uv run --no-sync python -m unittest discover -s tests
 
-# Lint: ruff check/format/complexity + offline zizmor
+# Lint: ruff check/format/complexity + 3.10 floor via vermin + offline zizmor
 lint:
     uv run --no-sync ruff check opencode_models tests
     uv run --no-sync ruff format --check opencode_models tests
+    uvx vermin@1.9.2 -t=3.10- --violations --quiet --no-tips opencode_models tests
     uvx zizmor --no-online-audits .github/workflows/
 
-# Full check: tests + entry point resolving + wheel build
-check: test
+# Full check: everything a push needs (tests + lint + entry point + wheel)
+check: test lint
     uv run --no-sync opencode-models --help >/dev/null
     uv build
 

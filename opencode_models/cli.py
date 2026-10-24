@@ -30,6 +30,7 @@ from .auth import load_key, save_key
 from .benchmarks import available
 from .boards import fetch_boards, save_boards
 from .catalog import curated_layer, load_catalog
+from .commands.sync import run as _cmd_sync
 from .fetch import SITEMAP_URL, http_get, refresh, urls_from_sitemap
 from .identity import canonical_id
 from .live import api_get as _api_get
@@ -1480,18 +1481,6 @@ def _cmd_usage(args: argparse.Namespace) -> int:
     return 0
 
 
-def _cmd_sync(args: argparse.Namespace) -> int:
-    """Refresh stale T2 sources (availability + plan pricing).
-
-    T1 sources (catalog, boards, arena) are explicit `fetch` only and are
-    left untouched here. `--force` refreshes regardless of age (curation);
-    `--check` only validates the local snapshots, failing shut.
-    """
-    if args.check:
-        return sync_mod.check_snapshots(Path(args.data))
-    return sync_mod.sync(Path(args.data), get=http_get, force=args.force)
-
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="opencode-models",
@@ -1653,7 +1642,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     return {
         "fetch": _cmd_fetch,
-        "sync": _cmd_sync,
+        "sync": lambda args: _cmd_sync(args, get=http_get),
         "models": _cmd_models,
         "auth": _cmd_auth,
         "overrides": _cmd_conflicts,

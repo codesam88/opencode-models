@@ -159,17 +159,66 @@ def ratio(score: float, price: float) -> float:
 _FREE_SUFFIX = re.compile(r"\(([^)]*)\)\s*$")
 
 
+def _designation_keys(slug: str, records: dict, reach_variants: bool) -> list[str]:
+    """Record keys naming *slug*'s model, exact first, then canonical kin."""
+    if not reach_variants:
+        return [slug] if slug in records else []
+    canon = canonical_id(slug)
+    keys = [key for key in records if canonical_id(key) == canon]
+    keys.sort(key=lambda k: (k != slug, k))
+    return keys
+
+
+def _priced_tiers(designations: list[str], records: dict) -> list[dict]:
+    tiers: list[dict] = []
+    for key in designations:
+        candidate = records.get(key)
+        if isinstance(candidate, dict) and not candidate.get("free"):
+            tiers.extend(list(candidate.get("tiers") or []))
+    return tiers
+
+
+def _free_record(
+    slug: str, designations: list[str], records: dict, reach_variants: bool
+) -> object | None:
+    if not reach_variants:
+        return None
+    direct = records.get(f"{slug}-free")
+    if direct is not None:
+        return direct
+    for key in designations:
+        maybe = records.get(f"{key}-free")
+        if maybe is not None:
+            return maybe
+    return None
+
+
+def _has_free_offering(
+    designations: list[str], records: dict, free_rec: object | None
+) -> bool:
+    if free_rec is not None:
+        return True
+    return any(
+        isinstance(records.get(key), dict) and records.get(key).get("free")
+        for key in designations
+    )
+
+
 def _stage_for_model(m, records, free_ids, axis, provider, reach_variants):
     staged = []  # (model, display name, cost, free, monthly limit, endpoint slug)
     slug = m.model_id.split("/")[-1]
-    rec = records.get(slug)
-    priced_tiers = []
-    if isinstance(rec, dict) and not rec.get("free"):
-        priced_tiers = list(rec.get("tiers") or [])
-    free_rec = None
-    if reach_variants:
-        free_rec = records.get(f"{slug}-free")
-    has_free_variant = bool(free_rec) or (isinstance(rec, dict) and rec.get("free"))
+    # the tier tables may key the offering under a designation
+    # (plans/go.json keys muse-spark-1.3-contributor); any record whose
+    # slug folds to the same canonical names this model. Synthetic rows
+    # name their own exact offering, so they stay exact-matched.
+    designations = _designation_keys(slug, records, reach_variants)
+    rec = next(
+        (records[key] for key in designations if isinstance(records.get(key), dict)),
+        None,
+    )
+    priced_tiers = _priced_tiers(designations, records)
+    free_rec = _free_record(slug, designations, records, reach_variants)
+    has_free_variant = _has_free_offering(designations, records, free_rec)
 
     cost = None
     if not priced_tiers and not has_free_variant:

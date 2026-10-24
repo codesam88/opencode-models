@@ -149,6 +149,20 @@ class RowsForEstFallbackTest(unittest.TestCase):
             self.assertGreaterEqual(len(result.rows), 1)
 
 
+class RowsForAliasMergeTest(unittest.TestCase):
+    def test_contributor_twins_merge_to_one_model_with_shared_score(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            _write_model(d, "meta/muse-spark-1.3")
+            _write_model(d, "meta/muse-spark-1.3-contributor")
+            _snapshot(d, "zen", ["meta/muse-spark-1.3"])
+            result = rows_for(d, ["zen"], price="fix", all_models=True)
+            ids = {m.model_id for m in result.models}
+            self.assertEqual(ids, {"meta/muse-spark-1.3"})
+            scores = {r.model.model_id for r in result.rows}
+            self.assertNotIn("meta/muse-spark-1.3-contributor", scores)
+
+
 class CatalogCompositionTest(unittest.TestCase):
     def test_curated_arena_boards_compose(self):
         with tempfile.TemporaryDirectory() as tmp:

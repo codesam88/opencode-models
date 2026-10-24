@@ -259,6 +259,15 @@ class RowBuildingTest(unittest.TestCase):
         self.assertIn("Peak", rows[0].name)
         self.assertIn("Peak", rows[1].name)
 
+    def test_contributor_priced_record_reaches_the_base_model(self):
+        # plans/go.json keys muse-spark-1.3-contributor; the merged catalog
+        # model is muse-spark-1.3 — the Go price must still stage.
+        models = [_m("meta/muse-spark-1.3", 1.25, tb=50.0)]
+        entries = [_entry("muse-spark-1.3-contributor", 0.1, 0.2, cached=0.002)]
+        rows = build_rows(models, _records(entries))
+        self.assertEqual(len(rows), 1)
+        self.assertAlmostEqual(rows[0].price, 0.2 * 0.1 + 0.6 * 0.002 + 0.2 * 0.2)
+
     def test_a_model_is_scored_across_every_benchmark_it_carries(self):
         # no family wins: 2.1 and SWE are read on their own scales and the
         # score is the median of the two

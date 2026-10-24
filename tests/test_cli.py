@@ -3420,17 +3420,49 @@ class AuthCommandTest(unittest.TestCase):
                     mock.patch.object(cli_mod.sys.stdin, "isatty", return_value=True),
                     mock.patch.object(
                         cli_mod,
+                        "fetch_served",
+                        return_value={"zen": {"m"}, "go": set()},
+                    ) as served,
+                    mock.patch.object(
+                        cli_mod,
                         "fetch_live",
                         return_value={"zen": {"m": False}, "go": {}},
                     ) as live,
                 ):
                     code, out = self._run("--data", tmp, "auth")
                     self.assertEqual(code, 0)
+                    self.assertTrue(served.called)
                     self.assertTrue(live.called)
                     self.assertNotIn("oc_sk_new", out)
                     from opencode_models.auth import key_file
 
                     self.assertEqual(key_file().read_text(), "oc_sk_new")
+
+    def test_auth_warns_when_either_live_endpoint_rejects(self):
+        import getpass
+        import urllib.error
+
+        import opencode_models.cli as cli_mod
+
+        def _403(url):
+            raise urllib.error.HTTPError(url, 403, "Forbidden", {}, None)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.dict(os.environ, self._home(tmp), clear=True):
+                with (
+                    mock.patch.object(getpass, "getpass", return_value="oc_sk_new"),
+                    mock.patch.object(cli_mod.sys.stdin, "isatty", return_value=True),
+                    mock.patch.object(
+                        cli_mod,
+                        "fetch_served",
+                        return_value={"zen": {"m"}, "go": set()},
+                    ),
+                    mock.patch.object(cli_mod, "fetch_live", side_effect=_403),
+                ):
+                    code, out = self._run("--data", tmp, "auth")
+                    self.assertEqual(code, 0)
+                    self.assertIn("saved but not verified", out)
+                    self.assertNotIn("verified live", out)
 
     def test_auth_refuses_an_empty_key(self):
         import getpass

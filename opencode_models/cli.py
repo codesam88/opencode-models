@@ -26,10 +26,12 @@ from . import arena as arena_mod
 from . import sync as sync_mod
 from .allowance import WINDOW_FRACTIONS, cost_per_request
 from .arena import ArenaCache
-from .auth import load_key, save_key
+from .auth import load_key
 from .benchmarks import available
 from .boards import fetch_boards, save_boards
 from .catalog import curated_layer, load_catalog
+from .commands import fail as _fail
+from .commands.auth import run as _cmd_auth
 from .commands.sync import run as _cmd_sync
 from .fetch import SITEMAP_URL, http_get, refresh, urls_from_sitemap
 from .identity import canonical_id
@@ -204,11 +206,6 @@ def _section(
     print(" " * GRADE_WIDTH + _style(_header(widths, axis, price)))
 
 
-def _fail(msg: str) -> int:
-    print(msg)
-    return 1
-
-
 #: How much of a board row's provenance the NOTE column carries.
 _NOTE_WIDTH = 52
 
@@ -309,43 +306,6 @@ _FETCH_TICK = 50
 def _model_tick(done: int, total: int, name: str) -> None:
     if done % _FETCH_TICK == 0 or done == total:
         print(f"  opencode.ai/data: {done}/{total} model files ...")
-
-
-def _cmd_auth(args: argparse.Namespace) -> int:
-    """Ask for the Console service-account key and save it owner-only.
-
-    The prompt never echoes, the key is never printed back, and the file
-    is created (or tightened) to owner-only access. The saved key is then
-    verified against both live endpoints — the inference gateway's model
-    lists and the config API — so a personal key is proven before it is
-    accepted. A rejection warns but keeps the file, so an offline first
-    run is not punished.
-    """
-    import getpass
-
-    if not sys.stdin.isatty():
-        return _fail(
-            "auth needs an interactive terminal — pipe a key via "
-            "OPENCODE_API_KEY instead"
-        )
-    key = getpass.getpass("OPENCODE_API_KEY: ").strip()
-    if not key:
-        return _fail("no key entered — nothing saved")
-    path = save_key(key)
-    print(f"saved to {path} (owner-only)")
-    try:
-        get = _api_get(key)
-        live = fetch_served(get)
-        fetch_live(get)
-    except (OSError, ValueError, KeyError) as exc:
-        print(f"warning: key saved but not verified ({exc})")
-        return 0
-    count = len(set().union(*live.values()))
-    print(
-        f"verified live: {count} models across "
-        f"{len([t for t in live.values() if t])} tiers"
-    )
-    return 0
 
 
 def _display_names(data_dir: Path) -> dict[str, str]:

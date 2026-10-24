@@ -3412,6 +3412,7 @@ class AuthCommandTest(unittest.TestCase):
         import getpass
 
         import opencode_models.cli as cli_mod
+        from opencode_models.commands import auth as auth_cmd
 
         with tempfile.TemporaryDirectory() as tmp:
             with mock.patch.dict(os.environ, self._home(tmp), clear=True):
@@ -3419,12 +3420,12 @@ class AuthCommandTest(unittest.TestCase):
                     mock.patch.object(getpass, "getpass", return_value="oc_sk_new"),
                     mock.patch.object(cli_mod.sys.stdin, "isatty", return_value=True),
                     mock.patch.object(
-                        cli_mod,
+                        auth_cmd,
                         "fetch_served",
                         return_value={"zen": {"m"}, "go": set()},
                     ) as served,
                     mock.patch.object(
-                        cli_mod,
+                        auth_cmd,
                         "fetch_live",
                         return_value={"zen": {"m": False}, "go": {}},
                     ) as live,
@@ -3443,6 +3444,7 @@ class AuthCommandTest(unittest.TestCase):
         import urllib.error
 
         import opencode_models.cli as cli_mod
+        from opencode_models.commands import auth as auth_cmd
 
         def _403(url):
             raise urllib.error.HTTPError(url, 403, "Forbidden", {}, None)
@@ -3453,11 +3455,11 @@ class AuthCommandTest(unittest.TestCase):
                     mock.patch.object(getpass, "getpass", return_value="oc_sk_new"),
                     mock.patch.object(cli_mod.sys.stdin, "isatty", return_value=True),
                     mock.patch.object(
-                        cli_mod,
+                        auth_cmd,
                         "fetch_served",
                         return_value={"zen": {"m"}, "go": set()},
                     ),
-                    mock.patch.object(cli_mod, "fetch_live", side_effect=_403),
+                    mock.patch.object(auth_cmd, "fetch_live", side_effect=_403),
                 ):
                     code, out = self._run("--data", tmp, "auth")
                     self.assertEqual(code, 0)

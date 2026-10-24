@@ -315,8 +315,10 @@ def _cmd_auth(args: argparse.Namespace) -> int:
 
     The prompt never echoes, the key is never printed back, and the file
     is created (or tightened) to owner-only access. The saved key is then
-    verified against the live config API — a rejection fails the command
-    but keeps the file, so an offline first run is not punished.
+    verified against both live endpoints — the inference gateway's model
+    lists and the config API — so a personal key is proven before it is
+    accepted. A rejection warns but keeps the file, so an offline first
+    run is not punished.
     """
     import getpass
 
@@ -331,7 +333,9 @@ def _cmd_auth(args: argparse.Namespace) -> int:
     path = save_key(key)
     print(f"saved to {path} (owner-only)")
     try:
-        live = fetch_live(_api_get(key))
+        get = _api_get(key)
+        live = fetch_served(get)
+        fetch_live(get)
     except (OSError, ValueError, KeyError) as exc:
         print(f"warning: key saved but not verified ({exc})")
         return 0

@@ -29,13 +29,13 @@ from .arena import ArenaCache
 from .auth import load_key, save_key
 from .benchmarks import available
 from .boards import fetch_boards, save_boards
-from .catalog import load_catalog
+from .catalog import curated_layer, load_catalog
 from .fetch import SITEMAP_URL, http_get, refresh, urls_from_sitemap
 from .identity import canonical_id
 from .live import api_get as _api_get
 from .live import fetch_live, fetch_served, merge_served, save_live
 from .models import load_models
-from .overrides import load_curated, off_band_models, source_tier
+from .overrides import off_band_models, source_tier
 from .pricing import (
     USAGE_EXPORT_URL,
 )
@@ -527,9 +527,7 @@ def _cmd_fetch(args: argparse.Namespace) -> int:
             f"saved {len(elo)} arena Elo scores to "
             f"{data_dir / 'aiarena' / arena_mod.CACHE_NAME}"
         )
-    curated = load_curated(
-        data_dir / "opencode", data_dir / "overrides", data_dir / "manual"
-    )
+    curated, _merge_warnings = curated_layer(data_dir)
     n = _print_conflicts(curated.conflicts, curated.orphans, curated.manual_orphans)
     if n:
         print(

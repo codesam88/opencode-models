@@ -17,7 +17,6 @@ from pathlib import Path
 
 from . import availability
 from . import sync as sync_mod
-from .allowance import fill_assumptions, median_assumptions
 from .catalog import load_catalog
 from .identity import canonical_id
 from .models import Model
@@ -196,21 +195,17 @@ def rows_for(
             provider_listed = [m for m in pool if id(m) in catalog_ids]
             synthetic_ids |= {id(m) for m in pool if id(m) not in catalog_ids}
         listed += provider_listed
-        plan_models = (
-            availability._plan_models(data_dir, provider)
-            if provider in ("go", "zen")
-            else {}
-        )
-        if price == "est":
-            # Priced records without published assumptions price their
-            # estimates from the plan median instead of falling back to
-            # the fixed mix. Filled slugs are marked on the rows below;
-            # the snapshot on disk is untouched.
-            plan_models, filled = fill_assumptions(
-                plan_models, median_assumptions(plan_models)
-            )
-            if filled:
+        if provider in ("go", "zen"):
+            # Single choke point for estimate math: the loader fills
+            # priced records that publish no token mix, so every view
+            # prices them from the plan median instead of the fixed mix.
+            # The snapshot on disk is untouched; validation keeps reading
+            # the raw files.
+            plan_models, filled = availability.plan_records(data_dir, provider)
+            if filled and price == "est":
                 filled_by_provider[provider] = filled
+        else:
+            plan_models = {}
         catalog_rows = [m for m in pool if id(m) not in synthetic_ids]
         groups.append(
             build_rows(

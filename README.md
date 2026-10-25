@@ -14,6 +14,7 @@ uvx opencode-models
 alias ocm=opencode-models
 
 ocm auth  # register an openapi token to always fetch the current 'live' models
+ocm auth --plan go-plus  # only if your workspace is on Go Plus (limits differ)
 ocm fetch # fetch benchmarks and model info from supported sources
 ocm list  # List non-expensive, non-trivial models, sorted by score/$
 ocm next  # 6 next-best recommended models to use (tell your agent to use this)
@@ -42,6 +43,10 @@ ocm fetch  # download benchmark data and model info (~1 minute first time)
 `auth` stores an OpenCode Console service-account key at
 `~/.config/opencode-models/api_key` (owner-only, never echoed); the
 `OPENCODE_API_KEY` environment variable takes precedence if you set one.
+If your workspace is on the Go Plus plan, say so once —
+`ocm auth --plan go-plus` (stored beside the key; `usage --plan`
+overrides it for one run) — because usage math defaults to Go limits
+and Plus caps run 2–4× higher.
 `fetch` is the only command that downloads data — benchmark numbers,
 tier prices, official boards — into your data directory:
 `$OPENCODE_MODELS_DATA` if set, else `~/.local/share/opencode-models`.

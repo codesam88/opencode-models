@@ -42,6 +42,8 @@ nulls normalized to bare `null` on write (Go free tiers). Readers treat
 both as "no data", never as zero: null-cached input bills at the input
 rate, null limits mean uncapped.
 
+Missing `assumptions` are never backfilled into the file: views substitute the plan median at render time and footnote which models used it.
+
 ## Deliberately not stored
 
 `cached_write`, `deprecated`, `deprecation_date`, `endpoint`,

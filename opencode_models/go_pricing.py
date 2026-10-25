@@ -18,9 +18,10 @@ estimates from limits + prices + token assumptions
 (cpr = (t_in*p_in + t_cache*p_cached + t_out*p_out) / 1e6, req = limit/cpr,
 windows 20%/50%/100% - docs/model-go-plan.md). Deviations above 10% fail
 shut with a nonzero exit and no write. Documented page-internal exceptions:
-kimi-k2.7-code deviates 26% (bounded at 30% here), and
-gemini-4-argon-contributor publishes no token assumptions (reproduction
-impossible, warned not failed).
+kimi-k2.7-code deviates 26% (bounded at 30% here). A model that publishes
+no token assumptions warns instead of failing (reproduction is impossible
+by definition, so it can never signal a broken parser): the model lands
+with assumptions None and the refresh is not blocked.
 
 Usage (this module has no CLI of its own; refresh via the sync surface):
     opencode-models sync            # refresh snapshots older than threshold
@@ -77,8 +78,6 @@ GATE_TOLERANCE = 0.10
 # Documented deviations from the 10% gate (docs/model-go-plan.md): the
 # page's own estimate is internally inconsistent, capped rather than exempt.
 KNOWN_DEVIATIONS = {"kimi-k2.7-code": 0.30}
-# No token assumptions published on the page; reproduction impossible.
-NO_ASSUMPTIONS = {"gemini-4-argon-contributor"}
 
 _MONEY = re.compile(r"\$([\d,]+(?:\.\d+)?)")
 _NUM = re.compile(r"([\d,]+(?:\.\d+)?)")
@@ -441,12 +440,15 @@ def merge(existing, parsed):
     return merged, counts, warnings
 
 
-def validate(models, known_deviations=KNOWN_DEVIATIONS, no_assumptions=NO_ASSUMPTIONS):
+def validate(models, known_deviations=KNOWN_DEVIATIONS):
     """Reproduce published monthly estimates from limits+prices+assumptions.
 
     Returns (errors, warnings, checked) where checked holds one
     (slug, plan, computed, published, deviation) tuple per priced model
-    with published assumptions.
+    with published assumptions. A model without published assumptions
+    warns but never fails: without assumptions reproduction is
+    impossible by definition, so it can never signal a broken parser —
+    and one thin model page must not block the whole snapshot refresh.
     """
     errors, warnings, checked = [], [], []
     for slug in sorted(models):
@@ -462,12 +464,7 @@ def validate(models, known_deviations=KNOWN_DEVIATIONS, no_assumptions=NO_ASSUMP
             if (rec.get("requests_per_month") or {}).get(plan) is None:
                 errors.append(f"{slug}: no published estimate on plan {plan}")
         if rec["assumptions"] is None:
-            if slug in no_assumptions:
-                warnings.append(
-                    f"{slug}: no token assumptions, reproduction impossible"
-                )
-            else:
-                errors.append(f"{slug}: no token assumptions")
+            warnings.append(f"{slug}: no token assumptions, reproduction impossible")
             continue
         if not rec["tiers"]:
             errors.append(f"{slug}: priced model without tiers")

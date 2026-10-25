@@ -198,10 +198,7 @@ def print_conflicts(conflicts, orphans=(), manual_orphans=()) -> int:
 FIX_NOTE = "Pricing and score/$ rank based on fixed 20/60/20 tokens per request"
 #: `est` cost base: the Go snapshot's page-estimated ¢/req; Zen lines and
 #: snapshot-missing models fall back to the fix.
-EST_NOTE = (
-    "Pricing and score/$ rank based on page-estimated ¢/req from the Go "
-    "snapshot (zen + missing fall back to fix)"
-)
+EST_NOTE = "¢/req and score/$ from opencode.ai measurements or median fallback (~)"
 
 #: Every row is prefixed by its rank marker, outside the column grid and
 #: without a header of its own: ++ at 90+, + at 75+, o at 60+, - at 50+,

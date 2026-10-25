@@ -8,6 +8,14 @@
 - Answer questions precisely and avoid jargon. Explain identified problems and conclusions clearly, without extensive prose. Base recommendations on facts and arguments, not convincing language.
 - Do not start building from exploratory questions. Present findings and options, then wait for review before implementing.
 
+## Authorization to act
+
+Questions, hypotheses ("perhaps", "maybe", "could we"), and observations
+are never authorization to act: reply with findings and options, not file
+modifications. Act only on an explicit directive ("implement X", "go",
+"commit this", "open the PR"), and only within its stated scope. When in
+doubt, ask one clarifying question and wait. This includes reverts.
+
 ## Project Orientation
 
 `opencode-models` is a stdlib-only Python console tool (no dependencies, ever)

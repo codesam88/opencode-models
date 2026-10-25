@@ -6,7 +6,7 @@ import argparse
 import sys
 from dataclasses import dataclass
 
-from ..auth import save_key
+from ..auth import save_key, save_plan_preference
 from ..live import api_get as _api_get
 from ..live import fetch_live, fetch_served
 from . import fail
@@ -55,6 +55,9 @@ def run(args: argparse.Namespace) -> int:
     """
     import getpass
 
+    if getattr(args, "plan", None) is not None:
+        path = save_plan_preference({"go-plus": "go_plus", "go": "go"}[args.plan])
+        print(f"workspace plan recorded as {args.plan} ({path})")
     if not sys.stdin.isatty():
         return fail(
             "auth needs an interactive terminal — pipe a key via "

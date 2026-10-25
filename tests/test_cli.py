@@ -3408,6 +3408,35 @@ class AuthCommandTest(unittest.TestCase):
     def _home(self, tmp):
         return {"XDG_CONFIG_HOME": str(Path(tmp) / "config"), "HOME": tmp}
 
+    def test_auth_plan_flag_records_preference(self):
+        import getpass
+
+        import opencode_models.cli as cli_mod
+        from opencode_models.commands import auth as auth_cmd
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.dict(os.environ, self._home(tmp), clear=True):
+                with (
+                    mock.patch.object(getpass, "getpass", return_value="oc_sk_new"),
+                    mock.patch.object(cli_mod.sys.stdin, "isatty", return_value=True),
+                    mock.patch.object(
+                        auth_cmd,
+                        "fetch_served",
+                        return_value={"zen": {"m"}, "go": set()},
+                    ),
+                    mock.patch.object(
+                        auth_cmd,
+                        "fetch_live",
+                        return_value={"zen": {"m": False}, "go": {}},
+                    ),
+                ):
+                    code, out = self._run("--data", tmp, "auth", "--plan", "go-plus")
+                    self.assertEqual(code, 0)
+                    self.assertIn("go-plus", out)
+                    from opencode_models.auth import plan_file
+
+                    self.assertEqual(plan_file().read_text().strip(), "go_plus")
+
     def test_auth_saves_the_prompted_key_and_verifies_it(self):
         import getpass
 

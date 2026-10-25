@@ -185,6 +185,102 @@ def validate_estimates(
     return records, passed
 
 
+def check_export_prices(
+    rows: list[dict], records: dict[str, dict], tolerance: float = 0.10
+) -> list[str]:
+    """Flag export rows whose reported cost diverges from page-math reproduction.
+
+    Each row's cost is recomputed from its own tokens against the model's
+    base tier (null cached reads bill at the input rate, as in
+    :func:`cost_per_request`); a row diverging past *tolerance* — the
+    publish gate's 10% — is returned as a human line naming the model
+    and both numbers. Rows for unknown models, models without tiers or
+    assumptions, and free models carry nothing to check against and are
+    skipped silently: unverifiable is not a violation.
+    """
+    findings = []
+    for row in rows:
+        rec = records.get(row.get("model") or "")
+        if not isinstance(rec, dict) or rec.get("free"):
+            continue
+        tiers = rec.get("tiers") or []
+        assumptions = rec.get("assumptions")
+        if not tiers or not assumptions:
+            continue
+        base = tiers[0]
+        cached = base.get("cached")
+        if cached is None:
+            cached = base.get("in")
+        try:
+            computed = (
+                row.get("input_tokens", 0) * base["in"]
+                + row.get("cache_read_tokens", 0) * cached
+                + row.get("output_tokens", 0) * base["out"]
+            ) / 1e6
+            reported = row["cost"]
+        except (KeyError, TypeError):
+            continue
+        if reported == 0:
+            if computed != 0:
+                findings.append(
+                    f"{row['model']}: reported $0 vs page math ${computed:.6g}"
+                )
+            continue
+        if abs(reported - computed) / reported > tolerance:
+            findings.append(
+                f"{row['model']}: reported ${reported:.6g} vs page math ${computed:.6g}"
+            )
+    return findings
+
+
+def check_caps_resolve(
+    slugs: list[str], records: dict[str, dict], plan: str
+) -> list[str]:
+    """Flag served models whose headroom cannot be computed for *plan*.
+
+    A priced model with no plan record, or with no limit for the plan,
+    would render as a silent dash; the finding names it instead. Free
+    models need no caps and are skipped.
+    """
+    findings = []
+    for slug in sorted(slugs):
+        rec = records.get(slug)
+        if not isinstance(rec, dict):
+            findings.append(f"{slug}: no plan record")
+        elif not rec.get("free") and (rec.get("limits") or {}).get(plan) is None:
+            findings.append(f"{slug}: no {plan} monthly limit")
+    return findings
+
+
+def compare_window_percent(
+    api_percent: float | None,
+    spend: dict[str, float],
+    caps: dict[str, float | None],
+) -> dict:
+    """API window percent beside spend-implied percents; never a verdict.
+
+    The mapping from the API's percent to per-model spend is unknown
+    (it matches neither the strongest model nor spend-vs-sum-of-limits),
+    so this reports all three numbers and labels the unknowns instead
+    of fudging a pass/fail. ``max_model`` is the strongest model's share
+    of its cap; ``spend_share`` is total spend over total caps, ignoring
+    uncapped models. ``note`` is set whenever ``api`` is missing.
+    """
+    shares = [spend[slug] / cap for slug, cap in caps.items() if slug in spend and cap]
+    total_spend = sum(spend.get(slug, 0.0) for slug in caps)
+    total_caps = sum(cap for cap in caps.values() if cap)
+    return {
+        "api": api_percent,
+        "max_model": max(shares) * 100 if shares else None,
+        "spend_share": total_spend / total_caps * 100 if total_caps else None,
+        "note": (
+            None
+            if api_percent is not None
+            else "api percent unknown — mapping to spend is unstated"
+        ),
+    }
+
+
 def merge_snapshots(
     existing: dict[str, dict], parsed: dict[str, dict]
 ) -> tuple[dict[str, dict], dict[str, int], list[str]]:

@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
 
+from .allowance import fill_assumptions, median_assumptions
 from .auth import load_key
 from .freshness import AVAILABILITY_MAX_AGE
 from .freshness import snapshot_age as _snapshot_age
@@ -108,6 +109,26 @@ def _plan_models(data_dir: Path, tier: str) -> dict:
     if isinstance(shipped, dict):
         return shipped.get("models") or {}
     return {}
+
+
+def plan_records(data_dir: Path, tier: str) -> tuple[dict, set[str]]:
+    """Plan records with the median fallback applied, plus filled slugs.
+
+    The single choke point for estimate math: reads the tier snapshot
+    through :func:`_plan_models`, computes the plan median once via
+    :func:`allowance.median_assumptions`, and fills priced records that
+    publish no token mix. Returns ``(records, filled)`` where ``filled``
+    names the slugs that got the median. Views footnote those; the
+    validation gate keeps reading raw snapshots and never sees them.
+
+    Deterministic from versioned snapshot files, so a future cache can
+    wrap exactly this function (invalidate on snapshot mtime or
+    ``schema_rev``). The rule takes its inputs explicitly, so a future
+    flag or config can change the fallback without touching callers.
+    """
+    records = _plan_models(data_dir, tier)
+    filled_records, filled = fill_assumptions(records, median_assumptions(records))
+    return filled_records, filled
 
 
 def load_roster(data_dir: Path, tier: str) -> set[str]:
@@ -367,6 +388,7 @@ __all__ = [
     "load_roster",
     "members",
     "offered",
+    "plan_records",
     "slug_matches",
     "AvailabilityResult",
     "current_offered",

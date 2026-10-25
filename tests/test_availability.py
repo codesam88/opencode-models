@@ -329,3 +329,91 @@ class AvailabilityAgeGateTest(unittest.TestCase):
             self.assertFalse(res.live)
             self.assertIn("m-snap", res.offered)
             self.assertTrue(any("unreachable" in w for w in res.warnings))
+
+
+class PlanRecordsTest(unittest.TestCase):
+    """Normalized plan records: one loader fills missing mixes from the median."""
+
+    def _write_plan(self, d: Path, models: dict) -> None:
+        out = d / "plans"
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "go.json").write_text(
+            json.dumps(
+                {
+                    "meta": {
+                        "source": "test",
+                        "fetched_at": "2099-01-01T00:00:00+00:00",
+                        "schema_rev": 1,
+                        "plans": ["go"],
+                    },
+                    "models": models,
+                }
+            )
+        )
+
+    def _rec(self, price=1.0, assumptions=None, free=False):
+        return {
+            "name": "M",
+            "free": free,
+            "tiers": []
+            if free
+            else [{"label": None, "in": 1.0, "out": 2.0, "cached": 0.5}],
+            "limits": {"go": 60, "go_plus": 120},
+            "requests_per_month": {"go": 1, "go_plus": 2},
+            "assumptions": assumptions,
+            "dropped": False,
+            "first_seen": None,
+        }
+
+    def test_unknown_tier_yields_empty(self):
+        # no local snapshot and nothing shipped for this tier
+        with tempfile.TemporaryDirectory() as tmp:
+            records, filled = availability.plan_records(Path(tmp), "nope")
+            self.assertEqual(records, {})
+            self.assertEqual(filled, set())
+
+    def test_missing_mixes_fall_back_to_the_median(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            self._write_plan(
+                d,
+                {
+                    "a": self._rec(assumptions={"in": 100, "cached": 1000, "out": 10}),
+                    "b": self._rec(assumptions={"in": 300, "cached": 3000, "out": 30}),
+                    "c": self._rec(assumptions=None),
+                },
+            )
+            records, filled = availability.plan_records(d, "go")
+            self.assertEqual(filled, {"c"})
+            self.assertEqual(
+                records["c"]["assumptions"], {"in": 200, "cached": 2000, "out": 20}
+            )
+            # published and untouched models pass through as-is
+            self.assertEqual(
+                records["a"]["assumptions"], {"in": 100, "cached": 1000, "out": 10}
+            )
+
+    def test_nothing_missing_nothing_filled(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            self._write_plan(
+                d, {"a": self._rec(assumptions={"in": 1, "cached": 2, "out": 3})}
+            )
+            records, filled = availability.plan_records(d, "go")
+            self.assertEqual(filled, set())
+            self.assertEqual(
+                records["a"]["assumptions"], {"in": 1, "cached": 2, "out": 3}
+            )
+
+    def test_free_models_are_never_filled(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            self._write_plan(
+                d,
+                {
+                    "a": self._rec(assumptions={"in": 100, "cached": 1000, "out": 10}),
+                    "freebie": self._rec(free=True),
+                },
+            )
+            _, filled = availability.plan_records(d, "go")
+            self.assertEqual(filled, set())

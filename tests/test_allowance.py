@@ -9,6 +9,9 @@ import unittest
 
 from opencode_models.allowance import (
     WINDOW_FRACTIONS,
+    check_caps_resolve,
+    check_export_prices,
+    compare_window_percent,
     cost_per_request,
     credit_ranking,
     merge_snapshots,
@@ -214,6 +217,98 @@ class MergeSnapshotsTests(unittest.TestCase):
         self.assertNotIn("dropped", merged["plain"])
         self.assertEqual(counts, {"added": 0, "updated": 0, "dropped": 0})
         self.assertEqual(warnings, [])
+
+
+def _row(model, cost, inp=0, cached=0, out=0):
+    return {
+        "model": model,
+        "requests": 1,
+        "input_tokens": inp,
+        "cache_read_tokens": cached,
+        "output_tokens": out,
+        "cost": cost,
+    }
+
+
+# PLAIN cpr mix: (620*0.1 + 71400*0.002 + 300*0.2) / 1e6 = 0.0002648
+_PLAIN_COST = 0.0002648
+
+
+class CheckExportPricesTests(unittest.TestCase):
+    def test_matching_rows_pass_silently(self):
+        rows = [_row("plain", _PLAIN_COST, inp=620, cached=71400, out=300)]
+        self.assertEqual(check_export_prices(rows, {"plain": PLAIN}), [])
+
+    def test_drifted_row_names_model_and_both_numbers(self):
+        rows = [_row("plain", 2 * _PLAIN_COST, inp=620, cached=71400, out=300)]
+        (finding,) = check_export_prices(rows, {"plain": PLAIN})
+        self.assertIn("plain", finding)
+        self.assertIn("0.0005296", finding)
+        self.assertIn("0.0002648", finding)
+
+    def test_exact_tolerance_passes(self):
+        rows = [_row("plain", 1.1 * _PLAIN_COST, inp=620, cached=71400, out=300)]
+        self.assertEqual(check_export_prices(rows, {"plain": PLAIN}), [])
+
+    def test_beyond_tolerance_flags(self):
+        rows = [_row("plain", 1.12 * _PLAIN_COST, inp=620, cached=71400, out=300)]
+        self.assertEqual(len(check_export_prices(rows, {"plain": PLAIN})), 1)
+
+    def test_unknown_model_is_skipped_not_flagged(self):
+        rows = [_row("ghost-model", 99.0, inp=1, out=1)]
+        self.assertEqual(check_export_prices(rows, {"plain": PLAIN}), [])
+
+    def test_model_without_assumptions_is_skipped(self):
+        rows = [_row("no-assume", 5.0, inp=1, out=1)]
+        self.assertEqual(check_export_prices(rows, {"no-assume": NO_ASSUMPTIONS}), [])
+
+    def test_free_model_rows_are_skipped(self):
+        rows = [_row("freebie", 0.0)]
+        self.assertEqual(check_export_prices(rows, {"freebie": FREE}), [])
+
+    def test_zero_reported_cost_for_priced_traffic_flags(self):
+        rows = [_row("plain", 0.0, inp=620, cached=71400, out=300)]
+        (finding,) = check_export_prices(rows, {"plain": PLAIN})
+        self.assertIn("plain", finding)
+
+
+class CheckCapsResolveTests(unittest.TestCase):
+    def test_resolved_caps_pass_silently(self):
+        self.assertEqual(check_caps_resolve(["plain"], {"plain": PLAIN}, "go"), [])
+
+    def test_missing_cap_names_model_and_plan(self):
+        rec = dict(PLAIN, limits={"go": None, "go_plus": 120})
+        (finding,) = check_caps_resolve(["plain"], {"plain": rec}, "go")
+        self.assertIn("plain", finding)
+        self.assertIn("go", finding)
+
+    def test_free_models_need_no_caps(self):
+        self.assertEqual(check_caps_resolve(["freebie"], {"freebie": FREE}, "go"), [])
+
+    def test_unknown_slug_is_flagged_not_assumed(self):
+        (finding,) = check_caps_resolve(["ghost"], {"plain": PLAIN}, "go")
+        self.assertIn("ghost", finding)
+
+
+class CompareWindowPercentTests(unittest.TestCase):
+    def test_reports_all_three_numbers(self):
+        out = compare_window_percent(5.0, {"a": 3.0, "b": 1.0}, {"a": 30.0, "b": 60.0})
+        self.assertEqual(out["api"], 5.0)
+        self.assertAlmostEqual(out["max_model"], 10.0)
+        self.assertAlmostEqual(out["spend_share"], 4.0 / 90.0 * 100, places=9)
+        self.assertIsNone(out["note"])
+
+    def test_unknown_api_percent_is_labeled_not_fudged(self):
+        out = compare_window_percent(None, {"a": 3.0}, {"a": 30.0})
+        self.assertIsNone(out["api"])
+        self.assertAlmostEqual(out["max_model"], 10.0)
+        self.assertIsNotNone(out["note"])
+
+    def test_empty_inputs_yield_nones_not_a_crash(self):
+        out = compare_window_percent(None, {}, {})
+        self.assertIsNone(out["api"])
+        self.assertIsNone(out["max_model"])
+        self.assertIsNone(out["spend_share"])
 
 
 if __name__ == "__main__":

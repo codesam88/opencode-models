@@ -8,6 +8,7 @@ from pathlib import Path
 
 from .. import availability
 from ..benchmarks import available
+from ..markers import legend, suffix
 from ..ranking import (
     BAND_FREE,
     BAND_INCLUDED,
@@ -27,6 +28,13 @@ BAND_LABELS = (
     (BAND_INCLUDED, "included usage"),
     (BAND_PAYG, "pay-as-you-go"),
 )
+
+
+def _display_name(row) -> str:
+    """Row label with marker symbols appended, if the row carries any."""
+    return row.name + suffix(row.markers)
+
+
 #: Two layouts, both built around the one score: the default shows the
 #: model's score beside its cost and plan, and ``--benchmark X`` ranks on
 #: one benchmark and adds that benchmark's tag. The per-axis raw numbers
@@ -150,6 +158,10 @@ def run(args: argparse.Namespace) -> int:
     # the split always happens — the cull is what keeps the worst-scoring
     # and priciest models out of the view — only the reporting is optional
     main, worst, pricey = partition_rows(rows)
+    shown = main if args.tables != "all" else main + worst + pricey
+    legend_line = legend([k for r in shown for k in r.markers])
+    if legend_line:
+        lines.append(legend_line)
     # one set of column widths for the whole view, so the three tables line
     # up with each other too
     widths = _widths(rows, axis, args.cost)
@@ -160,7 +172,9 @@ def run(args: argparse.Namespace) -> int:
             lines.append(f"{label} · {len(group)}")
             for row in group:
                 lines.append(
-                    format_list_row(cells(row, axis), widths, row.grade, row.name)
+                    format_list_row(
+                        cells(row, axis), widths, row.grade, _display_name(row)
+                    )
                 )
 
     if args.tables == "all":
@@ -173,7 +187,9 @@ def run(args: argparse.Namespace) -> int:
             )
         )
         for row in worst:
-            lines.append(format_list_row(cells(row, axis), widths, row.grade, row.name))
+            lines.append(
+                format_list_row(cells(row, axis), widths, row.grade, _display_name(row))
+            )
 
         lines.extend(
             section(
@@ -181,6 +197,8 @@ def run(args: argparse.Namespace) -> int:
             )
         )
         for row in pricey:
-            lines.append(format_list_row(cells(row, axis), widths, row.grade, row.name))
+            lines.append(
+                format_list_row(cells(row, axis), widths, row.grade, _display_name(row))
+            )
     print("\n".join(lines))
     return 0

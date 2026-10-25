@@ -163,6 +163,83 @@ class RowsForAliasMergeTest(unittest.TestCase):
             self.assertNotIn("meta/muse-spark-1.3-contributor", scores)
 
 
+class RowsForMarkersTest(unittest.TestCase):
+    def _fixture(self, d):
+        import json
+
+        _write_model(d, "l/m1")
+        _write_model(
+            d,
+            "l/m2",
+            benches=[("Terminal-Bench", "2.1", 60.0), ("SWE-Bench", "Verified", 30.0)],
+        )
+        _snapshot(d, "go", ["m1", "m2"])
+        snap = json.loads((d / "plans" / "go.json").read_text())
+        snap["models"]["m1"]["assumptions"] = {
+            "in": 100,
+            "cached": 1000,
+            "out": 10,
+        }
+        (d / "plans" / "go.json").write_text(json.dumps(snap))
+
+    def test_median_estimated_rows_carry_the_median_key(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            self._fixture(d)
+            result = rows_for(d, ["go"], price="est", all_models=True)
+            by_id = {r.model.model_id: r for r in result.rows}
+            self.assertEqual(by_id["l/m2"].markers, ("median",))
+            self.assertEqual(by_id["l/m1"].markers, ())
+            # the median estimate prices the row, not the fixed mix
+            self.assertAlmostEqual(by_id["l/m2"].price, 0.00111, places=9)
+
+    def test_curated_rows_carry_the_curated_key_first(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            self._fixture(d)
+            (d / "overrides").mkdir(exist_ok=True)
+            (d / "overrides" / "l__m2.json").write_text(
+                json.dumps(
+                    {
+                        "model": {
+                            "id": "l/m2",
+                            "benchmarks": [
+                                {
+                                    "name": "Terminal-Bench",
+                                    "version": "2.1",
+                                    "score": 70.0,
+                                    "metric": "acc",
+                                    "source": "https://example.com",
+                                }
+                            ],
+                        }
+                    }
+                )
+            )
+            result = rows_for(d, ["go"], price="est", all_models=True)
+            by_id = {r.model.model_id: r for r in result.rows}
+            # registry order wins: curated before median
+            self.assertEqual(by_id["l/m2"].markers, ("curated", "median"))
+            self.assertEqual(by_id["l/m1"].markers, ())
+
+    def test_picks_carry_markers_into_next(self):
+        import tempfile
+
+        from opencode_models.ranking import grade_rows, next_up, order_rows
+
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            self._fixture(d)
+            result = rows_for(d, ["go"], price="est", all_models=True)
+            picks = next_up(grade_rows(order_rows(result.rows)), count=2)
+            marked = {p.model.model_id: p.markers for p in picks}
+            self.assertEqual(marked["l/m2"], ("median",))
+
+
 class CatalogCompositionTest(unittest.TestCase):
     def _write_override(self, d: Path, mid: str, score: float = 99.0) -> None:
         out = d / "overrides"

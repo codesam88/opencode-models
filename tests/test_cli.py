@@ -2,6 +2,7 @@
 
 import contextlib
 import io
+import json
 import os
 import re
 import sys
@@ -4161,6 +4162,143 @@ class PriceModeTest(unittest.TestCase):
         self.assertEqual(code, 0)
         line = next(l for l in out.splitlines() if l.rstrip().endswith("M1"))
         self.assertRegex(line, r"\s180\s+.*M1$")  # fix fallback
+
+
+class MarkedModelsListTest(unittest.TestCase):
+    """Marked rows carry their symbols; one legend line explains them.
+
+    m_base has published assumptions and no override: unmarked.
+    m_med has none: median estimate, marked `~`.
+    m_cur has none plus a curated override: marked `*~`.
+    """
+
+    def _run(self, *argv):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = main(list(argv))
+        return code, out.getvalue()
+
+    def _data(self, tmp):
+        d = Path(tmp)
+        (d / "opencode").mkdir(parents=True, exist_ok=True)
+        catalog = {
+            "l/mbase": (50.0, 25.0, "M_BASE"),
+            "l/mmed": (60.0, 30.0, "M_MED"),
+            "l/mcur": (55.0, 27.0, "M_CUR"),
+        }
+        for mid, (tb, swe, name) in catalog.items():
+            (d / "opencode" / f"{mid.replace('/', '__')}.json").write_text(
+                json.dumps(
+                    {
+                        "model": {
+                            "id": mid,
+                            "name": name,
+                            "lab": mid.split("/")[0],
+                            "priceUsdPer1M": {
+                                "input": 1.0,
+                                "output": 1.0,
+                                "cachedInput": 1.0,
+                            },
+                            "benchmarks": [
+                                {
+                                    "name": bname,
+                                    "version": version,
+                                    "score": score,
+                                    "metric": "acc",
+                                    "source": "",
+                                }
+                                for (bname, version), score in (
+                                    (("Terminal-Bench", "2.1"), tb),
+                                    (("SWE-Bench", "Verified"), swe),
+                                )
+                            ],
+                        }
+                    }
+                )
+            )
+        assumptions = {"in": 100, "cached": 1000, "out": 10}
+        (d / "plans").mkdir(parents=True, exist_ok=True)
+        (d / "plans" / "go.json").write_text(
+            json.dumps(
+                {
+                    "meta": {
+                        "source": "test",
+                        "fetched_at": "2099-01-01T00:00:00+00:00",
+                        "schema_rev": 1,
+                        "plans": ["go"],
+                    },
+                    "models": {
+                        slug: {
+                            "name": slug.upper(),
+                            "free": False,
+                            "tiers": [
+                                {
+                                    "label": None,
+                                    "in": 1.0,
+                                    "out": 1.0,
+                                    "cached": 1.0,
+                                    "cached_write": None,
+                                }
+                            ],
+                            "limits": None,
+                            "requests_per_month": None,
+                            "assumptions": (
+                                assumptions
+                                if slug != "mmed" and slug != "mcur"
+                                else None
+                            ),
+                        }
+                        for slug in ("mbase", "mmed", "mcur")
+                    },
+                }
+            )
+        )
+        (d / "overrides").mkdir(parents=True, exist_ok=True)
+        (d / "overrides" / "l__mcur.json").write_text(
+            json.dumps(
+                {
+                    "model": {
+                        "id": "l/mcur",
+                        "benchmarks": [
+                            {
+                                "name": "Terminal-Bench",
+                                "version": "2.1",
+                                "score": 70.0,
+                                "metric": "acc",
+                                "source": "https://example.com",
+                            }
+                        ],
+                    }
+                }
+            )
+        )
+
+    def test_marked_rows_and_legend(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._data(tmp)
+            code, out = self._run(
+                "--data",
+                tmp,
+                "list",
+                "--source",
+                "go",
+                "--all-models",
+                "--tables",
+                "all",
+            )
+        self.assertEqual(code, 0)
+        self.assertIn("M_CUR *~", out)
+        self.assertIn("M_MED ~", out)
+        base_lines = [line for line in out.splitlines() if "M_BASE" in line]
+        self.assertTrue(base_lines)
+        self.assertTrue(all("*" not in line for line in base_lines))
+        self.assertTrue(all("~" not in line for line in base_lines))
+        legend = next(l for l in out.splitlines() if l.startswith("Markers: "))
+        self.assertIn("* curated overlay", legend)
+        self.assertIn("~ median-based estimate", legend)
+        self.assertLessEqual(len(legend), 80)
+        # the legend reads with the other legends, not above the header
+        self.assertGreater(out.index("Markers:"), out.index("GRADE:"))
 
 
 class ModelsListCoverageTest(unittest.TestCase):

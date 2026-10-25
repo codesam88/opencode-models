@@ -12,9 +12,17 @@ from pathlib import Path
 
 from .. import availability
 from .. import sync as sync_mod
-from ..allowance import WINDOW_FRACTIONS, cost_per_request, resolve_plan, suggest_plan
+from ..allowance import (
+    WINDOW_FRACTIONS,
+    cost_per_request,
+    fill_assumptions,
+    median_assumptions,
+    resolve_plan,
+    suggest_plan,
+)
 from ..auth import load_key, load_plan_preference, plan_file
 from ..live import api_get as _api_get
+from ..markers import median_note
 from ..pricing import USAGE_EXPORT_URL
 from . import fail
 from .render import format_usage_tables
@@ -386,6 +394,10 @@ def run(args: argparse.Namespace) -> int:
     except (OSError, ValueError) as exc:
         return fail(f"plan snapshot unreadable ({exc})")
     models = snapshot.get("models") or {}
+    # Priced records without published assumptions price their estimates
+    # from the plan median instead of falling back to the fixed mix. The
+    # filled slugs are footnoted below; the snapshot on disk is untouched.
+    models, filled = fill_assumptions(models, median_assumptions(models))
     now = datetime.now(timezone.utc)
     history = _read_usage_history(data_dir)
     key = load_key()
@@ -448,7 +460,7 @@ def run(args: argparse.Namespace) -> int:
             )
     lines.extend(
         format_usage_tables(
-            _sections(models, plan, spend, record, starts, now),
+            sections := _sections(models, plan, spend, record, starts, now),
             USAGE_LEFT_HEADERS,
             USAGE_RIGHT_HEADERS,
         )
@@ -456,5 +468,9 @@ def run(args: argparse.Namespace) -> int:
     lines.append("")
     lines.append("¢/req: measured average from reported usage (spend ÷ requests)")
     lines.append("Est.: estimated average ¢/req from opencode.ai page assumptions")
+    shown = {row[0] for _, left, _ in sections for row in left}
+    marked = sorted(filled & shown)
+    if marked:
+        lines.extend(median_note(marked))
     print("\n".join(lines))
     return 0

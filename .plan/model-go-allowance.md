@@ -7,15 +7,18 @@ area: cli
 
 ## Notes
 
-Status 2026-10-23: steps 1–3 are in (`allowance.py` core, shipped
-`plans/go.json` + fallback, `usage` command with `--go-pro`). Step 7b is
-done with a superseding decision: instead of keeping curated `zen.txt`,
+Status 2026-10-24: step 5 landed (`auth --plan go|go-plus` stores the
+workspace preference; `usage --plan` overrides per run; `--go-pro`
+removed; exceedance-only fit hint when the plan is unpinned — pure
+`resolve_plan`/`suggest_plan` in `allowance.py`, pinned by
+`tests/test_plan_identity.py`). Steps 1–3 in as before; step 7b done
+with a superseding decision: instead of keeping curated `zen.txt`,
 *both* tier lists were retired in favour of snapshot-derived rosters,
 and a `plans/zen.json` snapshot (same envelope, no windows/caps — Zen is
 credit-based) now exists alongside the Go one. Still open: step 4's
-automation gaps (Action cron, `page_sha256`, per-model limit deltas),
-step 5 plan identity (stored preference, `--plan`, fit hint — only
-`--go-pro` exists), step 6 free-tier diagnostics, step 7 verification.
+automation gaps (Action cron, `page_sha256`, per-model limit deltas —
+see also the snapshot-automation idea, leaning manual),
+step 6 free-tier diagnostics, step 7 verification (live matrix).
 
 Integrate the Go allowance model (`docs/model-go-plan.md`, validator
 `/tmp/opencode/go_allowance.py`) into the recommendation system, with
@@ -92,7 +95,10 @@ page parsing is `html.parser`, with a maintainer-paste fallback).
   deltas in the report. (Split out 2026-10-23 into the idea-level plan
   `.plan/plan-snapshot-automation.md`, covering both the Go and Zen
   update scripts; the manual workflow above stays the interim answer.)
-- [ ] 5. Plan identity: stored preference + `--plan` + fit hint.
+- [x] 5. Plan identity: stored preference (`auth --plan`, XDG
+  `opencode-models/plan`) + `--plan go|go-plus` + exceedance-only fit
+  hint (`suggest_plan`; silent unless spend beats a Go cap, silent
+  when the plan was explicitly chosen). `--go-pro` removed.
 - [ ] 6. Free-tier diagnostic footnotes + error-signature collection.
 - [x] 7b. Consolidation (single Go pricing file): declared
   `plans/go.json` the authority (caps, tiered prices, assumptions,

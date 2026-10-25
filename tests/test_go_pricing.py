@@ -14,6 +14,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from opencode_models import go_pricing
 
@@ -286,6 +287,46 @@ class GateTest(unittest.TestCase):
         errors, _, _ = go_pricing.validate(models)
         self.assertEqual(errors, [])
 
+    def test_missing_assumptions_warn_with_fallback_note(self):
+        models = {
+            "a": {
+                "name": "A",
+                "free": False,
+                "tiers": [{"label": None, "in": 0.1, "out": 0.2, "cached": 0.002}],
+                "limits": {"go": 60, "go_plus": 120},
+                "requests_per_month": {"go": 226600, "go_plus": 453200},
+                "assumptions": {"in": 620, "cached": 71400, "out": 300},
+            },
+            "b": {
+                "name": "B",
+                "free": False,
+                "tiers": [{"label": None, "in": 0.1, "out": 0.2, "cached": 0.002}],
+                "limits": {"go": 60, "go_plus": 120},
+                "requests_per_month": {"go": 226600, "go_plus": 453200},
+                "assumptions": None,
+            },
+        }
+        errors, warnings, _ = go_pricing.validate(models)
+        self.assertEqual(errors, [])
+        (hint,) = [w for w in warnings if "fallback to plan" in w]
+        self.assertTrue(hint.startswith("b:"), hint)
+
+    def test_missing_assumptions_without_pool_has_no_fallback_note(self):
+        models = {
+            "lonely": {
+                "name": "Lonely",
+                "free": False,
+                "tiers": [{"label": None, "in": 0.1, "out": 0.2, "cached": 0.002}],
+                "limits": {"go": 60, "go_plus": 120},
+                "requests_per_month": {"go": 226600, "go_plus": 453200},
+                "assumptions": None,
+            },
+        }
+        errors, warnings, _ = go_pricing.validate(models)
+        self.assertEqual(errors, [])
+        (hint,) = warnings
+        self.assertNotIn("fallback", hint)
+
     def test_gate_fails_on_corrupted_limit(self):
         models, _ = parse_fixture()
         models["model-a"]["limits"]["go"] = 600
@@ -349,7 +390,6 @@ class ShippedGateTest(unittest.TestCase):
         self.assertGreater(len(checked), 40)
 
     def test_user_agent_is_derived_from_package_metadata(self):
-        from unittest import mock
 
         with mock.patch.object(go_pricing, "version", return_value="9.9.9"):
             self.assertEqual(go_pricing._user_agent(), "opencode-models/9.9.9")

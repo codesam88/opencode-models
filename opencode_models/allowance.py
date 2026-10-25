@@ -16,10 +16,50 @@ for ranking); do not conflate them.
 
 from __future__ import annotations
 
+import statistics
+
 WINDOW_FRACTIONS = {"rolling": 0.2, "weekly": 0.5, "monthly": 1.0}
 
 #: Snapshot plan keys a stored preference may name.
 PLAN_KEYS = ("go", "go_plus")
+
+
+def median_assumptions(records: dict[str, dict]) -> dict[str, int] | None:
+    """Median token mix across models that publish assumptions, or None.
+
+    The backfill pool: priced, non-dropped models whose record carries a
+    complete ``{in, cached, out}`` mix. Free models have no mix, partial
+    mixes cannot be compared, and an empty pool suggests nothing. The
+    median (rounded to whole tokens) is robust by construction: roster
+    shifts barely move it, so the fallback stays stable without tracking
+    provenance.
+    """
+    ins, cached, outs = [], [], []
+    for slug in sorted(records):
+        rec = records[slug]
+        if not isinstance(rec, dict) or rec.get("free") or rec.get("dropped"):
+            continue
+        mix = rec.get("assumptions")
+        if not isinstance(mix, dict):
+            continue
+        try:
+            i, c, o = mix["in"], mix["cached"], mix["out"]
+        except KeyError:
+            continue
+        if not all(
+            isinstance(v, (int, float)) and not isinstance(v, bool) for v in (i, c, o)
+        ):
+            continue
+        ins.append(i)
+        cached.append(c)
+        outs.append(o)
+    if not ins:
+        return None
+    return {
+        "in": int(round(statistics.median(ins))),
+        "cached": int(round(statistics.median(cached))),
+        "out": int(round(statistics.median(outs))),
+    }
 
 
 def resolve_plan(flag: str | None, stored: str | None) -> str:
@@ -64,6 +104,47 @@ def suggest_plan(
         "go_plus",
         f"{slug} spent ${dollars:,.2f} vs Go cap ${cap:,.2f}",
     )
+
+
+def with_median_assumptions(
+    assumptions: dict[str, int] | None, median: dict[str, int] | None
+) -> tuple[dict[str, int] | None, bool]:
+    """Fill missing token mixes with the plan median. Returns ``(mix, used)``.
+
+    Published assumptions always win untouched; a missing mix falls back
+    to the median and reports so via ``used``; with neither, there is no
+    estimate and nothing is claimed. Callers surface ``used`` models in
+    the view (row marks, legend, or footnote).
+    """
+    if assumptions is not None:
+        return assumptions, False
+    if median is None:
+        return None, False
+    return median, True
+
+
+def fill_assumptions(
+    records: dict[str, dict], median: dict[str, int] | None
+) -> tuple[dict[str, dict], set[str]]:
+    """Fill missing token mixes with the plan median; report who got it.
+
+    Returns ``(records, filled_slugs)``: priced records with tiers but no
+    published assumptions get a copy carrying the median mix, everything
+    else passes through untouched. Free models have no estimate to make,
+    so they are never filled. Callers footnote ``filled_slugs`` that
+    actually render — silence everywhere else.
+    """
+    out: dict[str, dict] = {}
+    filled: set[str] = set()
+    for slug, rec in records.items():
+        if not isinstance(rec, dict) or rec.get("free") or not rec.get("tiers"):
+            out[slug] = rec
+            continue
+        eff, used = with_median_assumptions(rec.get("assumptions"), median)
+        out[slug] = {**rec, "assumptions": dict(eff)} if used else rec
+        if used:
+            filled.add(slug)
+    return out, filled
 
 
 def cost_per_request(tiers: list[dict], assumptions: dict | None) -> float | None:
@@ -309,5 +390,5 @@ def merge_snapshots(
         if not rec.get("dropped"):
             rec["dropped"] = True
             counts["dropped"] += 1
-        warnings.append(f"{slug}: absent from page, kept with dropped: true")
+        warnings.append(f"{slug}: removed from page, marking as dropped:true")
     return merged, counts, warnings

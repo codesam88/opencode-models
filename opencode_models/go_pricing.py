@@ -41,6 +41,8 @@ from html.parser import HTMLParser
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
+from .allowance import median_assumptions
+
 PAGE_URL = "https://opencode.ai/v2/docs/console/go"
 
 
@@ -436,7 +438,7 @@ def merge(existing, parsed):
         if not rec.get("dropped"):
             rec["dropped"] = True
             counts["dropped"] += 1
-        warnings.append(f"{slug}: absent from page, kept with dropped: true")
+        warnings.append(f"{slug}: removed from page, marking as dropped:true")
     return merged, counts, warnings
 
 
@@ -451,6 +453,7 @@ def validate(models, known_deviations=KNOWN_DEVIATIONS):
     and one thin model page must not block the whole snapshot refresh.
     """
     errors, warnings, checked = [], [], []
+    median = median_assumptions(models)
     for slug in sorted(models):
         rec = models[slug]
         if rec.get("dropped"):
@@ -464,7 +467,8 @@ def validate(models, known_deviations=KNOWN_DEVIATIONS):
             if (rec.get("requests_per_month") or {}).get(plan) is None:
                 errors.append(f"{slug}: no published estimate on plan {plan}")
         if rec["assumptions"] is None:
-            warnings.append(f"{slug}: no token assumptions, reproduction impossible")
+            hint = " (fallback to plan's median)" if median is not None else ""
+            warnings.append(f"{slug}: no token assumptions published{hint}")
             continue
         if not rec["tiers"]:
             errors.append(f"{slug}: priced model without tiers")
@@ -555,6 +559,11 @@ def refresh(directory, get=None):
     errors, gate_warnings, checked = validate(merged)
     if errors:
         raise ValueError("; ".join(errors))
+    _report(
+        [],
+        parse_warnings + merge_warnings + gate_warnings,
+        checked,
+    )
     import hashlib
     from datetime import datetime, timezone
 

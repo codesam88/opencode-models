@@ -14,11 +14,14 @@ from opencode_models.allowance import (
     compare_window_percent,
     cost_per_request,
     credit_ranking,
+    fill_assumptions,
+    median_assumptions,
     merge_snapshots,
     remaining,
     request_cap,
     validate_estimates,
     window_cap,
+    with_median_assumptions,
 )
 
 PLAIN = {
@@ -234,6 +237,86 @@ def _row(model, cost, inp=0, cached=0, out=0):
 _PLAIN_COST = 0.0002648
 
 
+class WithMedianAssumptionsTests(unittest.TestCase):
+    MEDIAN = {"in": 100, "cached": 1000, "out": 10}
+
+    def test_published_assumptions_win_untouched(self):
+        eff, used = with_median_assumptions(
+            {"in": 1, "cached": 2, "out": 3}, self.MEDIAN
+        )
+        self.assertEqual(eff, {"in": 1, "cached": 2, "out": 3})
+        self.assertFalse(used)
+
+    def test_missing_assumptions_fall_back_and_report(self):
+        eff, used = with_median_assumptions(None, self.MEDIAN)
+        self.assertEqual(eff, self.MEDIAN)
+        self.assertTrue(used)
+
+    def test_no_median_yields_no_estimate(self):
+        eff, used = with_median_assumptions(None, None)
+        self.assertIsNone(eff)
+        self.assertFalse(used)
+
+
+class FillAssumptionsTests(unittest.TestCase):
+    POOL = {
+        "a": {
+            "name": "A",
+            "free": False,
+            "tiers": [{"label": None, "in": 0.1, "out": 0.2, "cached": 0.002}],
+            "limits": {"go": 60, "go_plus": 120},
+            "requests_per_month": {"go": 1, "go_plus": 2},
+            "assumptions": {"in": 100, "cached": 1000, "out": 10},
+        },
+        "b": {
+            "name": "B",
+            "free": False,
+            "tiers": [{"label": None, "in": 0.1, "out": 0.2, "cached": 0.002}],
+            "limits": {"go": 60, "go_plus": 120},
+            "requests_per_month": {"go": 1, "go_plus": 2},
+            "assumptions": {"in": 300, "cached": 3000, "out": 30},
+        },
+    }
+
+    def _records(self):
+        recs = {k: dict(v) for k, v in self.POOL.items()}
+        recs["c"] = {
+            "name": "C",
+            "free": False,
+            "tiers": [{"label": None, "in": 0.5, "out": 0.5, "cached": 0.05}],
+            "limits": {"go": 10, "go_plus": 20},
+            "requests_per_month": {"go": 1, "go_plus": 2},
+            "assumptions": None,
+        }
+        recs["freebie"] = {
+            "name": "Free",
+            "free": True,
+            "tiers": [],
+            "assumptions": None,
+        }
+        return recs
+
+    def test_fill_marks_only_priced_unassumed_models(self):
+        filled, marked = fill_assumptions(
+            self._records(), {"in": 200, "cached": 2000, "out": 20}
+        )
+        self.assertEqual(marked, {"c"})
+        self.assertEqual(
+            filled["c"]["assumptions"], {"in": 200, "cached": 2000, "out": 20}
+        )
+        # published and free records untouched
+        self.assertEqual(
+            filled["a"]["assumptions"], {"in": 100, "cached": 1000, "out": 10}
+        )
+        self.assertIsNone(filled["freebie"]["assumptions"])
+        self.assertNotIn("freebie", marked)
+
+    def test_no_median_marks_nothing(self):
+        filled, marked = fill_assumptions(self._records(), None)
+        self.assertEqual(marked, set())
+        self.assertIsNone(filled["c"]["assumptions"])
+
+
 class CheckExportPricesTests(unittest.TestCase):
     def test_matching_rows_pass_silently(self):
         rows = [_row("plain", _PLAIN_COST, inp=620, cached=71400, out=300)]
@@ -309,6 +392,45 @@ class CompareWindowPercentTests(unittest.TestCase):
         self.assertIsNone(out["api"])
         self.assertIsNone(out["max_model"])
         self.assertIsNone(out["spend_share"])
+
+
+class MedianAssumptionsTests(unittest.TestCase):
+    def test_median_of_published_mixes(self):
+        recs = {
+            "a": {"assumptions": {"in": 100, "cached": 1000, "out": 10}},
+            "b": {"assumptions": {"in": 200, "cached": 2000, "out": 20}},
+            "c": {"assumptions": {"in": 300, "cached": 3000, "out": 30}},
+        }
+        self.assertEqual(
+            median_assumptions(recs), {"in": 200, "cached": 2000, "out": 20}
+        )
+
+    def test_even_count_median_rounds_to_whole_tokens(self):
+        recs = {
+            "a": {"assumptions": {"in": 100, "cached": 1000, "out": 10}},
+            "b": {"assumptions": {"in": 200, "cached": 2000, "out": 21}},
+        }
+        med = median_assumptions(recs)
+        self.assertEqual(med, {"in": 150, "cached": 1500, "out": 16})
+
+    def test_skips_free_missing_and_partial(self):
+        recs = {
+            "freebie": {"free": True, "tiers": [], "assumptions": None},
+            "nope": {"free": False, "assumptions": None},
+            "partial": {"free": False, "assumptions": {"in": 100, "cached": 1000}},
+            "ok": {"assumptions": {"in": 300, "cached": 3000, "out": 30}},
+        }
+        self.assertEqual(
+            median_assumptions(recs), {"in": 300, "cached": 3000, "out": 30}
+        )
+
+    def test_empty_pool_yields_no_suggestion(self):
+        self.assertIsNone(median_assumptions({}))
+        self.assertIsNone(median_assumptions({"x": {"assumptions": None}}))
+
+
+if __name__ == "__main__":
+    unittest.main()
 
 
 if __name__ == "__main__":

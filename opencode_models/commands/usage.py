@@ -12,8 +12,8 @@ from pathlib import Path
 
 from .. import availability
 from .. import sync as sync_mod
-from ..allowance import WINDOW_FRACTIONS, cost_per_request
-from ..auth import load_key
+from ..allowance import WINDOW_FRACTIONS, cost_per_request, resolve_plan, suggest_plan
+from ..auth import load_key, load_plan_preference, plan_file
 from ..live import api_get as _api_get
 from ..pricing import USAGE_EXPORT_URL
 from . import fail
@@ -372,7 +372,12 @@ def run(args: argparse.Namespace) -> int:
     """Per-window Go allowance view: Week then Month sections."""
     data_dir = Path(args.data)
     lines: list[str] = []
-    plan = "go_plus" if args.go_pro else "go"
+    stored = load_plan_preference()
+    if stored is None and plan_file().is_file():
+        lines.append(
+            "warning: ignoring unreadable plan preference (expected 'go' or 'go_plus')"
+        )
+    plan = resolve_plan(getattr(args, "plan", None), stored)
     _status, _msgs, _age = sync_mod.refresh_plan(data_dir, "go")
     if _status != "fresh":
         lines.extend(_msgs)
@@ -429,6 +434,18 @@ def run(args: argparse.Namespace) -> int:
         f"{label} plan · snapshot {snapshot_age} old ({origin}) · "
         f"balance {balance_text}"
     )
+    if getattr(args, "plan", None) is None and stored is None and rows_export:
+        monthly = spend.get("monthly", {})
+        limits = {slug: (rec.get("limits") or {}) for slug, rec in models.items()}
+        hint = suggest_plan(
+            {slug: totals["spend"] for slug, totals in monthly.items()}, limits
+        )
+        if hint is not None:
+            _plan, evidence = hint
+            lines.append(
+                f"looks like a Plus workspace ({evidence}) — pass "
+                f"--plan go-plus or run `auth --plan go-plus`"
+            )
     lines.extend(
         format_usage_tables(
             _sections(models, plan, spend, record, starts, now),

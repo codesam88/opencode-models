@@ -435,11 +435,36 @@ class ModelTableTest(UsageCase):
         self.assertIn("freebie-free", out)
         self.assertIn("$0.00", out)
 
-    def test_go_pro_switches_to_plus_limits(self):
-        code, out = self._run("--go-pro")
+    def test_plan_flag_switches_to_plus_limits(self):
+        code, out = self._run("--plan", "go-plus")
         self.assertEqual(code, 0)
         self.assertIn("Go Plus plan", out)
         self.assertIn("18%", out)
+
+    def test_stored_preference_selects_plus_without_flag(self):
+        from opencode_models import auth as auth_mod
+
+        with tempfile.TemporaryDirectory() as cfg:
+            with mock.patch.dict(os.environ, {"XDG_CONFIG_HOME": cfg}):
+                auth_mod.save_plan_preference("go_plus")
+                code, out = self._run()
+        self.assertEqual(code, 0)
+        self.assertIn("Go Plus plan", out)
+
+    def test_fit_hint_appears_when_spend_exceeds_go_cap(self):
+        plan_path = Path(self.tmp.name) / "plans" / "go.json"
+        doc = json.loads(plan_path.read_text())
+        doc["models"]["muse-spark-1.3"]["limits"] = {"go": 5.0, "go_plus": 120.0}
+        plan_path.write_text(json.dumps(doc))
+        code, out = self._run()
+        self.assertEqual(code, 0)
+        self.assertIn("looks like a Plus workspace", out)
+        self.assertIn("muse-spark-1.3", out)
+
+    def test_no_fit_hint_when_spend_fits_go_caps(self):
+        code, out = self._run()
+        self.assertEqual(code, 0)
+        self.assertNotIn("looks like a Plus workspace", out)
 
     def test_section_headers_present(self):
         code, out = self._run()

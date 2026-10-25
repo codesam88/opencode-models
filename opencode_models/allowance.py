@@ -18,6 +18,53 @@ from __future__ import annotations
 
 WINDOW_FRACTIONS = {"rolling": 0.2, "weekly": 0.5, "monthly": 1.0}
 
+#: Snapshot plan keys a stored preference may name.
+PLAN_KEYS = ("go", "go_plus")
+
+
+def resolve_plan(flag: str | None, stored: str | None) -> str:
+    """Which snapshot plan key to use: explicit flag, stored preference, Go.
+
+    The flag takes CLI spellings (``go-plus`` with a dash); the stored
+    value is already a snapshot key. Anything unrecognized falls back to
+    the Go default — the workspace plan is never guessed, only defaulted.
+    """
+    if flag == "go-plus" or flag == "go_plus":
+        return "go_plus"
+    if flag == "go":
+        return "go"
+    if stored in PLAN_KEYS:
+        return stored
+    return "go"
+
+
+def suggest_plan(
+    spend: dict[str, float], limits: dict[str, dict]
+) -> tuple[str, str] | None:
+    """A Plus hint from measured spend, or None when there is none to give.
+
+    Returns ``("go_plus", evidence)`` when some known model's monthly
+    spend exceeds its Go cap — the one case where the numbers point at
+    Plus. Light usage fits both plans, unknown models are skipped rather
+    than assumed, and uncapped (null-limit) models cannot exceed. Silence
+    is a valid answer: absence of evidence says nothing about the plan.
+    """
+    worst: tuple[str, float, float] | None = None
+    for slug, dollars in spend.items():
+        caps = limits.get(slug) or {}
+        cap = caps.get("go")
+        if cap is None or dollars <= cap:
+            continue
+        if worst is None or dollars - cap > worst[1] - worst[2]:
+            worst = (slug, dollars, cap)
+    if worst is None:
+        return None
+    slug, dollars, cap = worst
+    return (
+        "go_plus",
+        f"{slug} spent ${dollars:,.2f} vs Go cap ${cap:,.2f}",
+    )
+
 
 def cost_per_request(tiers: list[dict], assumptions: dict | None) -> float | None:
     """Cost per request in dollars, from the base tier (first in list).

@@ -126,11 +126,18 @@ def main(argv: list[str] | None = None) -> int:
         help="also show known-but-not-served models, marked [ ], plus the "
         "API status column ([x] served, [?] unknown)",
     )
-    sub.add_parser(
+    p_auth = sub.add_parser(
         "auth",
         help="save the Console service-account key "
         "to an owner-only file (prompted, never "
         "echoed); verifies it live when it can",
+    )
+    p_auth.add_argument(
+        "--plan",
+        choices=("go", "go-plus"),
+        default=None,
+        help="record the workspace plan alongside the key "
+        "(Plus caps are 2-4x Go caps, so usage headroom needs it)",
     )
     sub.add_parser(
         "overrides",
@@ -219,10 +226,11 @@ def main(argv: list[str] | None = None) -> int:
         "spend per model against the page snapshot "
         "(needs OPENCODE_API_KEY; degrades per source)",
     ).add_argument(
-        "--go-pro",
-        dest="go_pro",
-        action="store_true",
-        help="read Go Plus limits (the $40/mo plan); the default is Go ($10/mo)",
+        "--plan",
+        choices=("go", "go-plus"),
+        default=None,
+        help="which plan's limits to read (default: stored preference, "
+        "else Go); --plan go-plus for the $40/mo plan",
     )
 
     p_scores = sub.add_parser("scores", help="manage cached arena.ai Elo scores")

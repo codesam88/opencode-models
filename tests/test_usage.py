@@ -466,6 +466,23 @@ class ModelTableTest(UsageCase):
         self.assertEqual(code, 0)
         self.assertNotIn("looks like a Plus workspace", out)
 
+    def test_median_footnote_names_assumption_less_models(self):
+        plan_path = Path(self.tmp.name) / "plans" / "go.json"
+        doc = json.loads(plan_path.read_text())
+        doc["models"]["muse-spark-1.3"]["assumptions"] = None
+        plan_path.write_text(json.dumps(doc))
+        code, out = self._run()
+        self.assertEqual(code, 0)
+        self.assertIn(
+            "Note: muse-spark-1.3 estimated with the plan median (no published assumptions)",
+            out,
+        )
+
+    def test_no_median_footnote_when_nothing_filled(self):
+        code, out = self._run()
+        self.assertEqual(code, 0)
+        self.assertNotIn("estimated with the plan median", out)
+
     def test_section_headers_present(self):
         code, out = self._run()
         self.assertEqual(code, 0)

@@ -103,6 +103,7 @@ class Row:
     entry: object | None = None
     endpoint_id: str | None = None  # plan-local id for API endpoints
     synthetic: bool = False  # roster-only row: offered, so always listed
+    markers: tuple[str, ...] = ()  # display-symbol keys, see markers.MARKERS
 
 
 def _best(

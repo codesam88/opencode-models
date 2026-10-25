@@ -17,6 +17,7 @@ from pathlib import Path
 
 from . import availability
 from . import sync as sync_mod
+from .allowance import fill_assumptions, median_assumptions
 from .catalog import load_catalog
 from .identity import canonical_id
 from .models import Model
@@ -146,6 +147,7 @@ def rows_for(
     # score mean two different things in the merged view
     table = scales(models)
     groups, listed, counts, tier_slugs = [], [], {}, {}
+    filled_by_provider: dict[str, set[str]] = {}
     covered: set[str] = set()
     synthetic_ids: set[int] = set()
     # slugs served/documented for every selected tier: a model listed by any
@@ -199,6 +201,16 @@ def rows_for(
             if provider in ("go", "zen")
             else {}
         )
+        if price == "est":
+            # Priced records without published assumptions price their
+            # estimates from the plan median instead of falling back to
+            # the fixed mix. Filled slugs are marked on the rows below;
+            # the snapshot on disk is untouched.
+            plan_models, filled = fill_assumptions(
+                plan_models, median_assumptions(plan_models)
+            )
+            if filled:
+                filled_by_provider[provider] = filled
         catalog_rows = [m for m in pool if id(m) not in synthetic_ids]
         groups.append(
             build_rows(
@@ -229,6 +241,25 @@ def rows_for(
     rows = [
         replace(r, synthetic=True) if id(r.model) in synthetic_ids else r for r in rows
     ]
+    # Marker keys ride on the row: curated overlays from the catalog
+    # composition, median estimates from this tier's filled records.
+    # Views only render them; the decision lives here, once.
+    marked = []
+    for r in rows:
+        keys = []
+        if r.model.model_id in curated.curated:
+            keys.append("curated")
+        if (
+            not r.free
+            and r.endpoint_id
+            and any(
+                r.endpoint_id in filled_by_provider.get(p, ())
+                for p in (r.provider or "").split(",")
+            )
+        ):
+            keys.append("median")
+        marked.append(replace(r, markers=tuple(keys)) if keys else r)
+    rows = marked
     return RowsResult(
         rows=rows,
         listed=listed,

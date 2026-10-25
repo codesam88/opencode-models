@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: done
 type: decision
 priority: high
 area: backend
@@ -462,12 +462,13 @@ list above, or not at all. Historical examples of the verdict:
 
 ## Status
 
-Current state 2026-10-24: the product pipeline is consolidated —
-service extraction, unified snapshot, `sync` + lazy trigger, alias
-wiring + composition order, docs realignment, v2 source-of-truth, and
-the snapshot schema contract are all landed and green, with golden
-outputs held byte-identical except where a fix intentionally changed
-them. Remaining: the snapshot-automation idea (own file) and the
-Further steps above, each gated on its trigger. This task stays open
-while structural work lands incrementally; it closes when no
-sequenced rework remains, not on spec acceptance.
+Closed 2026-10-26 with PR #13 merged (all CI green): every sequenced
+item landed — service extraction, unified snapshot, `sync` + lazy
+trigger, alias wiring + composition order, snapshot schema contract,
+docs realignment, v2 source-of-truth, full CLI split, vermin gate.
+What remains deliberately lives elsewhere: the snapshot-automation
+idea (own file, leaning manual-at-release), the trigger-gated
+Further steps above (ride along, never scheduled), and the open
+`model-go-allowance` plan (separate scope). No sequenced rework
+remains; the working reference (`docs/architecture.md`) and the
+schema doc (`docs/snapshot-schema.md`) carry the design forward.

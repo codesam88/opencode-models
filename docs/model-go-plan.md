@@ -96,3 +96,18 @@ mechanism: bulk discounts and reserved capacity per model.
   2–4× per model, so headroom math needs the plan as an input.
 - Page numbers drift ("limits may change"): re-snapshot the limits table
   on the same discipline as tier-price snapshots before trusting `L(m)`.
+
+## 7. Live verification (tests-only tooling)
+
+The console never flags these on live runs — a warning that fires on
+noisy live data reads as a bug report, so the checks live as pure
+functions with hermetic tests (`check_export_prices`,
+`check_caps_resolve`, `compare_window_percent` in
+`opencode_models/allowance.py`, pinned by `tests/test_allowance.py`).
+
+To run the live matrix by hand: (1) keyed `usage` for the overview;
+(2) save the export CSV the run polled; (3) feed its rows plus the
+current `data/plans/go.json` records through the three checks with the
+publish-gate tolerance (10%); (4) record the outcome here. H2/H4 flip
+to VERIFIED/CONFIRMED only on their burn experiments (§4), not on a
+clean matrix run — absence of mismatch is not proof of the mechanism.

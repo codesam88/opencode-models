@@ -113,9 +113,15 @@ page parsing is `html.parser`, with a maintainer-paste fallback).
   namespace; import sites repointed mechanically, no behavior change).
   Done 2026-10-23 with a superseding decision recorded above: both tier
   lists retired (not just go.txt), and plans/zen.json added.
-- [ ] 7. Verification: full suite, ruff/zizmor, live matrix (keyed
-  `usage` vs export vs page math), docs (README/LIMITS/CHANGELOG +
-  `docs/model-go-plan.md` status flip per settled assumption).
+- [ ] 7. Verification: full suite, ruff/zizmor (done, green in CI
+  and locally), live matrix, docs. The three standing invariants live
+  as tests-only tooling (pure `check_export_prices` /
+  `check_caps_resolve` / `compare_window_percent` in `allowance.py`,
+  pinned by `tests/test_allowance.py`) — deliberately not wired into
+  live `usage` output, where a flag on noisy data would read as a bug
+  report. Live matrix = the §7 runbook in `docs/model-go-plan.md`;
+  H2/H4 flips wait on the burn experiments. CHANGELOG exists;
+  LIMITS carries the spot-check; H1/H3 flipped.
 
 ## Open decisions (settled with maintainer 2026-10-21)
 

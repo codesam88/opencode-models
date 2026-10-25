@@ -323,10 +323,14 @@ class GateTest(unittest.TestCase):
         errors, _, _ = go_pricing.validate({"kimi-k2.7-code": kimi})
         self.assertTrue(any("kimi-k2.7-code" in e for e in errors))
 
-    def test_priced_model_without_assumptions_is_an_error(self):
+    def test_priced_model_without_assumptions_warns_instead_of_failing(self):
+        # without token assumptions reproduction is impossible by
+        # definition, so it can never signal a broken parser: warn loudly,
+        # keep the model with assumptions None, and let the refresh land.
         models, _ = parse_fixture()
-        errors, _, _ = go_pricing.validate(models, no_assumptions={"something-else"})
-        self.assertTrue(any("gemini-4-argon-contributor" in e for e in errors))
+        errors, warnings, _ = go_pricing.validate(models)
+        self.assertEqual(errors, [])
+        self.assertTrue(any("gemini-4-argon-contributor" in w for w in warnings))
 
 
 class ShippedGateTest(unittest.TestCase):

@@ -281,7 +281,10 @@ class ModelsRosterCoverageTest(unittest.TestCase):
         free_row = next(l for l in rows if "Plain Free" in l)
         metered_row = next(l for l in rows if "Plain Free" not in l)
         self.assertTrue(free_row.lstrip().startswith("·"), free_row)
-        self.assertTrue(metered_row.rstrip().endswith("Plain"), metered_row)
+        # the metered line may carry the median marker after its name
+        self.assertTrue(
+            metered_row.rstrip().endswith(("Plain", "Plain ~")), metered_row
+        )
 
 
 if __name__ == "__main__":

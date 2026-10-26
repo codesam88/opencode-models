@@ -21,7 +21,7 @@ class Marker:
 
 MARKERS: dict[str, Marker] = {
     "curated": Marker("*", "curated overlay"),
-    "median": Marker("~", "median-based estimate (no published assumptions)"),
+    "median": Marker("~", "assumes median in/out/cache distribution"),
 }
 
 __all__ = ["MARKERS", "Marker", "legend", "median_note", "suffix"]

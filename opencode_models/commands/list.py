@@ -44,7 +44,9 @@ def _display_name(row) -> str:
 
 def _widths(rows, axis: bool = True, price: str = "est") -> tuple[int, ...]:
     """Widest cell per column across the whole view, header included."""
-    return tuple(column_widths(headings(axis, price), [cells(r, axis) for r in rows]))
+    return tuple(
+        column_widths(headings(axis, price), [cells(r, axis, price) for r in rows])
+    )
 
 
 def _select(data_dir: Path, source: str | None, price: str = "est"):
@@ -173,7 +175,10 @@ def run(args: argparse.Namespace) -> int:
             for row in group:
                 lines.append(
                     format_list_row(
-                        cells(row, axis), widths, row.grade, _display_name(row)
+                        cells(row, axis, args.cost),
+                        widths,
+                        row.grade,
+                        _display_name(row),
                     )
                 )
 
@@ -188,7 +193,9 @@ def run(args: argparse.Namespace) -> int:
         )
         for row in worst:
             lines.append(
-                format_list_row(cells(row, axis), widths, row.grade, _display_name(row))
+                format_list_row(
+                    cells(row, axis, args.cost), widths, row.grade, _display_name(row)
+                )
             )
 
         lines.extend(
@@ -198,7 +205,9 @@ def run(args: argparse.Namespace) -> int:
         )
         for row in pricey:
             lines.append(
-                format_list_row(cells(row, axis), widths, row.grade, _display_name(row))
+                format_list_row(
+                    cells(row, axis, args.cost), widths, row.grade, _display_name(row)
+                )
             )
     print("\n".join(lines))
     return 0

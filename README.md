@@ -119,8 +119,9 @@ snapshots with a 401 warning.
   combined score
 - `--count N` — how many picks `next` recommends (default 6)
 - `--cost est|fix|input|output` — cost base for the score/$ rank (default: `est`):
-  est page-estimated ¢/req from the Go snapshot (zen + missing fall back
-  to fix); fix 20/60/20 input-cached-output mix; input/output rate only
+  est ¢/req from each model's published token mix, the Go plan's median
+  where a model publishes none (~); fix 20/60/20 input-cached-output mix;
+  input/output rate only
 - `--data DIR` — point at a different data directory (checkout: `--data data`)
 
 ```sh
@@ -316,12 +317,16 @@ Best value splits into bands — **free** (use first), **included usage**
 (lines the tier grants a monthly allowance for), **pay-as-you-go** — and is
 ranked by score per dollar *inside* each band. A line's cost is 20% input +
 60% cached read + 20% output; `--cost input|output` picks a single rate
-instead, `--cost est` (the default) the Go snapshot's page-estimated ¢/req (Zen lines
-and snapshot-missing models fall back to the fix). The numbers are all rounded integers: the score is the model's
-calculated 0–100 number, score per dollar explains the best-value order —
-free lines read `-` and sort before every paid line — and the cost column counts cents (`¢/req` under
-`est`/`fix`, `¢/1m` under `input`/`output`), so a $0.0612 line reads as `6`, not `0.0612`. Free lines
-still show a `0` cost. Columns are measured from the lines actually being shown
+instead, `--cost est` (the default) the cost per request — each line
+priced from its own rates under its model's published token mix, or the
+Go plan's median mix (marked `~`) where the model publishes none,
+whether or not a plan record covers it. The score and score/$ are
+rounded integers: score per dollar explains the best-value order and
+free lines read `-` and sort before every paid line. The cost column
+counts cents — `¢/req` under `est`/`fix` keeps up to two decimals, so a
+fraction of a cent survives (a $0.0612 line reads as `6.12`), while
+`¢/1m` under `input`/`output` stays whole cents. Free lines still show a
+`0` cost. Columns are measured from the lines actually being shown
 (header included), so nothing shifts when a price or a provider list
 outgrows the rest.
 

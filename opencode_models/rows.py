@@ -58,6 +58,8 @@ def rows_for(
     # (fresh clone, offline) the cards decide, as they did before.
     slice_by_tier = modelsdev.load(data_dir)
     aliases = availability.load_aliases(data_dir)
+    # one fallback mix for every est row: the Go plan's median token mix
+    fallback_mix = availability.fallback_mix(data_dir)
     plan_warnings: list[str] = []
     for _provider in selected:
         if _provider in ("go", "zen"):
@@ -71,7 +73,6 @@ def rows_for(
     # score mean two different things in the merged view
     table = scales(models)
     groups, listed, counts, tier_slugs = [], [], {}, {}
-    filled_by_provider: dict[str, set[str]] = {}
     covered: set[str] = set()
     synthetic_ids: set[int] = set()
     # snapshot record id -> card id, so a row built from the slice is still
@@ -136,15 +137,14 @@ def rows_for(
         listed += provider_listed
         if provider in ("go", "zen"):
             # Single choke point for estimate math: the loader fills
-            # priced records that publish no token mix, so every view
-            # prices them from the plan median instead of the fixed mix.
-            # The snapshot on disk is untouched; validation keeps reading
-            # the raw files.
+            # priced records that publish no token mix with the Go plan's
+            # median, so every tier — zen publishes none — estimates, and
+            # each row carries the flag. The snapshot on disk is
+            # untouched; validation keeps reading the raw files.
             plan_models, filled = availability.plan_records(data_dir, provider)
-            if filled and price == "est":
-                filled_by_provider[provider] = filled
         else:
             plan_models = {}
+            filled = set()
         catalog_rows = [m for m in pool if id(m) not in synthetic_ids]
         groups.append(
             build_rows(
@@ -154,6 +154,8 @@ def rows_for(
                 axis=price,
                 provider=provider,
                 table=table,
+                fallback_mix=fallback_mix,
+                median_slugs=filled,
             )
         )
         synth_rows = [m for m in pool if id(m) in synthetic_ids]
@@ -169,15 +171,18 @@ def rows_for(
                     provider=provider,
                     table=table,
                     reach_variants=False,
+                    fallback_mix=fallback_mix,
+                    median_slugs=filled,
                 )
             )
     rows = dedupe_providers(merge_rows(*groups))
     rows = [
         replace(r, synthetic=True) if id(r.model) in synthetic_ids else r for r in rows
     ]
+
     # Marker keys ride on the row: curated overlays from the catalog
-    # composition, median estimates from this tier's filled records.
-    # Views only render them; the decision lives here, once.
+    # composition, median estimates from the fallback mix. Views only
+    # render them; the decision lives here, once.
     marked = []
     for r in rows:
         keys = []
@@ -187,14 +192,7 @@ def rows_for(
             card_of.get(r.model.model_id) in curated.curated
         ):
             keys.append("curated")
-        if (
-            not r.free
-            and r.endpoint_id
-            and any(
-                r.endpoint_id in filled_by_provider.get(p, ())
-                for p in (r.provider or "").split(",")
-            )
-        ):
+        if r.median:
             keys.append("median")
         marked.append(replace(r, markers=tuple(keys)) if keys else r)
     rows = marked

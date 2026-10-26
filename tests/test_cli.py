@@ -576,8 +576,8 @@ class CliTest(unittest.TestCase):
         self.assertIn("¢/req", out)  # the column says what it counts
         line = next(l for l in out.splitlines() if l.rstrip().endswith("CHEAP"))
         # the calculated score (100, the best of the 40-88.8 range);
-        # $0.0612 shows as 6 cents
-        self.assertRegex(line, r"\s100\s+6\s+1634\s+go,zen\s+CHEAP$")
+        # $0.0612 reads as 6.12 cents — the fraction survives rounding
+        self.assertRegex(line, r"\s100\s+6\.12\s+1634\s+go,zen\s+CHEAP$")
         self.assertNotIn("0.0612", line)  # cents, never dollars
 
     def test_list_output_price_uses_output_axis(self):
@@ -1678,13 +1678,17 @@ class CliTest(unittest.TestCase):
             orig = availability.load_roster
             availability.load_roster = lambda _d, name: {"m1", "m2", "m3"}
             try:
-                code, out = self._run("--data", tmp, "list", "--source", "zen")
+                code, out = self._run(
+                    "--data", tmp, "list", "--source", "zen", "--cost", "fix"
+                )
             finally:
                 availability.load_roster = orig
             self.assertEqual(code, 0)
             # 0.2 in + 0.6 cached + 0.2 out of (1.0, 0.1, 2.0) = 0.66,
             # shown as 66 cents rather than the bare $1.00 input rate;
             # the score is the calculated 100 (best of 25-50 on both).
+            # (`--cost est` prices a cost per request, which for these
+            # record-less rows comes from the plan median instead.)
             line = next(l for l in out.splitlines() if l.rstrip().endswith("M1"))
             self.assertRegex(line, r"\s100\s+66\s+152\s+zen\s+M1$")
 
@@ -2385,7 +2389,14 @@ class AvailabilityTest(unittest.TestCase):
                 shipped=["kept", "third", "fourth", "gone"],
             )
             code, out = self._run(
-                "--data", tmp, "list", "--source", "zen", "--all-models"
+                "--data",
+                tmp,
+                "list",
+                "--source",
+                "zen",
+                "--all-models",
+                "--tables",
+                "all",
             )
         self.assertEqual(code, 0)
         self.assertIn("KEPT", out)
@@ -2528,7 +2539,8 @@ class AvailabilityTest(unittest.TestCase):
         self.assertEqual(code, 0)
         lines = out.splitlines()
         m1 = next(i for i, l in enumerate(lines) if l.rstrip().endswith("M1 [free]"))
-        m2 = next(i for i, l in enumerate(lines) if l.rstrip().endswith("M2"))
+        # the paid line may carry the median marker after its name
+        m2 = next(i for i, l in enumerate(lines) if l.rstrip().endswith(("M2", "M2 ~")))
         self.assertLess(m1, m2)
         self.assertRegex(lines[m1], r"\s0\s+-\s+")
 
@@ -4087,14 +4099,49 @@ class PriceModeTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("¢/req", out)
         line = next(l for l in out.splitlines() if l.rstrip().endswith("M1"))
-        self.assertRegex(line, r"\s1\s+.*M1$")  # 1.15c -> 1
+        self.assertRegex(line, r"\s1\.25\s+.*M1$")  # 0.0125 $/req
 
-    def test_est_falls_back_to_mix_on_zen(self):
+    def test_zen_row_without_a_mix_prices_from_the_go_median(self):
+        import json
+
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            self._data(d)  # go publishes (1000, 9000, 500): the median
+            (d / "plans" / "zen.json").write_text(
+                json.dumps(
+                    _plan_doc(
+                        [
+                            {
+                                "model_id": "m1",
+                                "name": "M1",
+                                "input": 1.0,
+                                "output": 5.0,
+                                "cached_read": None,
+                                "limit": None,
+                                "free": False,
+                            }
+                        ],
+                        "zen",
+                    )
+                )
+            )
+            code, out = self._run_list(tmp, "--source", "zen", "--cost", "est")
+        self.assertEqual(code, 0)
+        line = next(l for l in out.splitlines() if l.rstrip().endswith(("M1", "M1 ~")))
+        # (1000*1 + 9000*1 + 500*5)/1e6 = 1.25c, not the fix blend's 180c
+        self.assertRegex(line, r"\s1\.25\s+.*M1 ~$")
+
+    def test_no_median_anywhere_leaves_est_on_the_fix_blend(self):
         import json
 
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
             self._data(d)
+            # go publishes no mix either: there is no median to fall back to
+            go_path = d / "plans" / "go.json"
+            go_doc = json.loads(go_path.read_text())
+            go_doc["models"]["m1"]["assumptions"] = None
+            go_path.write_text(json.dumps(go_doc))
             (d / "plans" / "zen.json").write_text(
                 json.dumps(
                     _plan_doc(
@@ -4116,7 +4163,8 @@ class PriceModeTest(unittest.TestCase):
             code, out = self._run_list(tmp, "--source", "zen", "--cost", "est")
         self.assertEqual(code, 0)
         line = next(l for l in out.splitlines() if l.rstrip().endswith("M1"))
-        self.assertRegex(line, r"\s180\s+.*M1$")  # fix fallback
+        self.assertRegex(line, r"\s180\s+.*M1$")  # .2*1 + .6*1 + .2*5 = 1.8
+        self.assertNotIn("~", line)
 
 
 class MarkedModelsListTest(unittest.TestCase):
@@ -4229,6 +4277,8 @@ class MarkedModelsListTest(unittest.TestCase):
         )
 
     def test_marked_rows_and_legend(self):
+        from opencode_models.markers import MARKERS
+
         with tempfile.TemporaryDirectory() as tmp:
             self._data(tmp)
             code, out = self._run(
@@ -4249,8 +4299,10 @@ class MarkedModelsListTest(unittest.TestCase):
         self.assertTrue(all("*" not in line for line in base_lines))
         self.assertTrue(all("~" not in line for line in base_lines))
         legend = next(l for l in out.splitlines() if l.startswith("Markers: "))
-        self.assertIn("* curated overlay", legend)
-        self.assertIn("~ median-based estimate", legend)
+        # the legend renders exactly what the registry declares — the
+        # wording lives in markers.MARKERS, never copied in here
+        self.assertIn(f"{MARKERS['curated'].symbol} {MARKERS['curated'].blurb}", legend)
+        self.assertIn(f"{MARKERS['median'].symbol} {MARKERS['median'].blurb}", legend)
         self.assertLessEqual(len(legend), 80)
         # the legend reads with the other legends, not above the header
         self.assertGreater(out.index("Markers:"), out.index("GRADE:"))

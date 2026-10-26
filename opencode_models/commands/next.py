@@ -67,7 +67,7 @@ def _next_table(picks: list, price: str = "est") -> str:
     headers = next_headings(price)
     rows = []
     for i, row in enumerate(picks, 1):
-        _score, cost, value, _prov = cells(row)
+        _score, cost, value, _prov = cells(row, True, price)
         rows.append(
             [
                 str(i),

@@ -103,6 +103,7 @@ class Row:
     entry: object | None = None
     endpoint_id: str | None = None  # plan-local id for API endpoints
     synthetic: bool = False  # roster-only row: offered, so always listed
+    median: bool = False  # est price came from the plan's median mix
     markers: tuple[str, ...] = ()  # display-symbol keys, see markers.MARKERS
 
 
@@ -206,8 +207,51 @@ def _has_free_offering(
     )
 
 
-def _stage_for_model(m, records, free_ids, axis, provider, reach_variants):
-    staged = []  # (model, display name, cost, free, monthly limit, endpoint slug)
+def _catalog_price(m, axis, fallback_mix) -> tuple[float | None, bool]:
+    """Price a row with no plan record: its own rates on the asked axis.
+
+    Returns ``(cost, median)``; the second says an ``est`` cost came from
+    the fallback mix rather than from the fix rate.
+    """
+    if axis == "input":
+        return m.price_input, False
+    if axis == "output":
+        return m.price_output, False
+    if (
+        axis == "est"
+        and fallback_mix is not None
+        and m.price_input is not None
+        and m.price_output is not None
+    ):
+        # est means ¢/req whatever the row is keyed by: price the model's
+        # own rates with the fallback mix, not the fix rate
+        cost = cost_per_request(
+            [
+                {
+                    "in": m.price_input,
+                    "out": m.price_output,
+                    "cached": m.price_cached_input,
+                }
+            ],
+            fallback_mix,
+        )
+        if cost is not None:
+            return cost, cost > 0
+        return None, False
+    return weighted_cost(m.price_input, m.price_output, m.price_cached_input), False
+
+
+def _stage_for_model(
+    m,
+    records,
+    free_ids,
+    axis,
+    provider,
+    reach_variants,
+    fallback_mix=None,
+    median_slugs=(),
+):
+    staged = []  # (model, display name, cost, free, limit, endpoint, median)
     slug = m.model_id.split("/")[-1]
     # the tier tables may key the offering under a designation
     # (plans/go.json keys muse-spark-1.3-contributor); any record whose
@@ -222,15 +266,9 @@ def _stage_for_model(m, records, free_ids, axis, provider, reach_variants):
     free_rec = _free_record(slug, designations, records, reach_variants)
     has_free_variant = _has_free_offering(designations, records, free_rec)
 
-    cost = None
     if not priced_tiers and not has_free_variant:
-        # no documented offering: fall back to the catalog price
-        if axis == "input":
-            cost = m.price_input
-        elif axis == "output":
-            cost = m.price_output
-        else:
-            cost = weighted_cost(m.price_input, m.price_output, m.price_cached_input)
+        # no documented offering: price from the catalog's own rates
+        cost, median = _catalog_price(m, axis, fallback_mix)
         if cost is None:
             return staged
         staged.append(
@@ -241,6 +279,7 @@ def _stage_for_model(m, records, free_ids, axis, provider, reach_variants):
                 slug in free_ids or (cost == 0),
                 None,
                 slug,
+                median,
             )
         )
         return staged
@@ -255,23 +294,36 @@ def _stage_for_model(m, records, free_ids, axis, provider, reach_variants):
             limit = next((v for v in limits.values() if v is not None), None)
     else:
         limit = limits
-    est_value = None
-    if axis == "est" and provider != "zen" and isinstance(rec, dict):
-        cpr = cost_per_request(rec.get("tiers") or [], rec.get("assumptions"))
-        if cpr is not None and cpr > 0:
-            est_value = cpr
+    est_mix = None
+    if axis == "est" and isinstance(rec, dict):
+        # a record's own mix wins; the plan median is what it lacks
+        est_mix = rec.get("assumptions") or fallback_mix
     for t, tier_key in priced_tiers:
         label = t.get("label")
         key = (tier_key, label)
         if key in seen:
             continue
         seen.add(key)
+        used_median = False
         if axis == "input":
             tier_cost = t.get("in")
         elif axis == "output":
             tier_cost = t.get("out")
-        elif axis == "est" and provider != "zen" and est_value is not None:
-            tier_cost = est_value
+        elif axis == "est":
+            # every line prices from its own tier: a peak line costs what
+            # the peak tier charges, under the record's mix or the median
+            cpr = cost_per_request([t], est_mix)
+            priced = cpr is not None and cpr > 0
+            tier_cost = (
+                cpr
+                if priced
+                else weighted_cost(t.get("in"), t.get("out"), t.get("cached"))
+            )
+            used_median = (
+                priced
+                and fallback_mix is not None
+                and (tier_key in median_slugs or not (rec or {}).get("assumptions"))
+            )
         else:
             tier_cost = weighted_cost(t.get("in"), t.get("out"), t.get("cached"))
         base_name = m.name
@@ -288,6 +340,7 @@ def _stage_for_model(m, records, free_ids, axis, provider, reach_variants):
                 False,
                 limit,
                 tier_key,
+                used_median,
             )
         )
 
@@ -304,7 +357,7 @@ def _stage_for_model(m, records, free_ids, axis, provider, reach_variants):
             free_slug = f"{slug}-free"
         if "free" not in str(free_name).lower():
             free_name = f"{free_name} [free]"
-        staged.append((m, free_name, 0.0, True, None, free_slug))
+        staged.append((m, free_name, 0.0, True, None, free_slug, False))
 
     return staged
 
@@ -317,6 +370,8 @@ def build_rows(
     provider: str = "-",
     table: dict | None = None,
     reach_variants: bool = True,
+    fallback_mix: dict | None = None,
+    median_slugs=(),
 ) -> list[Row]:
     """Price every line of the console list from unified plan records.
 
@@ -324,7 +379,11 @@ def build_rows(
     ``label/in/out/cached`` become one row per variant; ``free`` records
     stage a free line). Absent records mean no documented offering, and
     pricing falls back to the catalog. ``est`` derives per slug from the
-    record's tiers and assumptions via ``cost_per_request``.
+    record's tiers and the mix it publishes — or *fallback_mix*, the Go
+    plan's median, when neither the record nor the model publishes one.
+    *median_slugs* names the records the loader filled with that mix, so
+    each row knows its own price came from it. With no mix anywhere the
+    ``est`` price is the fix rate.
     """
     records = records or {}
     free_ids = set(free_ids) | {
@@ -333,14 +392,23 @@ def build_rows(
         if isinstance(rec, dict) and rec.get("free")
     }
 
-    staged = []  # (model, display name, cost, free, monthly limit, endpoint slug)
+    staged = []  # (model, display name, cost, free, limit, endpoint, median)
     for m in models:
         staged.extend(
-            _stage_for_model(m, records, free_ids, axis, provider, reach_variants)
+            _stage_for_model(
+                m,
+                records,
+                free_ids,
+                axis,
+                provider,
+                reach_variants,
+                fallback_mix,
+                median_slugs,
+            )
         )
 
     rows = []
-    for model, name, cost, free, limit, endpoint_id in staged:
+    for model, name, cost, free, limit, endpoint_id, median in staged:
         if free:
             price, band = 0.0, BAND_FREE
             if "free" not in name.lower():
@@ -362,6 +430,7 @@ def build_rows(
                 benchmark=strongest,
                 provider=provider,
                 endpoint_id=endpoint_id,
+                median=median and not free,
             )
         )
     return rows
@@ -403,7 +472,12 @@ def dedupe_providers(rows: list[Row]) -> list[Row]:
         providers = sorted(
             {p for side in (current.provider, row.provider) for p in side.split(",")}
         )
-        merged[key] = replace(keep, provider=",".join(providers))
+        merged[key] = replace(
+            keep,
+            provider=",".join(providers),
+            # one provider may publish the mix this line's price came from
+            median=current.median or row.median,
+        )
     return [merged[key] for key in keys]
 
 

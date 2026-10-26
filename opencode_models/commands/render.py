@@ -196,9 +196,14 @@ def print_conflicts(conflicts, orphans=(), manual_orphans=()) -> int:
 
 
 FIX_NOTE = "Pricing and score/$ rank based on fixed 20/60/20 tokens per request"
-#: `est` cost base: the Go snapshot's page-estimated ¢/req; Zen lines and
-#: snapshot-missing models fall back to the fix.
-EST_NOTE = "¢/req and score/$ from opencode.ai measurements or median fallback (~)"
+#: `est` cost base: ¢/req built from a model's token mix as the Go plan
+#: page publishes it (``assumptions`` × base-tier prices). A row with no
+#: mix of its own — zen's records carry none, nor does a model no record
+#: prices — takes the Go plan's median instead, marked `~`; with no mix
+#: published anywhere at all, the fix rate above.
+EST_NOTE = (
+    "¢/req and score/$ based on reported in/out/cache rates, fallback to median (~)"
+)
 
 #: Every row is prefixed by its rank marker, outside the column grid and
 #: without a header of its own: ++ at 90+, + at 75+, o at 60+, - at 50+,
@@ -299,17 +304,27 @@ def bench_tag(benchmark: str | None) -> str:
     return benchmark[:5]
 
 
-def cells(row, axis: bool = True) -> tuple[str, ...]:
+def cells(row, axis: bool = True, cost: str = "est") -> tuple[str, ...]:
     """The fixed columns of one row, as text: score, cost, value, plan.
 
     The score is the model's combined 0-100 number, rounded for the column;
     the value is score per dollar — free lines are metered at $0 and read
     "-" for score/$ ("free" only where a non-free line prices exactly
     zero, "-" with no score). *axis* is kept for the single-benchmark
-    layout, which adds that benchmark's tag. Prices are cents, as elsewhere.
+    layout, which adds that benchmark's tag.
+
+    The cost cell follows *cost*, the `--cost` mode: a ¢/req basis carries
+    up to two decimals with trailing zeros stripped, so a fraction of a
+    cent stays visible next to the integer it used to hide behind. The
+    ¢/1m rate under ``input``/``output`` is whole cents, as before.
     """
     no_cost = row.free or row.price == 0
-    price = "0" if no_cost else f"{round(row.price * 100)}"
+    if no_cost:
+        price = "0"
+    elif cost_unit(cost) == "¢/req":
+        price = f"{row.price * 100:.2f}".rstrip("0").rstrip(".")
+    else:
+        price = f"{round(row.price * 100)}"
     score = "-" if row.score is None else f"{round(row.score)}"
     if axis:
         return (score, price, pick_value(row), row.provider)

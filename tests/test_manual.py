@@ -7,8 +7,11 @@ import unittest
 import unittest.mock
 from pathlib import Path
 
+from opencode_models.boards import BoardRow
+from opencode_models.catalog import compose_catalog
 from opencode_models.models import load_manual
-from opencode_models.overrides import load_curated
+from opencode_models.overrides import load_curated, load_overrides
+from opencode_models.scoring import scales, score_of
 
 #: Hermetic fixtures: never touch the real key file, or `list` reaches
 #: for the live gateway and the test goes nondeterministic (401 vs served).
@@ -298,6 +301,59 @@ class ManualListTest(unittest.TestCase):
         self.assertEqual(code, 0)
         row = next(l for l in out.splitlines() if "M SCORED" in l)
         self.assertFalse(row.lstrip().startswith("·"), row)
+
+
+class OrphanScoreCoverageTest(unittest.TestCase):
+    """Orphan pins that can score get a manual base record.
+
+    Four curated pins name models upstream never carried; each pairs its
+    pinned axis with a second (board TB 4.0 or a second pinned cell), so a
+    manual base record is what turns them from orphans into scored rows.
+    Singles with no pairing stay orphans and are not covered here.
+    """
+
+    IDS = (
+        "anthropic/claude-fable-5-1",
+        "anthropic/claude-opus-5",
+        "openai/gpt-6-astra",
+        "minimax/minimax-m3.1-flash",
+    )
+
+    def test_each_orphan_scores_from_manual_plus_override_plus_board(self):
+        root = Path(__file__).resolve().parent.parent
+        comp = compose_catalog(
+            [],
+            load_manual(root / "data" / "manual"),
+            load_overrides(root / "data" / "overrides"),
+            {},
+            [
+                BoardRow(
+                    benchmark="Terminal-Bench 4.0",
+                    model_name="Fable 5.1",
+                    score=57.88,
+                    source="https://www.tbench.ai/leaderboard/terminal-bench/4.0",
+                ),
+                BoardRow(
+                    benchmark="Terminal-Bench 4.0",
+                    model_name="Opus 5",
+                    score=53.94,
+                    source="https://www.tbench.ai/leaderboard/terminal-bench/4.0",
+                ),
+                BoardRow(
+                    benchmark="Terminal-Bench 4.0",
+                    model_name="GPT-6 Astra",
+                    score=58.18,
+                    source="https://www.tbench.ai/leaderboard/terminal-bench/4.0",
+                ),
+            ],
+        )
+        self.assertEqual(set(comp.curated.orphans) & set(self.IDS), set())
+        table = scales(comp.models)
+        by_id = {m.model_id: m for m in comp.models}
+        for mid in self.IDS:
+            with self.subTest(model=mid):
+                self.assertIn(mid, by_id)
+                self.assertIsNotNone(score_of(by_id[mid], table), mid)
 
 
 if __name__ == "__main__":

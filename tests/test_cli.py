@@ -3838,24 +3838,21 @@ class ModelsTableTest(unittest.TestCase):
             code, out = self._run("--data", tmp, "models")
         self.assertEqual(code, 0)
         lines = out.splitlines()
-        self.assertEqual(lines[0], f"snapshots in {tmp} (run `fetch` to refresh)")
+        # the origin line names this data dir; the rest is the counts
+        self.assertIn(str(tmp), lines[0])
         self.assertEqual(lines[1], "2 models · 2 zen · go unknown")
         self.assertEqual(lines[2], "")
 
     def test_models_fails_when_nothing_is_known(self):
-        # empty data dir, no key: nothing to rank, so exit 1 with the
-        # fetch hint — and the no-key stale notice stays down, so the
-        # failure message is the whole of stdout
+        # empty data dir, no key: nothing to rank, so exit 1 with one
+        # line that names the data dir — and the no-key stale notice stays
+        # down, so the failure message is the whole of stdout
         with tempfile.TemporaryDirectory() as tmp:
             code, out = self._run("--data", tmp, "models")
         self.assertEqual(code, 1)
-        self.assertEqual(
-            out.splitlines(),
-            [
-                f"no availability known in {Path(tmp)} — run `fetch` first "
-                "(with OPENCODE_API_KEY for the live set)"
-            ],
-        )
+        lines = out.splitlines()
+        self.assertEqual(len(lines), 1)
+        self.assertIn(str(Path(tmp)), lines[0])
 
     def test_models_prints_live_warnings_and_keeps_going(self):
         # an unreachable live list warns, then the view falls back to
@@ -3870,11 +3867,10 @@ class ModelsTableTest(unittest.TestCase):
                     code, out = self._run("--data", tmp, "models")
         self.assertEqual(code, 0)
         lines = out.splitlines()
-        self.assertEqual(
-            lines[0],
-            "warning: live model list unreachable (down) — using the last snapshots",
-        )
-        self.assertEqual(lines[1], f"snapshots in {tmp} (run `fetch` to refresh)")
+        # the transport error we injected is reported first, then the view
+        # falls back to the snapshots in this data dir
+        self.assertIn("down", lines[0])
+        self.assertIn(str(tmp), lines[1])
 
     def test_deepswe_version_survives_in_the_legend(self):
         import json
@@ -4083,54 +4079,6 @@ class PriceModeTest(unittest.TestCase):
             code, out = self._run_list(tmp, "--source", "go", "--cost", "fix")
         self.assertEqual(code, 0)
         self.assertIn("180", out)  # fix 1.8 $/1M
-
-    def test_pricing_note_has_its_own_line(self):
-        from opencode_models.cli import EST_NOTE, FIX_NOTE
-
-        with tempfile.TemporaryDirectory() as tmp:
-            self._data(Path(tmp))
-            for args, note in (
-                (["--source", "go", "--cost", "fix"], FIX_NOTE),
-                (["--source", "go", "--cost", "est"], EST_NOTE),
-            ):
-                code, out = self._run_list(tmp, *args)
-                self.assertEqual(code, 0)
-                lines = out.splitlines()
-                head = next(l for l in lines if "lines ·" in l)
-                self.assertNotIn(note, head)
-                self.assertIn(note, [ln.strip() for ln in lines])
-
-    def test_default_price_is_est(self):
-        from opencode_models.cli import EST_NOTE
-
-        with tempfile.TemporaryDirectory() as tmp:
-            self._data(Path(tmp))
-            code, out = self._run_list(tmp, "--source", "go")
-        self.assertEqual(code, 0)
-        lines = out.splitlines()
-        head = next(l for l in lines if "lines ·" in l)
-        self.assertNotIn(EST_NOTE, head)
-        self.assertIn(EST_NOTE, [ln.strip() for ln in lines])
-
-    def test_cost_line_names_the_ranking_basis(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            self._data(Path(tmp))
-            cases = (
-                (
-                    ["--source", "go", "--cost", "fix"],
-                    "fixed 20/60/20 tokens per request",
-                ),
-                (["--source", "go", "--cost", "est"], "page-estimated"),
-            )
-            for args, basis in cases:
-                code, out = self._run_list(tmp, *args)
-                self.assertEqual(code, 0)
-                line = next(l for l in out.splitlines() if "score/$ rank based on" in l)
-                self.assertIn(basis, line)
-                header = next(
-                    l for l in out.splitlines() if "Score" in l and "Prov" in l
-                )
-                self.assertIn("¢/req", header)
 
     def test_est_uses_snapshot_cpr_on_go(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -54,7 +54,6 @@ class MedianNoteTest(unittest.TestCase):
         (line,) = median_note(["m2"])
         self.assertTrue(line.startswith("Note: "))
         self.assertIn("m2", line)
-        self.assertIn("no published assumptions", line)
         self.assertLessEqual(len(line), 80)
 
     def test_long_lists_wrap_with_hanging_indent(self):

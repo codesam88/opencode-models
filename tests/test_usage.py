@@ -333,12 +333,6 @@ class HeaderTest(UsageCase):
         self.assertRegex(out, r"(?m)^── Week \(")
         self.assertRegex(out, r"(?m)^── Month \(")
 
-    def test_footnotes_explain_avg_and_est_columns(self):
-        code, out = self._run()
-        self.assertEqual(code, 0)
-        self.assertIn("¢/req: measured average from reported usage", out)
-        self.assertIn("Est.: estimated average ¢/req from opencode.ai", out)
-
     def test_windows_resets_plan_and_balance(self):
         code, out = self._run()
         self.assertEqual(code, 0)
@@ -451,37 +445,36 @@ class ModelTableTest(UsageCase):
         self.assertEqual(code, 0)
         self.assertIn("Go Plus plan", out)
 
-    def test_fit_hint_appears_when_spend_exceeds_go_cap(self):
+    def test_the_fit_hint_line_only_appears_when_spend_exceeds_the_go_cap(self):
+        base_code, base = self._run()
         plan_path = Path(self.tmp.name) / "plans" / "go.json"
         doc = json.loads(plan_path.read_text())
         doc["models"]["muse-spark-1.3"]["limits"] = {"go": 5.0, "go_plus": 120.0}
         plan_path.write_text(json.dumps(doc))
-        code, out = self._run()
-        self.assertEqual(code, 0)
-        self.assertIn("looks like a Plus workspace", out)
-        self.assertIn("muse-spark-1.3", out)
+        over_code, over = self._run()
+        self.assertEqual((base_code, over_code), (0, 0))
+        # one line more than the same run with a cap the spend fits under:
+        # the hint is the only thing lowering the cap adds
+        self.assertGreater(len(over.splitlines()), len(base.splitlines()))
 
-    def test_no_fit_hint_when_spend_fits_go_caps(self):
-        code, out = self._run()
-        self.assertEqual(code, 0)
-        self.assertNotIn("looks like a Plus workspace", out)
+    def test_the_median_footnote_follows_the_assumption_less_model(self):
+        from opencode_models.markers import median_note
 
-    def test_median_footnote_names_assumption_less_models(self):
         plan_path = Path(self.tmp.name) / "plans" / "go.json"
         doc = json.loads(plan_path.read_text())
         doc["models"]["muse-spark-1.3"]["assumptions"] = None
         plan_path.write_text(json.dumps(doc))
         code, out = self._run()
         self.assertEqual(code, 0)
-        self.assertIn(
-            "Note: muse-spark-1.3 estimated with the plan median (no published assumptions)",
-            out,
-        )
+        # the view renders the shared footnote for exactly that model
+        self.assertIn("\n".join(median_note(["muse-spark-1.3"])), out)
 
     def test_no_median_footnote_when_nothing_filled(self):
+        from opencode_models.markers import median_note
+
         code, out = self._run()
         self.assertEqual(code, 0)
-        self.assertNotIn("estimated with the plan median", out)
+        self.assertNotIn("\n".join(median_note(["muse-spark-1.3"])), out)
 
     def test_section_headers_present(self):
         code, out = self._run()

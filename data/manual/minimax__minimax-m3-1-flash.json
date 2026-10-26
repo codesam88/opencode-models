@@ -1,0 +1,1 @@
+{"model": {"benchmarks": [], "id": "minimax/minimax-m3.1-flash", "lab": "minimax", "name": "MiniMax M3.1 Flash", "note": "Provenance: https://www.minimax.io/blog/minimax-m31f (MiniMax launch post, DeepSWE + TB 4.0 cells). Base record only; benchmark numbers live in data/overrides/.", "priceUsdPer1M": {"cachedInput": 0.015, "input": 0.15, "output": 0.6}}}

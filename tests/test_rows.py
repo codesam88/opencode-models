@@ -265,6 +265,188 @@ class RowsForEstFallbackTest(unittest.TestCase):
             self.assertGreaterEqual(len(result.rows), 1)
 
 
+class EstGoMedianFallbackTest(unittest.TestCase):
+    """est prices any row without its own mix from the Go plan's median."""
+
+    GO_MIX = {"in": 100, "cached": 1000, "out": 10}
+
+    def _plan(self, d: Path, tier: str, models: dict) -> None:
+        (d / "plans").mkdir(parents=True, exist_ok=True)
+        (d / "plans" / f"{tier}.json").write_text(
+            json.dumps({"meta": {}, "models": models})
+        )
+
+    def _rec(self, price=(1.0, 1.0, None), assumptions=None, name="M"):
+        return {
+            "name": name,
+            "free": False,
+            "tiers": [
+                {
+                    "label": None,
+                    "in": price[0],
+                    "out": price[1],
+                    "cached": price[2],
+                    "cached_write": None,
+                }
+            ],
+            "limits": None,
+            "requests_per_month": None,
+            "assumptions": assumptions,
+        }
+
+    def _rows(self, d, roster, *, tier, price="est"):
+        orig_roster = availability.load_roster
+        orig_offered = availability.current_offered
+        availability.load_roster = lambda _d, _t: set(roster)
+        availability.current_offered = lambda _d, bypass=False: type(
+            "R", (), {"offered": set(roster), "warnings": ()}
+        )()
+        try:
+            return rows_for(d, [tier], price=price, all_models=True)
+        finally:
+            availability.load_roster = orig_roster
+            availability.current_offered = orig_offered
+
+    def _go_publishes_a_mix(self, d: Path) -> None:
+        # one publishing record: its mix is the plan median
+        self._plan(d, "go", {"g-a": self._rec(assumptions=self.GO_MIX)})
+
+    def test_a_zen_row_without_a_mix_prices_from_the_go_median(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            _write_model(d, "l/z-model")
+            self._go_publishes_a_mix(d)
+            self._plan(d, "zen", {"z-model": self._rec(price=(2.0, 4.0, 1.0))})
+            result = self._rows(d, {"z-model"}, tier="zen")
+            row = next(r for r in result.rows if r.endpoint_id == "z-model")
+        # (100*2.0 + 1000*1.0 + 10*4.0) / 1e6 — not the fix mix's 1.8
+        self.assertAlmostEqual(row.price, 0.00124, places=12)
+        self.assertIn("median", row.markers)
+
+    def test_a_row_with_no_record_at_all_prices_from_the_go_median(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            self._go_publishes_a_mix(d)
+            (d / "modelsdev.json").write_text(
+                json.dumps(
+                    {
+                        "meta": {"fetched_at": "2099-01-01T00:00:00+00:00"},
+                        "providers": {
+                            "opencode-go": {
+                                "models": {
+                                    "new-model": {
+                                        "id": "new-model",
+                                        "name": "New Model",
+                                        "cost": {
+                                            "input": 1.0,
+                                            "output": 3.0,
+                                            "cache_read": 0.5,
+                                        },
+                                    }
+                                }
+                            },
+                            "opencode": {"models": {}},
+                        },
+                    }
+                )
+            )
+            result = self._rows(d, {"new-model"}, tier="go")
+            row = next(r for r in result.rows if r.endpoint_id == "new-model")
+        # (100*1.0 + 1000*0.5 + 10*3.0) / 1e6 — not the fix mix's 1.1
+        self.assertAlmostEqual(row.price, 0.00063, places=12)
+        self.assertIn("median", row.markers)
+
+    def test_a_published_mix_still_wins_over_the_median(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            _write_model(d, "l/g-a")
+            self._plan(
+                d,
+                "go",
+                {"g-a": self._rec(price=(3.0, 9.0, 1.5), assumptions=self.GO_MIX)},
+            )
+            result = self._rows(d, {"g-a"}, tier="go")
+            row = next(r for r in result.rows if r.endpoint_id == "g-a")
+        # its own mix: (100*3.0 + 1000*1.5 + 10*9.0) / 1e6
+        self.assertAlmostEqual(row.price, 0.00189, places=12)
+        self.assertNotIn("median", row.markers)
+
+    def test_the_median_never_reaches_another_cost_axis(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            _write_model(d, "l/z-model")
+            self._go_publishes_a_mix(d)
+            self._plan(d, "zen", {"z-model": self._rec(price=(2.0, 4.0, 1.0))})
+            for axis in ("fix", "input", "output"):
+                result = self._rows(d, {"z-model"}, tier="zen", price=axis)
+                row = next(r for r in result.rows if r.endpoint_id == "z-model")
+                with self.subTest(axis=axis):
+                    self.assertNotIn("median", row.markers)
+            # fix still means the weighted 20/60/20 rate: 0.2*2 + 0.6*1 + 0.2*4
+            result = self._rows(d, {"z-model"}, tier="zen", price="fix")
+            row = next(r for r in result.rows if r.endpoint_id == "z-model")
+            self.assertAlmostEqual(row.price, 1.8, places=12)
+
+
+class EstPricesEveryVariantTest(unittest.TestCase):
+    """A labelled tier prices from its own rates, not the base tier's.
+
+    Off-Peak/Peak and <=100K/>100K lines exist to be priced apart: each
+    line's est cost is its own tier's rates under the record's mix.
+    """
+
+    MIX = {"in": 100, "cached": 1000, "out": 10}
+
+    def test_peak_and_off_peak_lines_carry_their_own_rates(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            _write_model(d, "l/ds")
+            (d / "plans").mkdir(parents=True, exist_ok=True)
+            (d / "plans" / "go.json").write_text(
+                json.dumps(
+                    {
+                        "meta": {},
+                        "models": {
+                            "ds": {
+                                "name": "DS",
+                                "free": False,
+                                "tiers": [
+                                    {
+                                        "label": "Off-Peak",
+                                        "in": 0.66,
+                                        "out": 1.98,
+                                        "cached": 0.022,
+                                        "cached_write": None,
+                                    },
+                                    {
+                                        "label": "Peak",
+                                        "in": 1.32,
+                                        "out": 3.96,
+                                        "cached": 0.044,
+                                        "cached_write": None,
+                                    },
+                                ],
+                                "limits": None,
+                                "requests_per_month": None,
+                                "assumptions": self.MIX,
+                            }
+                        },
+                    }
+                )
+            )
+            result = rows_for(d, ["go"], price="est", all_models=True)
+            by_name = {r.name: r for r in result.rows}
+        off = by_name["DS (Off-Peak)"]
+        peak = by_name["DS (Peak)"]
+        # each line: its own tier's rates under the same published mix
+        self.assertAlmostEqual(off.price, 0.0001078, places=12)
+        self.assertAlmostEqual(peak.price, 0.0002156, places=12)
+        self.assertGreater(peak.price, off.price)
+        # the record publishes the mix, so neither line is a median one
+        self.assertNotIn("median", off.markers)
+        self.assertNotIn("median", peak.markers)
+
+
 class RowsForAliasMergeTest(unittest.TestCase):
     def test_contributor_twins_merge_to_one_model_with_shared_score(self):
         with tempfile.TemporaryDirectory() as tmp:

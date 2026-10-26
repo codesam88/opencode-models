@@ -111,15 +111,27 @@ def _plan_models(data_dir: Path, tier: str) -> dict:
     return {}
 
 
+def fallback_mix(data_dir) -> dict | None:
+    """The Go plan's median token mix, or None when Go publishes no mix.
+
+    The one fallback ``est`` uses everywhere: a model's own published mix
+    wins, and anything without one — on any tier, or with no plan record
+    at all — is priced from this. Only the Go snapshot publishes mixes, so
+    this is the pool every tier draws from.
+    """
+    return median_assumptions(_plan_models(data_dir, "go"))
+
+
 def plan_records(data_dir: Path, tier: str) -> tuple[dict, set[str]]:
     """Plan records with the median fallback applied, plus filled slugs.
 
     The single choke point for estimate math: reads the tier snapshot
-    through :func:`_plan_models`, computes the plan median once via
-    :func:`allowance.median_assumptions`, and fills priced records that
-    publish no token mix. Returns ``(records, filled)`` where ``filled``
-    names the slugs that got the median. Views footnote those; the
-    validation gate keeps reading raw snapshots and never sees them.
+    through :func:`_plan_models` and fills priced records that publish no
+    token mix with :func:`fallback_mix` — the Go plan's median, so a tier
+    that publishes no mixes of its own still estimates. Returns
+    ``(records, filled)`` where ``filled`` names the slugs that got the
+    median. Views footnote those; the validation gate keeps reading raw
+    snapshots and never sees them.
 
     Deterministic from versioned snapshot files, so a future cache can
     wrap exactly this function (invalidate on snapshot mtime or
@@ -127,7 +139,7 @@ def plan_records(data_dir: Path, tier: str) -> tuple[dict, set[str]]:
     flag or config can change the fallback without touching callers.
     """
     records = _plan_models(data_dir, tier)
-    filled_records, filled = fill_assumptions(records, median_assumptions(records))
+    filled_records, filled = fill_assumptions(records, fallback_mix(data_dir))
     return filled_records, filled
 
 
@@ -382,6 +394,7 @@ def load_plan_snapshot(data_dir) -> tuple[dict, str]:
 __all__ = [
     "available_ids",
     "free_slugs",
+    "fallback_mix",
     "load_plan_snapshot",
     "load_available",
     "load_aliases",

@@ -159,9 +159,9 @@ def main(argv: list[str] | None = None) -> int:
         "--cost",
         choices=("fix", "input", "output", "est"),
         default="est",
-        help="cost of a line (default: %(default)s): est page-estimated "
-        "¢/req from the Go snapshot, zen + missing fall back to fix; "
-        "fix 20%% in, 60%% cached, 20%% out; input/output rate only",
+        help="cost calculation (default: %(default)s): est ¢/req "
+        "from published token mix, else Go plan median (~); "
+        "fix: 20%% in, 60%% cached, 20%% out",
     )
     p_list.add_argument(
         "--tables",
@@ -205,9 +205,10 @@ def main(argv: list[str] | None = None) -> int:
         "--cost",
         choices=("fix", "input", "output", "est"),
         default="est",
-        help="cost of a line (default: %(default)s): est page-estimated "
-        "¢/req from the Go snapshot, zen + missing fall back to fix; "
-        "fix 20%% in, 60%% cached, 20%% out; input/output rate only",
+        help="cost of a line (default: %(default)s): est ¢/req from "
+        "the published token mix, Go plan median (~) where a "
+        "model has none; fix 20%% in, 60%% cached, 20%% out; "
+        "input/output rate only",
     )
     p_next.add_argument(
         "--all-models",

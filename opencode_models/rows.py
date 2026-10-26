@@ -2,10 +2,10 @@
 
 One service builds, merges and dedupes the rows both commands render, so a
 recommendation can never disagree with the ranking it was drawn from. It owns
-roster loading per selected provider, catalog-pool assembly (including
-synthetic scoreless roster models for docs-documented slugs), availability
-filtering via :func:`opencode_models.availability.current_offered`, est-rate
-loading from the plan snapshot, the whole-catalog scales, and the
+roster loading per selected provider, the tier catalog from the models.dev
+slice (cards when the slice was never fetched), availability filtering via
+:func:`opencode_models.availability.current_offered`, est-rate loading
+from the plan snapshot, the whole-catalog scales, and the
 ``build_rows`` / ``merge_rows`` / ``dedupe_providers`` orchestration. It does
 not render, grade or partition -- those stay with the commands.
 """
@@ -15,11 +15,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
-from . import availability
+from . import availability, modelsdev
 from . import sync as sync_mod
 from .catalog import load_catalog
-from .identity import canonical_id
-from .models import Model
 from .ranking import build_rows, dedupe_providers, merge_rows
 from .scoring import scales
 
@@ -35,83 +33,6 @@ class RowsResult:
     tier_slugs: dict
     models: list
     warnings: tuple[str, ...] = field(default_factory=tuple)
-
-
-def _docs_known_slugs(data_dir: Path, tier: str) -> set[str]:
-    """Slugs a tier's documentation knows about (unified plans)."""
-    out: set[str] = set()
-    snap = availability._snapshot_ids(data_dir, tier)
-    if snap:
-        out |= set(snap)
-    out |= set(availability._plan_models(data_dir, tier))
-    return out
-
-
-def _synthesize_roster_models(
-    data_dir: Path, tier: str, roster: set[str], models: list
-) -> list:
-    """Scoreless catalog records for docs-documented roster slugs with no catalog match.
-
-    The roster is the source of truth for what is offered; the catalog only
-    identifies and extends. A slug the plans offer and the docs describe but
-    the catalog never carried (e.g. ``beam-free``) still renders, as an
-    unscored row. Live-only or internal slugs with no docs record are
-    excluded here -- that is the junk filter.
-    """
-    plan_models = availability._plan_models(data_dir, tier)
-    entry_by_slug: dict[str, object] = {}
-    for slug, rec in plan_models.items():
-        if isinstance(rec, dict) and slug not in entry_by_slug:
-            entry_by_slug[slug] = rec
-    catalog_canonical = {canonical_id(m.model_id.split("/")[-1]) for m in models}
-    aliases = availability.load_aliases(data_dir)
-    catalog_by_id = {m.model_id: m for m in models}
-    out: list[Model] = []
-    for slug in sorted(roster):
-        if slug not in _docs_known_slugs(data_dir, tier):
-            continue
-        if canonical_id(slug.split("/")[-1]) in catalog_canonical:
-            continue
-        rec = plan_models.get(slug)
-        name = rec.get("name") if isinstance(rec, dict) else None
-        rec = entry_by_slug.get(slug)
-        if not name and isinstance(rec, dict):
-            name = rec.get("name")
-        if not name:
-            name = slug
-        tiers = rec.get("tiers") if isinstance(rec, dict) else None
-        if tiers:
-            first = tiers[0]
-            price_input = first.get("in", 0.0)
-            price_output = first.get("out", 0.0)
-            price_cached_input = first.get("cached", 0.0)
-        else:
-            price_input = 0.0
-            price_output = 0.0
-            price_cached_input = 0.0
-        lab = slug.split("/")[0] if "/" in slug else slug
-        scores: dict = {}
-        sources: dict = {}
-        alias = aliases.get(slug)
-        if isinstance(alias, dict):
-            target_id = alias.get("model_id")
-            target = catalog_by_id.get(target_id) if target_id else None
-            if target is not None:
-                scores = {**target.scores, **scores}
-                sources = {**target.sources, **sources}
-        out.append(
-            Model(
-                model_id=slug,
-                name=name,
-                lab=lab,
-                price_input=price_input,
-                price_output=price_output,
-                price_cached_input=price_cached_input,
-                scores=scores,
-                sources=sources,
-            )
-        )
-    return out
 
 
 def rows_for(
@@ -133,6 +54,10 @@ def rows_for(
     """
     data_dir = Path(data_dir)
     models, curated, _board_conflicts, merge_warnings = load_catalog(data_dir)
+    # The models.dev slice is this data dir's go/zen catalog. Without it
+    # (fresh clone, offline) the cards decide, as they did before.
+    slice_by_tier = modelsdev.load(data_dir)
+    aliases = availability.load_aliases(data_dir)
     plan_warnings: list[str] = []
     for _provider in selected:
         if _provider in ("go", "zen"):
@@ -149,6 +74,9 @@ def rows_for(
     filled_by_provider: dict[str, set[str]] = {}
     covered: set[str] = set()
     synthetic_ids: set[int] = set()
+    # snapshot record id -> card id, so a row built from the slice is still
+    # recognised where the catalog is keyed by card ids (curated markers)
+    card_of: dict[str, str] = {}
     # slugs served/documented for every selected tier: a model listed by any
     # of them belongs to that tier (or is dropped by availability) and must
     # not be routed to the catalog-only "-" pool, even when the tier dropped it
@@ -171,12 +99,20 @@ def rows_for(
             provider_listed = list(pool)
         else:
             tier_slugs[provider] = availability.load_roster(data_dir, provider)
-            pool, base_free = availability.members(models, tier_slugs[provider])
-            catalog_pool = list(pool)
-            catalog_ids = {id(m) for m in catalog_pool}
-            pool = catalog_pool + _synthesize_roster_models(
-                data_dir, provider, tier_slugs[provider], models
-            )
+            links: dict[str, str] = {}
+            if slice_by_tier is None:
+                pool, base_free = availability.members(models, tier_slugs[provider])
+            else:
+                tier_models, links = modelsdev.to_models(
+                    slice_by_tier.get(provider, {}), models, aliases
+                )
+                card_of.update(links)
+                # the slice is the catalog: a served slug it does not carry
+                # is not rendered. --all-models drops the availability
+                # scoping and shows the whole catalog for the tier.
+                pool, base_free = availability.members(
+                    tier_models, None if all_models else tier_slugs[provider]
+                )
             free_candidate_slugs = availability.free_slugs(data_dir, provider)
             free_ids = set(base_free) | {
                 m.model_id
@@ -189,11 +125,14 @@ def rows_for(
             if on_offer is not None:
                 pool = [m for m in pool if availability.offered(m.model_id, on_offer)]
                 free_ids &= {m.model_id for m in pool}
-            counts[provider] = sum(1 for m in pool if id(m) in catalog_ids)
+            counts[provider] = len(pool)
             covered |= {m.model_id for m in pool}
             free_ids &= {m.model_id for m in pool}
-            provider_listed = [m for m in pool if id(m) in catalog_ids]
-            synthetic_ids |= {id(m) for m in pool if id(m) not in catalog_ids}
+            provider_listed = list(pool)
+            if slice_by_tier is not None:
+                # a slice row with no card record of its own still has to be
+                # listed: nothing scores it, so the ranking would drop it
+                synthetic_ids |= {id(m) for m in pool if m.model_id not in links}
         listed += provider_listed
         if provider in ("go", "zen"):
             # Single choke point for estimate math: the loader fills
@@ -219,8 +158,8 @@ def rows_for(
         )
         synth_rows = [m for m in pool if id(m) in synthetic_ids]
         if synth_rows:
-            # synthetic models name their own exact offering: no variant
-            # reach, or a free twin would stage twice under two names.
+            # a slice row with no card names its own exact offering: no
+            # variant reach, or a free twin would stage twice under two names
             groups.append(
                 build_rows(
                     synth_rows,
@@ -242,7 +181,11 @@ def rows_for(
     marked = []
     for r in rows:
         keys = []
-        if r.model.model_id in curated.curated:
+        # a slice row carries the record id; the overlay is keyed by the
+        # card id the record names
+        if r.model.model_id in curated.curated or (
+            card_of.get(r.model.model_id) in curated.curated
+        ):
             keys.append("curated")
         if (
             not r.free

@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from .. import availability
+from .. import availability, modelsdev
 from ..identity import canonical_id
 from ..models import load_models
 from ..tables import render
@@ -21,24 +21,34 @@ MODELS_ALL_HEADERS = ("Avail", "Endpoint", "Model")
 _STALE_NOTICE = "no API token found"
 
 
-def _display_names(data_dir: Path) -> dict[str, str]:
+def _display_names(data_dir: Path, slice_by_tier=None) -> dict[str, str]:
     """Display names by slug or id.
 
-    Catalog records come first; plan snapshots and tier-price entries add
-    names for slugs the catalog does not carry (docs-documented orphans),
-    so a served model the plans offer but the catalog never named can still
-    be shown. Internal ids with no documentation stay unnamed and hidden.
+    The models.dev slice names first -- it is the catalog, and its names
+    are the ones the plan's own surfaces use. Cards and plan snapshots
+    follow for slugs the slice does not carry. A slug no source can name
+    renders under its own id.
     """
     names = {}
+    for records in (slice_by_tier or {}).values():
+        for slug, rec in records.items():
+            if isinstance(rec, dict) and rec.get("name"):
+                names.setdefault(slug, rec["name"])
     for model in load_models(Path(data_dir) / "opencode"):
-        names[model.model_id] = model.name
-        names[model.model_id.split("/")[-1]] = model.name
+        names.setdefault(model.model_id, model.name)
+        names.setdefault(model.model_id.split("/")[-1], model.name)
     for tier in ("go", "zen"):
         for slug, rec in availability._plan_models(data_dir, tier).items():
             if isinstance(rec, dict) and rec.get("name"):
                 names.setdefault(slug, rec["name"])
                 names.setdefault(slug.split("/")[-1], rec["name"])
     return names
+
+
+def _catalog_known(slug: str, names: dict[str, str]) -> bool:
+    """Whether some source can name *slug* (free variants reach each other)."""
+    names_canonical = {canonical_id(k) for k in names}
+    return slug in names or canonical_id(slug) in names_canonical
 
 
 def _model_name(names: dict[str, str], slug: str) -> str:
@@ -69,20 +79,22 @@ def _status_label(ids, slug: str) -> str:
     return "[x]" if value is True else "[ ]" if value is False else "[?]"
 
 
-def _catalog_known(slug: str, names: dict[str, str]) -> bool:
-    """Whether the catalog can name *slug* (free variants reach each other)."""
-    names_canonical = {canonical_id(k) for k in names}
-    return slug in names or canonical_id(slug) in names_canonical
-
-
 def _roster(
-    tiers, names: dict[str, str], *, show_unserved: bool
+    tiers,
+    names: dict[str, str],
+    *,
+    show_unserved: bool,
+    catalog: dict | None = None,
 ) -> dict[str, tuple[str, str]]:
     """Which slugs the view shows: slug -> (tier, status marker).
 
     Served models only unless *show_unserved* adds the known-unserved
-    ``[ ]`` rows; where both tiers carry a slug, ``go`` wins; rows no
-    source can name (internal ids like ``test``) stay out.
+    ``[ ]`` rows; where both tiers carry a slug, ``go`` wins. With a
+    models.dev slice, *catalog* decides which slugs appear -- a served
+    slug it does not carry is not listed, which is also what keeps the
+    gateway's internal ids out without a filter of their own. Without a
+    slice, a slug has to be named by some source (cards or plan
+    snapshots), which lands on the same set.
     """
     by_slug: dict[str, tuple[str, str]] = {}
     for tier in sorted(tiers):
@@ -91,8 +103,11 @@ def _roster(
             marker = _status_label(ids, slug)
             if marker == "[ ]" and not show_unserved:
                 continue  # known-unserved: an --all view only
-            if not _catalog_known(slug, names):
-                continue  # internal ids (test, *-backup) are not ours to show
+            if catalog is not None:
+                if slug not in (catalog.get(tier) or {}):
+                    continue  # no record in this tier's catalog
+            elif not _catalog_known(slug, names):
+                continue  # no source can name it
             if slug not in by_slug or tier == "go":
                 by_slug[slug] = (tier, marker)
     return by_slug
@@ -137,8 +152,9 @@ def run(args: argparse.Namespace) -> int:
     plus the config API's known set, merged to ``available/`` on the way
     so `list` and `next` inherit the liveness. Default rows are the
     served models only; ``--all`` adds known-but-not-served rows, marked
-    ``[ ]``. Offline: the snapshots the last ``fetch`` left behind. Rows
-    the catalog cannot name (internal ids like ``test``) are hidden.
+    ``[ ]``. Offline: the snapshots the last ``fetch`` left behind. The
+    tier's catalog decides which slugs appear, so a served model no
+    catalog record carries is not listed either.
     """
     data_dir = Path(args.data)
     result = availability.current_offered(data_dir, bypass=False)
@@ -150,8 +166,14 @@ def run(args: argparse.Namespace) -> int:
             f"no availability known in {data_dir} — run `fetch` "
             f"first (with OPENCODE_API_KEY for the live set)"
         )
-    names = _display_names(data_dir)
-    by_slug = _roster(result.tiers, names, show_unserved=args.all_models)
+    slice_by_tier = modelsdev.load(data_dir)
+    names = _display_names(data_dir, slice_by_tier)
+    by_slug = _roster(
+        result.tiers,
+        names,
+        show_unserved=args.all_models,
+        catalog=slice_by_tier,
+    )
     rows = _rows(by_slug, names)
     lines.append(result.origin)
     lines.append(_summary(result.tiers, by_slug, result.unknown))

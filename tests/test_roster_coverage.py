@@ -1,4 +1,4 @@
-"""Roster coverage: docs-documented orphans render; junk stays hidden."""
+"""Roster coverage: served slugs render even undocumented; junk stays hidden."""
 
 import contextlib
 import io
@@ -114,6 +114,50 @@ def _make_fixture(tmp):
                     "m-beta": True,
                     "orphan-free": True,
                     "test": True,
+                    # served by the gateway, in no catalog record: it is not
+                    # rendered, and nothing has to filter it out
+                    "live-only-free": True,
+                },
+            }
+        )
+    )
+    # the models.dev slice is this fixture's catalog: the models the views
+    # render are exactly these, records the slice does not carry stay out
+    (d / "modelsdev.json").write_text(
+        json.dumps(
+            {
+                "meta": {"fetched_at": "2099-01-01T00:00:00+00:00"},
+                "providers": {
+                    "opencode-go": {"models": {}},
+                    "opencode": {
+                        "models": {
+                            "m-alpha": {
+                                "id": "m-alpha",
+                                "canonical_model_id": "l/m-alpha",
+                                "name": "M-ALPHA",
+                                "cost": {
+                                    "input": 1.0,
+                                    "output": 1.0,
+                                    "cache_read": 1.0,
+                                },
+                            },
+                            "m-beta": {
+                                "id": "m-beta",
+                                "canonical_model_id": "l/m-beta",
+                                "name": "M-BETA",
+                                "cost": {
+                                    "input": 2.0,
+                                    "output": 2.0,
+                                    "cache_read": 2.0,
+                                },
+                            },
+                            "orphan-free": {
+                                "id": "orphan-free",
+                                "name": "Orphan Free",
+                                "cost": {"input": 0, "output": 0, "cache_read": 0},
+                            },
+                        }
+                    },
                 },
             }
         )
@@ -145,6 +189,23 @@ class ModelsRosterCoverageTest(unittest.TestCase):
         self.assertNotIn("opencode/test", out_list)
         self.assertNotIn("opencode/test", out_models)
         self.assertNotIn("opencode/test", out_next)
+
+    def test_live_only_slug_no_catalog_record_is_not_rendered(self):
+        # served by the gateway, in neither the slice nor the cards: the
+        # catalog decides, so nothing renders and nothing filters
+        with tempfile.TemporaryDirectory() as tmp:
+            _make_fixture(tmp)
+            code_list, out_list = _run(
+                "--data", tmp, "list", "--source", "zen", "--tables", "all"
+            )
+            code_models, out_models = _run("--data", tmp, "models")
+        self.assertEqual(code_list, 0)
+        self.assertEqual(code_models, 0)
+        self.assertNotIn("live-only-free", out_list)
+        self.assertNotIn("live-only-free", out_models)
+        # and the junk ids are absent for the same reason: no record
+        self.assertNotIn("opencode/test", out_list)
+        self.assertNotIn("opencode/test", out_models)
 
     def test_models_shows_documented_orphan_by_snapshot_name(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -191,6 +252,22 @@ class ModelsRosterCoverageTest(unittest.TestCase):
                 "free": True,
             }
             (d / "plans" / "zen.json").write_text(json.dumps(plans))
+            slice_data = json.loads((d / "modelsdev.json").read_text())
+            slice_data["providers"]["opencode"]["models"].update(
+                {
+                    "plain": {
+                        "id": "plain",
+                        "name": "Plain",
+                        "cost": {"input": 1.0, "output": 1.0, "cache_read": 1.0},
+                    },
+                    "plain-free": {
+                        "id": "plain-free",
+                        "name": "Plain Free",
+                        "cost": {"input": 0, "output": 0, "cache_read": 0},
+                    },
+                }
+            )
+            (d / "modelsdev.json").write_text(json.dumps(slice_data))
             available = json.loads((d / "available" / "zen.json").read_text())
             available["models"]["plain"] = True
             available["models"]["plain-free"] = True
@@ -276,6 +353,52 @@ class AliasSynthesisTests(unittest.TestCase):
                         "m-alpha": True,
                         "m-beta": True,
                         alias_slug: True,
+                    },
+                }
+            )
+        )
+        # the slice is the catalog: these three are the rows it authorizes,
+        # and orphan-free carries no canonical id -- the alias is what
+        # points it at a card
+        (d / "modelsdev.json").write_text(
+            json.dumps(
+                {
+                    "meta": {"fetched_at": "2099-01-01T00:00:00+00:00"},
+                    "providers": {
+                        "opencode-go": {"models": {}},
+                        "opencode": {
+                            "models": {
+                                "m-alpha": {
+                                    "id": "m-alpha",
+                                    "canonical_model_id": "l/m-alpha",
+                                    "name": "M-ALPHA",
+                                    "cost": {
+                                        "input": 1.0,
+                                        "output": 1.0,
+                                        "cache_read": 1.0,
+                                    },
+                                },
+                                "m-beta": {
+                                    "id": "m-beta",
+                                    "canonical_model_id": "l/m-beta",
+                                    "name": "M-BETA",
+                                    "cost": {
+                                        "input": 2.0,
+                                        "output": 2.0,
+                                        "cache_read": 2.0,
+                                    },
+                                },
+                                "orphan-free": {
+                                    "id": "orphan-free",
+                                    "name": "Orphan Free",
+                                    "cost": {
+                                        "input": 0,
+                                        "output": 0,
+                                        "cache_read": 0,
+                                    },
+                                },
+                            }
+                        },
                     },
                 }
             )

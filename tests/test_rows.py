@@ -123,20 +123,136 @@ class RowsForDroppedModelTest(unittest.TestCase):
             self.assertNotIn("l/m2", ids)
 
 
-class RowsForSyntheticTest(unittest.TestCase):
-    def test_docs_documented_slug_without_catalog_match_synthesizes_row(self):
+class RowsForCatalogAuthorityTest(unittest.TestCase):
+    """The models.dev slice decides which roster slugs get a row."""
+
+    def _modelsdev(self, d: Path, providers: dict) -> None:
+        (d / "modelsdev.json").write_text(
+            json.dumps(
+                {
+                    "meta": {"fetched_at": "2099-01-01T00:00:00+00:00"},
+                    "providers": providers,
+                }
+            )
+        )
+
+    def _rows(self, d, roster, *, tier="zen", all_models=False, price="fix"):
+        orig_roster = availability.load_roster
+        orig_offered = availability.current_offered
+        availability.load_roster = lambda _d, _t: set(roster)
+        availability.current_offered = lambda _d, bypass=False: type(
+            "R", (), {"offered": set(roster), "warnings": ()}
+        )()
+        try:
+            return rows_for(d, [tier], price=price, all_models=all_models)
+        finally:
+            availability.load_roster = orig_roster
+            availability.current_offered = orig_offered
+
+    def test_snapshot_records_decide_which_roster_slugs_render(self):
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
             _write_model(d, "l/m1")
-            _snapshot(d, "zen", ["ghost-slug"])
-            (d / "plans" / "zen.json").write_text(
-                json.dumps({"models": {"ghost-slug": {"name": "Ghost", "free": False}}})
+            _snapshot(d, "zen", ["m-alpha"])
+            self._modelsdev(
+                d,
+                {
+                    "opencode-go": {"models": {}},
+                    "opencode": {
+                        "models": {
+                            "m-alpha": {
+                                "id": "m-alpha",
+                                "canonical_model_id": "l/m1",
+                                "name": "M Alpha",
+                                "cost": {
+                                    "input": 1.0,
+                                    "output": 2.0,
+                                    "cache_read": 0.5,
+                                },
+                            },
+                            "m-beta": {
+                                "id": "m-beta",
+                                "name": "M Beta",
+                                "cost": {
+                                    "input": 2.0,
+                                    "output": 4.0,
+                                    "cache_read": 1.0,
+                                },
+                            },
+                        }
+                    },
+                },
             )
-            result = rows_for(d, ["zen"], price="fix", all_models=True)
-            synth = [r for r in result.rows if r.model.model_id == "ghost-slug"]
-            self.assertEqual(len(synth), 1)
-            self.assertTrue(synth[0].synthetic)
-            self.assertIsNone(synth[0].score)
+            # served, but in no catalog record: not rendered, not filtered
+            result = self._rows(
+                d, {"m-alpha", "m-beta", "omen-alpha", "test"}, tier="zen"
+            )
+            self.assertEqual(
+                {r.model.model_id for r in result.rows}, {"m-alpha", "m-beta"}
+            )
+
+    def test_snapshot_rows_take_the_name_scores_and_price_from_their_sources(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            _write_model(d, "l/m1")
+            # a second scored card so the benchmark scales have a spread
+            _write_model(
+                d,
+                "l/m2",
+                benches=[
+                    ("Terminal-Bench", "2.1", 70.0),
+                    ("SWE-Bench", "Verified", 40.0),
+                ],
+            )
+            _snapshot(d, "zen", ["m-beta"])
+            self._modelsdev(
+                d,
+                {
+                    "opencode-go": {"models": {}},
+                    "opencode": {
+                        "models": {
+                            "m-alpha": {
+                                "id": "m-alpha",
+                                "canonical_model_id": "l/m1",
+                                "name": "M Alpha",
+                                "cost": {
+                                    "input": 1.0,
+                                    "output": 2.0,
+                                    "cache_read": 0.5,
+                                },
+                            },
+                            "m-beta": {
+                                "id": "m-beta",
+                                "name": "M Beta",
+                                "cost": {
+                                    "input": 2.0,
+                                    "output": 4.0,
+                                    "cache_read": 1.0,
+                                },
+                            },
+                        }
+                    },
+                },
+            )
+            result = self._rows(d, {"m-alpha", "m-beta"}, tier="zen")
+            by_id = {r.model.model_id: r for r in result.rows}
+            # name and price from the record, scores from the card it names
+            self.assertEqual(by_id["m-alpha"].model.name, "M Alpha")
+            self.assertIsNotNone(by_id["m-alpha"].score)
+            self.assertEqual(by_id["m-alpha"].model.price_input, 1.0)
+            self.assertEqual(by_id["m-beta"].model.name, "M Beta")
+            self.assertIsNone(by_id["m-beta"].score)
+            # no card record: always listed, never dropped as unrankable
+            self.assertTrue(by_id["m-beta"].synthetic)
+
+    def test_without_a_snapshot_the_cards_decide(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            _write_model(d, "l/m1")
+            _snapshot(d, "zen", ["l/m1"])
+            # a served slug no card carries renders nothing: synthesis is gone
+            result = self._rows(d, {"l/m1", "m-ghost"}, tier="zen")
+            self.assertEqual({r.model.model_id for r in result.rows}, {"l/m1"})
 
 
 class RowsForEstFallbackTest(unittest.TestCase):

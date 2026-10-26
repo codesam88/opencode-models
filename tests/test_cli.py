@@ -3798,9 +3798,10 @@ class ModelsTableTest(unittest.TestCase):
             .startswith("[ ]")
         )
 
-    def test_models_hides_live_only_rows_the_docs_do_not_name(self):
-        # m-ghost is served but documented nowhere (like the live "test"
-        # id): with no catalog record and no docs name it stays hidden.
+    def test_models_shows_only_rows_some_catalog_source_carries(self):
+        # the served set carries ids no catalog source has a record for --
+        # internal ids included -- and none of them is listed: the catalog
+        # decides, so there is no id filter to maintain.
         import opencode_models.availability as availability
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -3811,7 +3812,10 @@ class ModelsTableTest(unittest.TestCase):
                     mock.patch.object(
                         availability,
                         "fetch_served",
-                        return_value={"zen": {"m-ghost", "m-known"}, "go": set()},
+                        return_value={
+                            "zen": {"m-ghost", "m-known", "test", "ops-backup"},
+                            "go": set(),
+                        },
                     ),
                     mock.patch.object(
                         availability, "fetch_live", return_value={"zen": {}, "go": {}}
@@ -3821,8 +3825,11 @@ class ModelsTableTest(unittest.TestCase):
                     code_all, out_all = self._run("--data", tmp, "models", "--all")
         self.assertEqual(code, 0)
         self.assertIn("m-known", out)
-        self.assertNotIn("m-ghost", out)  # junk like the served "test" id
+        self.assertNotIn("m-ghost", out)
+        self.assertNotIn("opencode/test", out)
+        self.assertNotIn("opencode/ops-backup", out)
         self.assertNotIn("m-ghost", out_all)
+        self.assertNotIn("opencode/test", out_all)
 
     def test_models_head_lines_name_the_origin_and_the_counts(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -5,8 +5,8 @@ Storage owns every on-disk layer, so it is the only place that may answer
 else: callers compare the returned age against their own thresholds.
 
 A source name identifies a snapshot layer: ``available``, ``available/<tier>``,
-``plans``, ``plans/<tier>``, ``boards``, ``boards/<name>``, or ``arena``. A
-layer that was never fetched yields ``None``; a layer present only as a
+``plans``, ``plans/<tier>``, ``boards``, ``boards/<name>``, ``arena``, or
+``modelsdev``. A layer that was never fetched yields ``None``; a layer present only as a
 legacy bare payload (no ``meta`` envelope) falls back to the file's mtime,
 as does a corrupt ``meta`` block. Unknown source names raise ``KeyError``
 immediately rather than being guessed at.
@@ -24,6 +24,8 @@ from pathlib import Path
 # .plan/architecture-refactoring.md and docs/architecture.md section 7.
 AVAILABILITY_MAX_AGE = timedelta(hours=4)
 PLANS_MAX_AGE = timedelta(hours=8)
+#: The models.dev catalog slice moves daily; a day old still is the catalog.
+MODELSDEV_MAX_AGE = timedelta(hours=24)
 
 
 def _parse_iso(value):
@@ -93,6 +95,9 @@ def _layer_paths(data_dir: Path, source: str) -> list[Path]:
 
     if source == "arena":
         return [data_dir / "aiarena" / "scores.json"]
+
+    if source == "modelsdev":
+        return [data_dir / "modelsdev.json"]
 
     raise KeyError(source)
 

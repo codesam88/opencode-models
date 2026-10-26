@@ -1,11 +1,12 @@
 """Lazy, on-demand refresh of stale T2 sources.
 
 ``sync`` is the user-invoked (and, later, lazily-triggered) counterpart to
-``fetch``: it touches only the T2 layers (availability + plan pricing) and
-only when they are older than their thresholds. T1 layers (catalog, boards,
-arena) are deliberately left alone here — they are explicit ``fetch`` only,
-with their own cadence warnings. Measured/export-derived data is out of
-scope for this step and has no writer yet.
+``fetch``: it touches only the T2 layers (availability, plan pricing and
+the models.dev catalog slice) and only when they are older than their
+thresholds. T1 layers (catalog cards, boards, arena) are deliberately left
+alone here — they are explicit ``fetch`` only, with their own cadence
+warnings. Measured/export-derived data is out of scope for this step and
+has no writer yet.
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ import json
 from datetime import timedelta
 from pathlib import Path
 
-from . import availability, go_pricing, zen_pricing
+from . import availability, go_pricing, modelsdev, zen_pricing
 from .freshness import AVAILABILITY_MAX_AGE, PLANS_MAX_AGE, snapshot_age
 
 _AVAILABILITY_TIERS = ("go", "zen")
@@ -144,6 +145,18 @@ def sync(data_dir: Path, get=None, force: bool = False) -> int:
             refreshed += 1
         else:
             warned += 1
+
+    # models.dev: the go/zen catalog. Public endpoint, same transport as
+    # the plan pages; a failed fetch keeps the last slice and warns.
+    status, messages, _age = modelsdev.refresh(data_dir, get=get, force=force)
+    for message in messages:
+        print(message)
+    if status == "fresh":
+        up_to_date += 1
+    elif status == "refreshed":
+        refreshed += 1
+    else:
+        warned += 1
 
     print(f"summary: {refreshed} refreshed, {up_to_date} up-to-date, {warned} warned")
     return 0

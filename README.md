@@ -370,6 +370,7 @@ committed**. They are third-party records, they go stale, and they are large;
 | `aiarena/` | arena.ai (LMArena) Elo cache, `{slug: elo}` | `fetch` | no — `.gitignore`d |
 | `available/` | the live model set per tier from the inference gateway lists (served = callable), annotated with the Console config API's known set | keyed `fetch` / `models` | no — `.gitignore`d |
 | `plans/` | validated plan allowance snapshots: per-model token prices, monthly limits per plan, token/req assumptions, request estimates (gated by estimate reproduction + structural checks) | `sync` refreshes stale snapshots on each run (~4h availability, ~8h pricing); `just plans-sync` forces a refresh, `just plans-freeze` promotes to the shipped fallback | no — `.gitignore`d |
+| `modelsdev.json` | the go/zen catalog: models.dev's `opencode-go` and `opencode` providers sliced out of its 6 MB catalog (id, name, cost per 1M tokens, context limits, `canonical_model_id` for the join back to the cards) | `sync` refreshes it when stale (~24h) | no — `.gitignore`d |
 | `boards/` | official benchmark boards, fetched from whoever runs them (see below) | `fetch` | no — `.gitignore`d |
 | `usage/` | Go window poll history (`go_windows.jsonl`, appended by keyed `usage` runs for the offline fallback) | keyed `usage` | no — `.gitignore`d |
 | `overrides/` | hand-pinned benchmark values (see `data/overrides/README.md`) | nobody — `overrides` reports disagreements | **yes** (the directory, no data) |
@@ -408,15 +409,27 @@ the docs snapshot stays the offline fallback. `opencode-models models`
 prints the record as one sorted table — endpoint (preferring Go where
 both plans list the model) and display name — with `--all` adding
 known-but-unserved rows plus an `Avail` status column (`[x]`/`[ ]`/`[?]`).
-Rows the catalog cannot
-name (internal ids like `test`) are never shown.
+The internal ids the gateway serves (`test`, `*-backup`) are the only
+rows never shown; a served model no source can name is listed with `-`
+where its name would go.
+
+**Which rows exist** comes from the go/zen catalog: `sync` slices the
+`opencode-go` and `opencode` providers out of
+[models.dev](https://models.dev) (an open database of models and
+providers) into `data/modelsdev.json`, and a served model with no record
+there is not listed. That is also what keeps the gateway's internal ids
+(`test`, `*-backup`) out — models.dev carries neither, so no filter of
+ours has to know about them — and it is where a row's name, price and
+context limits come from when no benchmark card exists. Without the
+slice (fresh clone, offline) the cards decide, as before.
 
 - **`list` and `next` show only what a plan lists** — live with a token
   (checked every run), the last snapshots offline. `next` therefore never
   recommends a model that has been dropped.
-- **`--all-models`** (alias `--all`, also on `next`) lists the whole catalog
-  instead, bypassing every availability filter — which is what you want when
-  auditing rather than choosing.
+- **`--all-models`** (alias `--all`, also on `next`) lists the tier's whole
+  catalog instead — every record models.dev carries for it — bypassing the
+  availability filter, which is what you want when auditing rather than
+  choosing.
 - **The view says what it covers.** `list` notes it shows only what the
   plans offer right now and points at `--all-models` for the rest, without
   naming names — which models a plan dropped is audit material, not a
@@ -499,8 +512,9 @@ correct or remove it.
 - Benchmarks are heterogeneous (metric, harness, conditions differ per source).
   `list` orders Terminal-Bench rows and SWE-Bench rows separately rather than
   mixing their scores; compare within one benchmark.
-- Coverage depends on which models the opencode catalog carries: a model
-  absent from the catalog is invisible to every view.
+- Coverage depends on which models models.dev carries for the two opencode
+  providers: a served model with no record there is invisible to every view
+  until models.dev lists it.
 
 ## Limitations
 

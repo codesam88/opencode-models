@@ -50,6 +50,32 @@ def _write_available(directory, tier, hours_old=30):
     )
 
 
+def _write_modelsdev(directory, hours_old=1):
+    """A fresh models.dev slice, so the sync run does not fetch it."""
+    directory = Path(directory)
+    (directory / "modelsdev.json").write_text(
+        json.dumps(
+            {
+                "meta": _old_meta(hours_old),
+                "providers": {
+                    "opencode-go": {"models": {}},
+                    "opencode": {"models": {}},
+                },
+            }
+        )
+    )
+
+
+def _modelsdev_payload():
+    return json.dumps(
+        {
+            "opencode-go": {"id": "opencode-go", "models": {"a": {"id": "a"}}},
+            "opencode": {"id": "opencode", "models": {"b": {"id": "b"}}},
+            "some-other-lab": {"id": "some-other-lab", "models": {"x": {"id": "x"}}},
+        }
+    )
+
+
 def _run_sync(data_dir, **kw):
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
@@ -67,11 +93,34 @@ class SyncFreshTest(unittest.TestCase):
             _write_snapshot(tmp, "zen", hours_old=1)
             _write_available(tmp, "go", hours_old=1)
             _write_available(tmp, "zen", hours_old=1)
+            _write_modelsdev(tmp)
             code, out = _run_sync(Path(tmp), get=fail)
         self.assertEqual(code, 0)
         self.assertIn("up-to-date", out)
         self.assertIn("0 refreshed", out)
         self.assertNotIn("warning", out)
+
+    def test_stale_modelsdev_refreshes_from_its_source(self):
+        def fake_get(url):
+            if "models.dev" in url:
+                return _modelsdev_payload()
+            if "console/go" in url:
+                return go_fixture.FIXTURE_HTML
+            if url.endswith("/docs/zen/"):
+                return zen_fixture.FIXTURE_HTML
+            raise OSError(f"unexpected url: {url}")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_snapshot(tmp, "go", hours_old=1)
+            _write_snapshot(tmp, "zen", hours_old=1)
+            _write_available(tmp, "go", hours_old=1)
+            _write_available(tmp, "zen", hours_old=1)
+            _write_modelsdev(tmp, hours_old=30)
+            code, out = _run_sync(Path(tmp), get=fake_get)
+            body = json.loads((Path(tmp) / "modelsdev.json").read_text())
+        self.assertEqual(code, 0)
+        self.assertIn("modelsdev: refreshed (2 models)", out)
+        self.assertNotIn("some-other-lab", body["providers"])
 
 
 class SyncStalePlansTest(unittest.TestCase):
@@ -138,6 +187,7 @@ class SyncT1UntouchedTest(unittest.TestCase):
             _write_snapshot(d, "zen", hours_old=1)
             _write_available(d, "go", hours_old=1)
             _write_available(d, "zen", hours_old=1)
+            _write_modelsdev(d)
             code, _ = _run_sync(
                 d,
                 get=lambda url: (_ for _ in ()).throw(

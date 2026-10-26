@@ -170,6 +170,7 @@ Each kind has one home, one writer, one freshness rule:
 | Kind | Home | Writer | Freshness |
 |---|---|---|---|
 | Catalog record | `data/opencode/` | `fetch` (T1) | weekly, never-delete |
+| Go/zen catalog (models.dev slice) | `data/modelsdev.json` | `sync` (T2) | ~24h, overwrite |
 | Rate card + allowance + assumptions | unified `plans/<tier>.json` | `sync` (T2) | ~8h, overwrite |
 | Availability status | `data/available/` | `sync`, key-gated (T2) | ~4h, overwrite |
 | Curated overlay / manual record | `data/overrides/`, `data/manual/` | human (T3) | versioned with code |
@@ -179,11 +180,24 @@ Each kind has one home, one writer, one freshness rule:
 | Poll history | `data/usage/*.jsonl` | `usage` runs | append-and-prune |
 | Auth key | XDG config (owner-only) | `auth` / env | n/a (secret) |
 
+The models.dev slice carries `meta{source, fetched_at, schema_rev}` plus
+`providers`, holding only the two opencode providers verbatim from
+`https://models.dev/api.json`: `opencode-go` (the go tier) and `opencode`
+(zen), each `{id, name, models}`. A record's fields the views read:
+`name`, `cost{input, output, cache_read}` (USD per 1M tokens), `limit`,
+`canonical_model_id` (the card the record maps to, used to join
+benchmark scores), `family`, `status`. The slice is the tier catalog:
+rows come from its records intersected with availability, so a served
+slug it does not carry is not rendered — the gateway's internal ids
+included, which is why no id filter exists. A missing or unreadable file
+means "no slice", and the views fall back to the cards.
+
 ## 7. Sync
 
 No timer or daemon: on each run the application checks snapshot age
 against per-tier thresholds and syncs when stale (~4–8h for T2
-price/model info, weekly warning for T1). `fetch` remains the explicit
+price/model info, ~24h for the models.dev catalog slice, weekly warning
+for T1). `fetch` remains the explicit
 T1 refresh; `sync` runs user-invoked or lazily, and `fetch` may invoke
 it internally. Offline or failed sync warns and proceeds on the last
 snapshots — never a traceback. The automated validation gate

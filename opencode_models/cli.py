@@ -30,8 +30,6 @@ from .commands.next import run as _cmd_next
 from .commands.overrides import run as _cmd_conflicts
 from .commands.render import (
     CONFLICT_HEADERS,  # noqa: F401 (test compat; moves with fetch)
-    EST_NOTE,  # noqa: F401 (test compat)
-    FIX_NOTE,  # noqa: F401 (test compat)
 )
 from .commands.render import column_label as _column_label  # noqa: F401 (test compat)
 from .commands.render import header as _header  # noqa: F401 (test compat)

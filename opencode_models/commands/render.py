@@ -241,13 +241,13 @@ def headings(axis: bool, price: str) -> tuple[str, ...]:
     """
     unit = cost_unit(price)
     if axis:
-        return ("Score", unit, "Score/$", "Prov")
-    return ("Score", "Bench", unit, "Score/$", "Prov")
+        return ("Score", unit, "Score/¢", "Prov")
+    return ("Score", "Bench", unit, "Score/¢", "Prov")
 
 
 def next_headings(price: str) -> tuple[str, ...]:
     """The `next` grid headings; the unit follows the `--cost` mode."""
-    return ("#", "Plan", "Score", cost_unit(price), "Score/$", "Endpoint", "Band")
+    return ("#", "Plan", "Score", cost_unit(price), "Score/¢", "Endpoint", "Band")
 
 
 def header(widths: tuple[int, ...], axis: bool = True, price: str = "est") -> str:

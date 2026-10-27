@@ -134,7 +134,7 @@ def _grid(tmp):
 
 class ListViewContract(unittest.TestCase):
     # grade rides as an unheaded prefix, MODEL closes the row
-    COLUMNS = ["Score", "¢/req", "Score/$", "Prov", "Model"]
+    COLUMNS = ["Score", "¢/req", "Score/¢", "Prov", "Model"]
 
     def test_columns(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -242,7 +242,7 @@ class ListViewContract(unittest.TestCase):
         self.assertEqual(set(grades), {"M3", "M4"})
         # M3 derives 100, M4 75; M2 (50, "-") fills the worst-score table
         self.assertEqual(grades, {"M3": "++", "M4": "+"})
-        self.assertIn("Score/$", _header(out))
+        self.assertIn("Score/¢", _header(out))
 
 
 class ListBenchmarkViewContract(unittest.TestCase):
@@ -261,7 +261,7 @@ class ListBenchmarkViewContract(unittest.TestCase):
         self.assertEqual(code, 0)
         tokens = _header(out).split()
         self.assertEqual(
-            tokens, ["Score", "Bench", "¢/req", "Score/$", "Prov", "Model"]
+            tokens, ["Score", "Bench", "¢/req", "Score/¢", "Prov", "Model"]
         )
 
     def test_rows_carry_the_benchmark_tag(self):
@@ -359,7 +359,7 @@ class ScoresViewContract(unittest.TestCase):
 
 
 class NextViewContract(unittest.TestCase):
-    COLUMNS = ["#", "Plan", "Score", "¢/req", "Score/$", "Endpoint", "Band"]
+    COLUMNS = ["#", "Plan", "Score", "¢/req", "Score/¢", "Endpoint", "Band"]
 
     def test_columns(self):
         import opencode_models.availability as availability
@@ -439,7 +439,7 @@ if __name__ == "__main__":
 
 
 class NextTableContract(unittest.TestCase):
-    COLUMNS = ["#", "Plan", "Score", "¢/req", "Score/$", "Endpoint", "Band"]
+    COLUMNS = ["#", "Plan", "Score", "¢/req", "Score/¢", "Endpoint", "Band"]
 
     def _row(self, name, provider, score, price, free=False):
         from opencode_models.models import Model
@@ -517,7 +517,7 @@ class NextTableContract(unittest.TestCase):
             self.assertEqual(first_end, edge)
         # "-" would rindex-match the dash in "opencode-go", so the SCORE/$
         # value is located as the cell right before ENDPOINT instead
-        edge = head.index("Score/$") + len("Score/$")
+        edge = head.index("Score/¢") + len("Score/¢")
         for row, endpoint in ((first, "opencode-go/aaa"), (second, "opencode/bb")):
             value_end = row.index(endpoint) - 1
             self.assertEqual(value_end, edge)

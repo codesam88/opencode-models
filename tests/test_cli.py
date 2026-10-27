@@ -918,7 +918,7 @@ class CliTest(unittest.TestCase):
         for title in ("best value", "worst score", "highest cost"):
             self.assertRegex(out, rf"(?m)^── [^\n]*{title}")
         # one column header per table: score, cost, plan, in order
-        header = re.compile(r"(?m)^\s*Score\s+¢/req\s+Score/\$\s+Prov\s+Model\s*$")
+        header = re.compile(r"(?m)^\s*Score\s+¢/req\s+Score/¢\s+Prov\s+Model\s*$")
         self.assertEqual(len(header.findall(out)), 3)
 
     def test_headers_are_bold_when_the_output_is_a_terminal(self):

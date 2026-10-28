@@ -21,7 +21,15 @@ from ..ranking import (
 from ..rows import rows_for
 from ..tables import column_widths
 from . import fail
-from .render import cells, format_list_row, headings, price_note, section
+from .render import (
+    cells,
+    format_list_row,
+    headings,
+    pick_value,
+    price_note,
+    section,
+    value_unit,
+)
 
 BAND_LABELS = (
     (BAND_FREE, "free — use first"),
@@ -42,11 +50,27 @@ def _display_name(row) -> str:
 #: (``¢/req`` for fix/est, ``¢/1m`` for input/output); see `_header`.
 
 
-def _widths(rows, axis: bool = True, price: str = "est") -> tuple[int, ...]:
-    """Widest cell per column across the whole view, header included."""
-    return tuple(
-        column_widths(headings(axis, price), [cells(r, axis, price) for r in rows])
-    )
+def _unit(rows) -> str:
+    """One table's value unit, read off its rows' per-dollar values."""
+    return value_unit([pick_value(r) for r in rows])
+
+
+def _widths(tables, axis: bool = True, price: str = "est") -> tuple[int, ...]:
+    """Widest cell per column across the whole view, header included.
+
+    Each table measures its own rows in its own value unit, so a table
+    reading score per cent does not widen a column for a neighbour still
+    at score per dollar — and the one width set keeps them lined up.
+    """
+    measured = [
+        column_widths(
+            headings(axis, price, unit),
+            [cells(r, axis, price, unit) for r in group],
+        )
+        for group, unit in tables
+        if group
+    ]
+    return tuple(max(widths) for widths in zip(*measured, strict=True))
 
 
 def _select(data_dir: Path, source: str | None, price: str = "est"):
@@ -165,9 +189,14 @@ def run(args: argparse.Namespace) -> int:
     if legend_line:
         lines.append(legend_line)
     # one set of column widths for the whole view, so the three tables line
-    # up with each other too
-    widths = _widths(rows, axis, args.cost)
-    lines.extend(section(f"best value · {len(main)} lines", widths, axis, args.cost))
+    # up with each other too — each measured in the unit its own values pick
+    main_u, worst_u, pricey_u = _unit(main), _unit(worst), _unit(pricey)
+    widths = _widths(
+        [(main, main_u), (worst, worst_u), (pricey, pricey_u)], axis, args.cost
+    )
+    lines.extend(
+        section(f"best value · {len(main)} lines", widths, axis, args.cost, main_u)
+    )
     for band, label in BAND_LABELS:
         group = [r for r in main if r.band == band]
         if group:
@@ -175,7 +204,7 @@ def run(args: argparse.Namespace) -> int:
             for row in group:
                 lines.append(
                     format_list_row(
-                        cells(row, axis, args.cost),
+                        cells(row, axis, args.cost, main_u),
                         widths,
                         row.grade,
                         _display_name(row),
@@ -189,24 +218,35 @@ def run(args: argparse.Namespace) -> int:
                 widths,
                 axis,
                 args.cost,
+                worst_u,
             )
         )
         for row in worst:
             lines.append(
                 format_list_row(
-                    cells(row, axis, args.cost), widths, row.grade, _display_name(row)
+                    cells(row, axis, args.cost, worst_u),
+                    widths,
+                    row.grade,
+                    _display_name(row),
                 )
             )
 
         lines.extend(
             section(
-                f"highest cost (top 30%) · {len(pricey)} lines", widths, axis, args.cost
+                f"highest cost (top 30%) · {len(pricey)} lines",
+                widths,
+                axis,
+                args.cost,
+                pricey_u,
             )
         )
         for row in pricey:
             lines.append(
                 format_list_row(
-                    cells(row, axis, args.cost), widths, row.grade, _display_name(row)
+                    cells(row, axis, args.cost, pricey_u),
+                    widths,
+                    row.grade,
+                    _display_name(row),
                 )
             )
     print("\n".join(lines))

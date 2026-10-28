@@ -48,6 +48,7 @@ __all__ = [
     "rule",
     "section",
     "style",
+    "value_unit",
 ]
 
 
@@ -231,40 +232,83 @@ def price_note(price: str) -> str:
     return FIX_NOTE
 
 
-def headings(axis: bool, price: str) -> tuple[str, ...]:
-    """Column headings, title-cased; the unit follows the `--cost` mode.
+#: The value column's two units. `SCORE_PER_DOLLAR` is the ranking's own
+#: measure; `SCORE_PER_CENT` is that same ratio over a hundred, which is
+#: the readable one once every value in a table clears 100.
+SCORE_PER_DOLLAR = "Score/$"
+SCORE_PER_CENT = "Score/¢"
+
+
+def value_unit(values) -> str:
+    """The value column's unit for one table, read off that table's values.
+
+    Every value has to sit above 100 for score per cent to be the
+    readable of the two: at or below it, dividing by a hundred rounds the
+    value down to nothing. A `-` (a free or unscored line) and a `free`
+    (a non-free line priced at zero, whose ratio is unbounded) carry no
+    number that could hold the column at dollars. A table with no values
+    at all has nothing to go on and keeps the ranking's own unit.
+    """
+    values = list(values)
+    if not values:
+        return SCORE_PER_DOLLAR
+    for value in values:
+        if value in ("-", "free"):
+            continue
+        if float(value) <= 100:
+            return SCORE_PER_DOLLAR
+    return SCORE_PER_CENT
+
+
+def headings(axis: bool, price: str, unit: str = SCORE_PER_DOLLAR) -> tuple[str, ...]:
+    """Column headings, title-cased; the cost unit follows the `--cost` mode.
 
     Two layouts, both built around the one score: the default shows the
     model's score beside its cost and plan, and ``--benchmark X`` ranks on
     one benchmark and adds that benchmark's tag. The per-axis raw numbers
-    live in `scores`, not here.
+    live in `scores`, not here. *unit* names the value column, which
+    `value_unit` picks per table.
     """
-    unit = cost_unit(price)
+    cost = cost_unit(price)
     if axis:
-        return ("Score", unit, "Score/¢", "Prov")
-    return ("Score", "Bench", unit, "Score/¢", "Prov")
+        return ("Score", cost, unit, "Prov")
+    return ("Score", "Bench", cost, unit, "Prov")
 
 
-def next_headings(price: str) -> tuple[str, ...]:
-    """The `next` grid headings; the unit follows the `--cost` mode."""
-    return ("#", "Plan", "Score", cost_unit(price), "Score/¢", "Endpoint", "Band")
+def next_headings(price: str, unit: str = SCORE_PER_DOLLAR) -> tuple[str, ...]:
+    """The `next` grid headings; the cost unit follows the `--cost` mode."""
+    return ("#", "Plan", "Score", cost_unit(price), unit, "Endpoint", "Band")
 
 
-def header(widths: tuple[int, ...], axis: bool = True, price: str = "est") -> str:
+def header(
+    widths: tuple[int, ...],
+    axis: bool = True,
+    price: str = "est",
+    unit: str = SCORE_PER_DOLLAR,
+) -> str:
     """One grid header line, plain text: bolding happens at the print site."""
-    return format_row(headings(axis, price), widths) + "  Model"
+    return format_row(headings(axis, price, unit), widths) + "  Model"
 
 
 def section(
-    title: str, widths: tuple[int, ...], axis: bool = True, price: str = "est"
+    title: str,
+    widths: tuple[int, ...],
+    axis: bool = True,
+    price: str = "est",
+    unit: str = SCORE_PER_DOLLAR,
 ) -> list[str]:
     """Open a table: blank line, rule-wrapped title, then its column header.
 
     Each ── section is its own table, so it carries its own header below
     the rule; band labels and other intermediate headers live inside the
-    table, under that header.
+    table, under that header. *unit* is that table's value unit: one
+    section may read score per cent while its neighbour stays at dollars.
     """
-    return ["", rule(title), " " * GRADE_WIDTH + style(header(widths, axis, price))]
+    return [
+        "",
+        rule(title),
+        " " * GRADE_WIDTH + style(header(widths, axis, price, unit)),
+    ]
 
 
 def format_list_row(
@@ -274,13 +318,17 @@ def format_list_row(
     return f"{grade:>{GRADE_WIDTH - 1}} " + format_row(cells, widths) + f"  {name}"
 
 
-def pick_value(row) -> str:
+def pick_value(row, unit: str = SCORE_PER_DOLLAR) -> str:
     """A pick's score per dollar, free lines included.
 
     Free lines are really free (metered $0, throttled separately), so
     they read "-" for score/$ and sort ahead of every cost-based line
     ($0 is cheaper than any price); "-" is also what an unscored line
     reads, told apart by the 0 cost beside it.
+
+    *unit* is the unit the column claims: score per cent is the same
+    ratio over a hundred, because a value may never drift from the unit
+    its header names. Which unit a table takes is `value_unit`'s call.
     """
     if row.score is None:
         return "-"
@@ -288,7 +336,10 @@ def pick_value(row) -> str:
         return "-"
     if row.price == 0:
         return "free"
-    return f"{round(ratio(row.score, row.price))}"
+    value = ratio(row.score, row.price)
+    if unit == SCORE_PER_CENT:
+        value /= 100.0
+    return f"{round(value)}"
 
 
 def bench_tag(benchmark: str | None) -> str:
@@ -304,7 +355,9 @@ def bench_tag(benchmark: str | None) -> str:
     return benchmark[:5]
 
 
-def cells(row, axis: bool = True, cost: str = "est") -> tuple[str, ...]:
+def cells(
+    row, axis: bool = True, cost: str = "est", unit: str = SCORE_PER_DOLLAR
+) -> tuple[str, ...]:
     """The fixed columns of one row, as text: score, cost, value, plan.
 
     The score is the model's combined 0-100 number, rounded for the column;
@@ -312,6 +365,10 @@ def cells(row, axis: bool = True, cost: str = "est") -> tuple[str, ...]:
     "-" for score/$ ("free" only where a non-free line prices exactly
     zero, "-" with no score). *axis* is kept for the single-benchmark
     layout, which adds that benchmark's tag.
+
+    The value is expressed in *unit*, the unit the header names: a value
+    may not drift from the unit its column claims, so the two are chosen
+    together by `value_unit`.
 
     The cost cell follows *cost*, the `--cost` mode: a ¢/req basis carries
     up to two decimals with trailing zeros stripped, so a fraction of a
@@ -327,5 +384,11 @@ def cells(row, axis: bool = True, cost: str = "est") -> tuple[str, ...]:
         price = f"{round(row.price * 100)}"
     score = "-" if row.score is None else f"{round(row.score)}"
     if axis:
-        return (score, price, pick_value(row), row.provider)
-    return (score, bench_tag(row.benchmark), price, pick_value(row), row.provider)
+        return (score, price, pick_value(row, unit), row.provider)
+    return (
+        score,
+        bench_tag(row.benchmark),
+        price,
+        pick_value(row, unit),
+        row.provider,
+    )

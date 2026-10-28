@@ -576,8 +576,10 @@ class CliTest(unittest.TestCase):
         self.assertIn("¢/req", out)  # the column says what it counts
         line = next(l for l in out.splitlines() if l.rstrip().endswith("CHEAP"))
         # the calculated score (100, the best of the 40-88.8 range);
-        # $0.0612 reads as 6.12 cents — the fraction survives rounding
-        self.assertRegex(line, r"\s100\s+6\.12\s+1634\s+go,zen\s+CHEAP$")
+        # $0.0612 reads as 6.12 cents — the fraction survives rounding.
+        # Every value in this table clears 100 per dollar, so the column
+        # reads score per cent: 100/6.12 ≈ 16
+        self.assertRegex(line, r"\s100\s+6\.12\s+16\s+go,zen\s+CHEAP$")
         self.assertNotIn("0.0612", line)  # cents, never dollars
 
     def test_list_output_price_uses_output_axis(self):
@@ -918,7 +920,7 @@ class CliTest(unittest.TestCase):
         for title in ("best value", "worst score", "highest cost"):
             self.assertRegex(out, rf"(?m)^── [^\n]*{title}")
         # one column header per table: score, cost, plan, in order
-        header = re.compile(r"(?m)^\s*Score\s+¢/req\s+Score/¢\s+Prov\s+Model\s*$")
+        header = re.compile(r"(?m)^\s*Score\s+¢/req\s+Score/\$\s+Prov\s+Model\s*$")
         self.assertEqual(len(header.findall(out)), 3)
 
     def test_headers_are_bold_when_the_output_is_a_terminal(self):
@@ -1689,8 +1691,9 @@ class CliTest(unittest.TestCase):
             # the score is the calculated 100 (best of 25-50 on both).
             # (`--cost est` prices a cost per request, which for these
             # record-less rows comes from the plan median instead.)
+            # Values above 100 per dollar are read per cent: 100/66 ≈ 2
             line = next(l for l in out.splitlines() if l.rstrip().endswith("M1"))
-            self.assertRegex(line, r"\s100\s+66\s+152\s+zen\s+M1$")
+            self.assertRegex(line, r"\s100\s+66\s+2\s+zen\s+M1$")
 
     def test_list_gives_each_priced_variant_its_own_line(self):
         import json

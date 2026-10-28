@@ -11,7 +11,7 @@ from ..scoring import MIN_AXES
 from ..tables import render as render_table
 from . import fail
 from .list import _select
-from .render import bold_head, cells, next_headings
+from .render import bold_head, cells, next_headings, pick_value, value_unit
 
 NEXT_BANDS = {
     "free": "free",
@@ -63,11 +63,15 @@ def _next_table(picks: list, price: str = "est") -> str:
 
     Plain text always: bolding for terminals happens at the `print` call,
     so the returned grid never depends on the caller's tty.
+
+    The value column's unit comes from the picks themselves: one table,
+    one unit, decided by `value_unit`.
     """
-    headers = next_headings(price)
+    unit = value_unit([pick_value(r) for r in picks])
+    headers = next_headings(price, unit)
     rows = []
     for i, row in enumerate(picks, 1):
-        _score, cost, value, _prov = cells(row, True, price)
+        _score, cost, value, _prov = cells(row, True, price, unit)
         rows.append(
             [
                 str(i),

@@ -134,7 +134,7 @@ def _grid(tmp):
 
 class ListViewContract(unittest.TestCase):
     # grade rides as an unheaded prefix, MODEL closes the row
-    COLUMNS = ["Score", "¢/req", "Score/¢", "Prov", "Model"]
+    COLUMNS = ["Score", "¢/req", "Score/$", "Prov", "Model"]
 
     def test_columns(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -242,7 +242,7 @@ class ListViewContract(unittest.TestCase):
         self.assertEqual(set(grades), {"M3", "M4"})
         # M3 derives 100, M4 75; M2 (50, "-") fills the worst-score table
         self.assertEqual(grades, {"M3": "++", "M4": "+"})
-        self.assertIn("Score/¢", _header(out))
+        self.assertIn("Score/$", _header(out))
 
 
 class ListBenchmarkViewContract(unittest.TestCase):
@@ -261,7 +261,7 @@ class ListBenchmarkViewContract(unittest.TestCase):
         self.assertEqual(code, 0)
         tokens = _header(out).split()
         self.assertEqual(
-            tokens, ["Score", "Bench", "¢/req", "Score/¢", "Prov", "Model"]
+            tokens, ["Score", "Bench", "¢/req", "Score/$", "Prov", "Model"]
         )
 
     def test_rows_carry_the_benchmark_tag(self):
@@ -359,7 +359,7 @@ class ScoresViewContract(unittest.TestCase):
 
 
 class NextViewContract(unittest.TestCase):
-    COLUMNS = ["#", "Plan", "Score", "¢/req", "Score/¢", "Endpoint", "Band"]
+    COLUMNS = ["#", "Plan", "Score", "¢/req", "Score/$", "Endpoint", "Band"]
 
     def test_columns(self):
         import opencode_models.availability as availability
@@ -439,7 +439,7 @@ if __name__ == "__main__":
 
 
 class NextTableContract(unittest.TestCase):
-    COLUMNS = ["#", "Plan", "Score", "¢/req", "Score/¢", "Endpoint", "Band"]
+    COLUMNS = ["#", "Plan", "Score", "¢/req", "Score/$", "Endpoint", "Band"]
 
     def _row(self, name, provider, score, price, free=False):
         from opencode_models.models import Model
@@ -517,8 +517,104 @@ class NextTableContract(unittest.TestCase):
             self.assertEqual(first_end, edge)
         # "-" would rindex-match the dash in "opencode-go", so the SCORE/$
         # value is located as the cell right before ENDPOINT instead
-        edge = head.index("Score/¢") + len("Score/¢")
+        edge = head.index("Score/$") + len("Score/$")
         for row, endpoint in ((first, "opencode-go/aaa"), (second, "opencode/bb")):
             value_end = row.index(endpoint) - 1
             self.assertEqual(value_end, edge)
             self.assertIn(row[value_end - 1 : value_end], ("-", "5"))
+
+
+def _cheap_grid(tmp: Path):
+    """Three cheap models straddling the 100 threshold.
+
+    Prices 0.01/0.02/0.03 a request score 100/50/0 on the fixture's own
+    scale, so the per-dollar values are 10000, 2500 and 0: two tables sit
+    above the threshold and switch to score per cent while the third has
+    to stay at score per dollar.
+    """
+    _write_models(
+        tmp,
+        (
+            "l/cheap1",
+            0.01,
+            [("Terminal-Bench", "2.1", 100.0), ("SWE-Bench", "Verified", 100.0)],
+        ),
+        (
+            "l/cheap2",
+            0.02,
+            [("Terminal-Bench", "2.1", 80.0), ("SWE-Bench", "Verified", 80.0)],
+        ),
+        (
+            "l/cheap3",
+            0.03,
+            [("Terminal-Bench", "2.1", 60.0), ("SWE-Bench", "Verified", 60.0)],
+        ),
+    )
+    (tmp / "plans").mkdir(parents=True, exist_ok=True)
+    models = {f"cheap{i}": {"name": f"Cheap{i}", "free": False} for i in (1, 2, 3)}
+    for tier in ("go", "zen"):
+        (tmp / "plans" / f"{tier}.json").write_text(
+            json.dumps({"meta": {}, "models": models})
+        )
+
+
+def _section_header(out, title):
+    """The column header line beneath a ── title ── rule."""
+    lines = out.splitlines()
+    start = next(i for i, l in enumerate(lines) if f"── {title}" in l)
+    return next(l for l in lines[start + 1 :] if "Prov" in l and "Score" in l)
+
+
+class PerTableValueUnitContract(unittest.TestCase):
+    """A table names its own value unit, and the values in it follow."""
+
+    def _list(self, tmp):
+        return _run("--data", tmp, "list", "--source", "all", "--tables", "all")
+
+    def test_a_table_above_100_reads_score_per_cent_and_a_low_one_keeps_dollars(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _cheap_grid(Path(tmp))
+            code, out = self._list(tmp)
+        self.assertEqual(code, 0)
+        self.assertIn("Score/¢", _section_header(out, "best value"))
+        self.assertIn("Score/¢", _section_header(out, "worst score"))
+        self.assertIn("Score/$", _section_header(out, "highest cost"))
+
+    def test_each_value_is_expressed_in_the_unit_its_own_table_names(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _cheap_grid(Path(tmp))
+            code, out = self._list(tmp)
+        self.assertEqual(code, 0)
+        # 10000 and 2500 per dollar read per cent; 0 needs no scaling
+        self.assertEqual([r[-3] for r in _section_parts(out, "best value")], ["100"])
+        self.assertEqual([r[-3] for r in _section_parts(out, "worst score")], ["25"])
+        self.assertEqual([r[-3] for r in _section_parts(out, "highest cost")], ["0"])
+
+    def test_the_tables_still_line_up_when_they_name_different_units(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _cheap_grid(Path(tmp))
+            code, out = self._list(tmp)
+        self.assertEqual(code, 0)
+        heads = [
+            _section_header(out, t)
+            for t in ("best value", "worst score", "highest cost")
+        ]
+        # one width set across the view, whichever unit each table chose
+        self.assertEqual(len({h.index("Prov") for h in heads}), 1)
+
+    def test_next_reads_score_per_cent_when_every_pick_is_above_100(self):
+        import opencode_models.availability as availability
+
+        with tempfile.TemporaryDirectory() as tmp:
+            _cheap_grid(Path(tmp))
+            orig = availability.load_roster
+            availability.load_roster = lambda _d, name: {"cheap1", "cheap2", "cheap3"}
+            try:
+                code, out = _run("--data", tmp, "next", "--source", "all")
+            finally:
+                availability.load_roster = orig
+        self.assertEqual(code, 0)
+        head = next(l for l in out.splitlines() if "Endpoint" in l and "Score" in l)
+        self.assertIn("Score/¢", head)
+        # the pick is priced 1c: 10000 per dollar, so 100 per cent
+        self.assertNotIn("10000", out)

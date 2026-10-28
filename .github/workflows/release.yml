@@ -32,3 +32,35 @@ jobs:
         run: uv build
       - name: publish to PyPI
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+
+  # Deliberately a separate job from `publish`, so the two grants cannot
+  # overlap: a job-level `permissions` block *replaces* the workflow-level
+  # one, so this job gets `contents: write` (enough to cut a Release) and
+  # nothing else — no OIDC token — while `publish` keeps `id-token: write`
+  # plus read-only repo access. Neither job can reach the other's grant,
+  # and the workflow default above stays read-only for anything new.
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # only announce a release PyPI actually has
+    needs: publish
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Both the token and the ref travel through `env`, never
+      # interpolated into the script body. The body matches the releases
+      # cut by hand before this job existed: an auto-generated PR list
+      # plus the compare link.
+      - name: create the GitHub Release for this tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "$TAG already has a Release; nothing to do"
+          else
+            gh release create "$TAG" --verify-tag --generate-notes --latest
+          fi

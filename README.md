@@ -5,7 +5,10 @@ and score per dollar.
 
 Tired of trying to correlate the latest OpenCode model listings with available
 benchmarks and costs?  This utility uses public/scraped benchmark reports and
-the opencode API to show the current best and cheapest available models.
+the opencode API to show the current best and cheapest available models:
+
+<img width="1050" height="218" alt="image" src="https://github.com/user-attachments/assets/f3027018-f3ff-4416-8dd9-3f69ce43ed67" />
+
 
 ## TLDR; quick steps
 
@@ -50,6 +53,19 @@ and Plus caps run 2–4× higher.
 `fetch` is the only command that downloads data — benchmark numbers,
 tier prices, official boards — into your data directory:
 `$OPENCODE_MODELS_DATA` if set, else `~/.local/share/opencode-models`.
+
+```sh
+ocm list # show best performing models ranked by score/cost
+ocm list --tables all # include 30% worst perf and 30% highest cost tables
+```
+<img width="834" height="639" alt="image" src="https://github.com/user-attachments/assets/2ea643b3-a011-443e-a9ba-f20341ab7377" />
+
+```sh
+ocm usage # display current usage per model relative to weekly/monthly limits
+```
+<img width="836" height="484" alt="image" src="https://github.com/user-attachments/assets/eade91ce-fc10-4102-84b3-a22210f2000f" />
+ 
+
 
 ### Working from a checkout
 

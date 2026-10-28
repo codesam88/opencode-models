@@ -7,6 +7,30 @@ CONTRIBUTING.md ("Releasing") for the checklist.
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-10-28
+
+### Changed
+- **The value column names its own unit.** Where every value in a table
+  is above 100 per dollar, `list` and `next` read `Score/¢` — the same
+  ratio over a hundred — and stay at `Score/$` below that, with the
+  numbers expressed in the unit the header claims. Each `list` table
+  decides for itself and is measured in the unit it names, so tables
+  sitting at different units still share one width set and line up.
+- **Slug matching folds separators and case.** The sitemap spells slugs
+  with dashes (`muse-spark-1-3`), the live config and catalog ids use
+  dots (`muse-spark-1.3`), and the registry keeps vendor capitalisation
+  (`MiniMax-M3`) against a lowercase roster slug. `fetch`'s offered
+  filter and the view filters now fold those away for comparison only,
+  so plain `fetch` no longer skips records the plans do offer and an
+  offered model no longer drops out of `list`/`scores`. Identity, dedup
+  and the alias merge still read the real id.
+
+### Fixed
+- **Four curated override pins reach the views.** An override whose
+  model had no base record loaded but attached to nothing, so the
+  pinned score rendered nowhere. Each of the four now ships a minimal
+  record in `data/manual/`, and the pin applies.
+
 ## [0.1.2] - 2026-10-26
 
 ### Changed

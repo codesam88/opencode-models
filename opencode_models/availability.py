@@ -11,6 +11,7 @@ checks a model against a set of ids. A tier absent from every layer is
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
@@ -203,23 +204,38 @@ def load_aliases(data_dir: Path) -> dict:
     return out
 
 
+def _fold(slug: str) -> str:
+    """A slug's spelling-independent form: separators and case folded.
+
+    The sitemap spells slugs with dashes (``muse-spark-1-3``) while the
+    live config and catalog ids use dots (``muse-spark-1.3``), and the
+    registry keeps vendor capitalisation (``MiniMax-M3``) against a
+    lowercase roster slug. None of those spellings name a different
+    model, so matching folds them. The fold is comparison-only: identity,
+    dedup and the alias merge read the real id, so nothing is renamed or
+    merged by it.
+    """
+    return re.sub(r"[._\-]", "-", slug.lower())
+
+
 def slug_matches(model_id: str, candidate: str) -> bool:
     """Whether *model_id* and *candidate* name the same model.
 
     Matching is canonical on the slug segment: full id, bare slug, or any
-    ``-free``/``-contributor`` variant of either side all agree.
+    ``-free``/``-contributor`` variant of either side all agree, in any
+    spelling — separators and case fold (see `_fold`), because the
+    sitemap, the live config and the catalog each spell a slug their own
+    way.
     """
     if model_id == candidate:
         return True
-    m_slug = model_id.split("/")[-1]
-    c_slug = candidate.split("/")[-1] if "/" in candidate else candidate
+    m_slug = _fold(model_id.split("/")[-1])
+    c_slug = _fold(candidate.split("/")[-1] if "/" in candidate else candidate)
     if m_slug == c_slug:
         return True
     if canonical_id(m_slug) == canonical_id(c_slug):
         return True
-    if canonical_id(model_id) == canonical_id(candidate):
-        return True
-    return False
+    return canonical_id(_fold(model_id)) == canonical_id(_fold(candidate))
 
 
 def members(models: list[Model], slugs: set[str] | None):
@@ -230,15 +246,16 @@ def members(models: list[Model], slugs: set[str] | None):
 
     Matching is exact-wins: a roster slug matches the catalog model carrying
     that exact slug; the canonical (suffix-folded) group matches only when
-    no catalog model carries the exact slug.
+    no catalog model carries the exact slug. Both readings go through
+    `_fold`, so separators and case never decide membership.
     """
     if slugs is None:
         return (list(models), {m.model_id for m in models if m.price_input == 0})
-    model_slugs = {m.model_id.split("/")[-1] for m in models}
+    model_slugs = {_fold(m.model_id.split("/")[-1]) for m in models}
 
     def _matches(model_id: str, candidate: str) -> bool:
-        m_slug = model_id.split("/")[-1]
-        c_slug = candidate.split("/")[-1] if "/" in candidate else candidate
+        m_slug = _fold(model_id.split("/")[-1])
+        c_slug = _fold(candidate.split("/")[-1] if "/" in candidate else candidate)
         if m_slug == c_slug:
             return True
         if c_slug in model_slugs:
@@ -246,9 +263,7 @@ def members(models: list[Model], slugs: set[str] | None):
             return False
         if canonical_id(m_slug) == canonical_id(c_slug):
             return True
-        if canonical_id(model_id) == canonical_id(candidate):
-            return True
-        return False
+        return canonical_id(_fold(model_id)) == canonical_id(_fold(candidate))
 
     included = [m for m in models if any(_matches(m.model_id, s) for s in slugs)]
     free = {m.model_id for m in included if m.price_input == 0}

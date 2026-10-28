@@ -211,6 +211,27 @@ class OfferedCanonicalTest(unittest.TestCase):
         self.assertTrue(offered("lab/base-contributor", {"base"}))
         self.assertFalse(offered("lab/absent", {"base"}))
 
+    def test_separator_and_case_differences_do_not_break_a_match(self):
+        # the sitemap spells slugs with dashes (muse-spark-1-3) while the
+        # live config and catalog ids use dots (muse-spark-1.3), and the
+        # registry keeps vendor capitalisation (MiniMax-M3) against a
+        # lowercase roster slug: none of those name a different model
+        from opencode_models.availability import offered, slug_matches
+
+        self.assertTrue(slug_matches("meta/muse-spark-1-3", "muse-spark-1.3"))
+        self.assertTrue(slug_matches("minimax/MiniMax-M3", "minimax-m3"))
+        self.assertTrue(offered("meta/muse-spark-1-3", {"muse-spark-1.3"}))
+        self.assertTrue(offered("minimax/MiniMax-M3", {"minimax-m3"}))
+
+    def test_folding_separators_does_not_merge_distinct_models(self):
+        # only separators and case fold — a suffix still names another
+        # model, so the two Qwen variants stay apart
+        from opencode_models.availability import offered, slug_matches
+
+        self.assertFalse(slug_matches("a/qwen3.8-flash", "qwen3.8-flash-next"))
+        self.assertFalse(slug_matches("a/qwen3.8-max", "qwen3.8-max-0902"))
+        self.assertFalse(offered("a/qwen3.8-flash-next", {"qwen3.8-flash"}))
+
     def test_dict_ids_are_supported(self):
         from opencode_models.availability import offered
 

@@ -45,6 +45,15 @@ class MembershipTest(unittest.TestCase):
         self.assertEqual(got, models)
         self.assertEqual(free, {"a/free"})
 
+    def test_separators_and_case_reach_the_model(self):
+        # the roster may spell a slug the other way round from the catalog
+        # record — dashes for dots, vendor capitalisation for lowercase —
+        # and membership must not turn on that spelling
+        got, _ = members([_m("minimax/MiniMax-M3", 1.0, 50.0)], {"minimax-m3"})
+        self.assertEqual([m.model_id for m in got], ["minimax/MiniMax-M3"])
+        got, _ = members([_m("meta/muse-spark-1.3", 1.0, 50.0)], {"muse-spark-1-3"})
+        self.assertEqual([m.model_id for m in got], ["meta/muse-spark-1.3"])
+
     def test_exact_slug_wins_over_canonical_group(self):
         # base + variant both exist in the catalog: a base roster slug
         # reaches only the base record, a variant roster slug only the

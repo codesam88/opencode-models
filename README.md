@@ -320,9 +320,14 @@ ranked by score per dollar *inside* each band. A line's cost is 20% input +
 instead, `--cost est` (the default) the cost per request — each line
 priced from its own rates under its model's published token mix, or the
 Go plan's median mix (marked `~`) where the model publishes none,
-whether or not a plan record covers it. The score and score/$ are
+whether or not a plan record covers it. The score and the value are
 rounded integers: score per dollar explains the best-value order and
-free lines read `-` and sort before every paid line. The cost column
+free lines read `-` and sort before every paid line. The value column
+names the unit its own table needs — `Score/$`, or `Score/¢` (the same
+ratio over a hundred) once every value in that table is above 100,
+where per-dollar numbers run to five digits — and each table is
+measured in the unit it names, so a table reading cents does not widen
+a neighbour's column. The cost column
 counts cents — `¢/req` under `est`/`fix` keeps up to two decimals, so a
 fraction of a cent survives (a $0.0612 line reads as `6.12`), while
 `¢/1m` under `input`/`output` stays whole cents. Free lines still show a

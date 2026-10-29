@@ -60,15 +60,13 @@ def rows_for(
     aliases = availability.load_aliases(data_dir)
     # one fallback mix for every est row: the Go plan's median token mix
     fallback_mix = availability.fallback_mix(data_dir)
-    plan_warnings: list[str] = []
-    for _provider in selected:
-        if _provider in ("go", "zen"):
-            _status, _messages, _age = sync_mod.refresh_plan(data_dir, _provider)
-            if _status != "fresh":
-                plan_warnings.extend(_messages)
+    # a stale plan snapshot refreshes itself as one labelled job: its
+    # report opens with a header and closes with a blank line, so it is
+    # separated from this command's output instead of joining its warnings
+    sync_mod.refresh_plan_as_job(data_dir, [p for p in selected if p in ("go", "zen")])
     avail = availability.current_offered(data_dir, bypass=all_models)
     on_offer = avail.offered
-    warnings: list[str] = list(avail.warnings) + plan_warnings + merge_warnings
+    warnings: list[str] = list(avail.warnings) + merge_warnings
     # one scale for the whole catalog: per-tier scales would make the same
     # score mean two different things in the merged view
     table = scales(models)

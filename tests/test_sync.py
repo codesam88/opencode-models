@@ -275,5 +275,77 @@ class SyncForceCheckTest(unittest.TestCase):
         self.assertEqual(code, 1)
 
 
+class RefreshPlanAsJobTest(unittest.TestCase):
+    """A read command's lazy plan refresh reports itself as one job.
+
+    The refresh used to drop its report lines wherever the caller
+    collected them, with nothing marking where the background work began
+    or where it ended — so the command's own output ran straight on.
+    """
+
+    @staticmethod
+    def _fake_get(url):
+        if "console/go" in url:
+            return go_fixture.FIXTURE_HTML
+        if url.endswith("/docs/zen/"):
+            return zen_fixture.FIXTURE_HTML
+        raise OSError(f"unexpected url: {url}")
+
+    def _run(self, data_dir, tiers, get=None):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            sync_mod.refresh_plan_as_job(
+                Path(data_dir), tiers, get=get or self._fake_get
+            )
+        return out.getvalue()
+
+    @staticmethod
+    def _trailing_blank_lines(text: str) -> int:
+        return len(text) - len(text.rstrip("\n"))
+
+    def test_a_stale_tier_opens_with_a_header_and_closes_with_a_blank_line(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_snapshot(tmp, "go", hours_old=30)
+            text = self._run(tmp, ["go"])
+        self.assertTrue(
+            text.startswith("Checking models... (last update: 1d)"), repr(text)
+        )
+        self.assertIn("plans/go: refreshed", text)
+        # exactly one blank line closes the job: the report's own final
+        # newline, then the separator the caller's output starts after
+        self.assertEqual(self._trailing_blank_lines(text), 2, repr(text))
+
+    def test_several_stale_tiers_share_one_header_and_one_separator(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_snapshot(tmp, "go", hours_old=30)
+            _write_snapshot(tmp, "zen", hours_old=50)
+            text = self._run(tmp, ["go", "zen"])
+        self.assertEqual(text.count("Checking models..."), 1, repr(text))
+        self.assertIn("plans/go: refreshed", text)
+        self.assertIn("plans/zen: refreshed", text)
+        self.assertEqual(self._trailing_blank_lines(text), 2, repr(text))
+
+    def test_fresh_snapshots_print_nothing_at_all(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_snapshot(tmp, "go", hours_old=1)
+            _write_snapshot(tmp, "zen", hours_old=1)
+            text = self._run(tmp, ["go", "zen"])
+        self.assertEqual(text, "")
+
+    def test_a_frozen_refresh_leaves_no_job_block_behind(self):
+        # read-command tests freeze refresh_plan to keep the network out;
+        # freezing must suppress the header and the separator too, or the
+        # job claims work that never happened
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_snapshot(tmp, "go", hours_old=30)
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                with mock.patch.object(
+                    sync_mod, "refresh_plan", return_value=("fresh", (), None)
+                ):
+                    sync_mod.refresh_plan_as_job(Path(tmp), ["go"])
+        self.assertEqual(out.getvalue(), "")
+
+
 if __name__ == "__main__":
     unittest.main()

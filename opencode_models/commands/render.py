@@ -196,16 +196,6 @@ def print_conflicts(conflicts, orphans=(), manual_orphans=()) -> int:
     return len(conflicts) + len(orphans) + len(manual_orphans)
 
 
-FIX_NOTE = "Pricing and score/$ rank based on fixed 20/60/20 tokens per request"
-#: `est` cost base: ¢/req built from a model's token mix as the Go plan
-#: page publishes it (``assumptions`` × base-tier prices). A row with no
-#: mix of its own — zen's records carry none, nor does a model no record
-#: prices — takes the Go plan's median instead, marked `~`; with no mix
-#: published anywhere at all, the fix rate above.
-EST_NOTE = (
-    "¢/req and score/$ based on reported in/out/cache rates, fallback to median (~)"
-)
-
 #: Every row is prefixed by its rank marker, outside the column grid and
 #: without a header of its own: ++ at 90+, + at 75+, o at 60+, - at 50+,
 #: -- below that, · unranked (no score at all). The header line is indented
@@ -219,6 +209,12 @@ def cost_unit(price: str) -> str:
     ``input`` and ``output`` show raw per-1M-token rates instead.
     """
     return "¢/req" if price in ("fix", "est") else "¢/1m"
+
+
+FIX_NOTE = "Pricing and score/$ rank based on fixed 20/60/20 tokens per request"
+EST_NOTE = (
+    "Cost in ¢/req based on reported in/out/cache token rates (or median rates (~))"
+)
 
 
 def price_note(price: str) -> str:

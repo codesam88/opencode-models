@@ -119,7 +119,7 @@ def run(args: argparse.Namespace) -> int:
         data_dir, selected, args.cost, getattr(args, "all_models", False)
     )
     lines = list(_result.warnings)
-    rows, listed, _curated, counts, tier_slugs, models = (
+    rows, listed, _curated, _counts, _tier_slugs, models = (
         _result.rows,
         _result.listed,
         _result.curated,
@@ -154,7 +154,7 @@ def run(args: argparse.Namespace) -> int:
         order_note = f"benchmark {wanted} · sorted by score per $"
     else:
         rows = order_rows(rows)
-        order_note = "ranked by score per $, best value first"
+        order_note = "ranked by score per $"
     # the marker reads the score itself, so a row in the cost or
     # worst-score table shows the same grade it earned in best value
     rows = grade_rows(rows)
@@ -165,21 +165,21 @@ def run(args: argparse.Namespace) -> int:
             print("\n".join(lines))
         return fail(f"no {source or 'zen+go'} model in {data_dir} has benchmark scores")
 
-    if scope == "tiers":
-        head = f"zen+go: {counts.get('zen', 0)} zen + {counts.get('go', 0)} go models"
-    elif scope == "tier":
-        head = f"{source}: {counts[source]}/{len(tier_slugs[source])} models in catalog"
-    else:
-        head = f"all: {len(models)} models in catalog"
-    lines.append(f"{head} · {len(rows)} lines · {order_note}")
-    lines.append(price_note(args.cost))
-    if not getattr(args, "all_models", False):
-        plans = "Go/Zen plans" if source in (None, "all") else f"{source} plan"
-        lines.append(
-            f"Only models available right now on the {plans} - "
-            f"full list with --all-models."
-        )
-    lines.append("GRADE: ++ ≥90, + ≥75, o 60–75, - 50–60, -- <50, · insufficient data")
+    # one headline: what is listed, how big the pool is, how it is
+    # ordered and whether it is filtered — then the details demoted under
+    # it, one topic per line
+    filter_note = (
+        "" if getattr(args, "all_models", False) else " (add --all for full catalog)"
+    )
+    where = f" on the {source} plan" if scope == "tier" else ""
+    lines.append(
+        f"Listing {len(rows)} out of {len(models)} models{where} "
+        f"{order_note}{filter_note}"
+    )
+    lines.append(f"  {price_note(args.cost)}")
+    lines.append(
+        "  Grade: ++ ≥90, + ≥75, o 60–75, - 50–60, -- <50, · insufficient data"
+    )
 
     # the split always happens — the cull is what keeps the worst-scoring
     # and priciest models out of the view — only the reporting is optional
@@ -187,7 +187,7 @@ def run(args: argparse.Namespace) -> int:
     shown = main if args.tables != "all" else main + worst + pricey
     legend_line = legend([k for r in shown for k in r.markers])
     if legend_line:
-        lines.append(legend_line)
+        lines.append(f"  {legend_line}")
     # one set of column widths for the whole view, so the three tables line
     # up with each other too — each measured in the unit its own values pick
     main_u, worst_u, pricey_u = _unit(main), _unit(worst), _unit(pricey)

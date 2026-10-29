@@ -2096,7 +2096,7 @@ class ListViewContractTest(unittest.TestCase):
         self.assertEqual(code, 0)
         # the headline states the ordering the rows are checked against:
         # a lying headline would pass every measurement below
-        head = next(l for l in out.splitlines() if "lines ·" in l)
+        head = next(l for l in out.splitlines() if l.startswith("Listing "))
         self.assertIn("score per $", head)
         rows = self._best_value_rows(out)
         values = []
@@ -2556,8 +2556,7 @@ class AvailabilityTest(unittest.TestCase):
             )
             code, out = self._run("--data", tmp, "list", "--source", "zen")
         self.assertEqual(code, 0)
-        self.assertIn("available right now", out)
-        self.assertIn("--all-models", out)
+        self.assertIn("(add --all for full catalog)", out)
         self.assertIn("on the zen plan", out)
         self.assertNotIn("gone", out)
         self.assertNotIn("no longer listed", out)
@@ -3568,6 +3567,65 @@ class AuthCommandTest(unittest.TestCase):
         self.assertIn("m-live", out)
 
 
+class LazySyncJobTest(unittest.TestCase):
+    """A read command separates its background sync from its own output."""
+
+    def _run(self, *argv):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = main(list(argv))
+        return code, out.getvalue()
+
+    def test_list_prints_the_job_block_before_its_own_output(self):
+        import opencode_models.go_pricing as go_pricing
+        import opencode_models.zen_pricing as zen_pricing
+        from tests import test_go_pricing as go_fixture
+        from tests import test_zen_pricing as zen_fixture
+
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_sample(Path(tmp))  # no plan snapshot: the job must run
+            with (
+                mock.patch.object(
+                    go_pricing, "_fetch", lambda url: go_fixture.FIXTURE_HTML
+                ),
+                mock.patch.object(
+                    zen_pricing, "_fetch", lambda url: zen_fixture.FIXTURE_HTML
+                ),
+            ):
+                code, out = self._run(
+                    "--data", tmp, "list", "--source", "all", "--benchmark", "TB"
+                )
+        self.assertEqual(code, 0, out)
+        lines = out.splitlines()
+        # the job opens the run, and a blank line closes it off before a
+        # single line of the command's own output follows
+        self.assertTrue(lines[0].startswith("Checking models..."), lines[0])
+        separator = lines.index("")
+        self.assertGreater(separator, 0)
+        self.assertIn("plans/go: refreshed", "\n".join(lines[:separator]))
+        tail = lines[separator + 1 :]
+        self.assertTrue(
+            any(line.startswith(("no API token", "all:", "zen+go:")) for line in tail),
+            tail,
+        )
+
+    def test_a_frozen_sync_leaves_the_command_output_untouched(self):
+        # the usual read-path freeze: no job block, no stray separator
+        import opencode_models.cli as cli
+
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_sample(Path(tmp))
+            with mock.patch.object(
+                cli.sync_mod, "refresh_plan", return_value=("fresh", (), None)
+            ):
+                code, out = self._run(
+                    "--data", tmp, "list", "--source", "all", "--benchmark", "TB"
+                )
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("Checking models...", out)
+        self.assertNotIn("plans/go: refreshed", out)
+
+
 class NoKeyNoticeTest(unittest.TestCase):
     def setUp(self):
         self._rp = __import__("unittest.mock", fromlist=["patch"]).patch(
@@ -4301,14 +4359,16 @@ class MarkedModelsListTest(unittest.TestCase):
         self.assertTrue(base_lines)
         self.assertTrue(all("*" not in line for line in base_lines))
         self.assertTrue(all("~" not in line for line in base_lines))
-        legend = next(l for l in out.splitlines() if l.startswith("Markers: "))
+        legend = next(l for l in out.splitlines() if l.strip().startswith("Markers: "))
+        # the legend is a detail: demoted under the headline, not level with it
+        self.assertTrue(legend.startswith("  "), repr(legend))
         # the legend renders exactly what the registry declares — the
         # wording lives in markers.MARKERS, never copied in here
         self.assertIn(f"{MARKERS['curated'].symbol} {MARKERS['curated'].blurb}", legend)
         self.assertIn(f"{MARKERS['median'].symbol} {MARKERS['median'].blurb}", legend)
         self.assertLessEqual(len(legend), 80)
         # the legend reads with the other legends, not above the header
-        self.assertGreater(out.index("Markers:"), out.index("GRADE:"))
+        self.assertGreater(out.index("Markers:"), out.index("Grade:"))
 
 
 class ModelsListCoverageTest(unittest.TestCase):

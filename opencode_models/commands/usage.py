@@ -386,9 +386,7 @@ def run(args: argparse.Namespace) -> int:
             "warning: ignoring unreadable plan preference (expected 'go' or 'go_plus')"
         )
     plan = resolve_plan(getattr(args, "plan", None), stored)
-    _status, _msgs, _age = sync_mod.refresh_plan(data_dir, "go")
-    if _status != "fresh":
-        lines.extend(_msgs)
+    sync_mod.refresh_plan_as_job(data_dir, ["go"])
     try:
         snapshot, origin = availability.load_plan_snapshot(data_dir)
     except (OSError, ValueError) as exc:

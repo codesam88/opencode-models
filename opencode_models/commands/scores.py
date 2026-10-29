@@ -139,7 +139,7 @@ def _render_table(heads: list, grid: list) -> list[str]:
 
 def _footnotes(columns: list, unscored: list) -> list[str]:
     """Grade key, column legend, and tail notes as one block."""
-    lines = ["  GRADE: ++ ≥90 · + ≥75 · o 60–75 · - 50–60 · -- <50 · · unranked"]
+    lines = ["  Grade: ++ ≥90 · + ≥75 · o 60–75 · - 50–60 · -- <50 · · unranked"]
     legend = [
         f"{label.capitalize()} = {name}"
         for _key, label, name in columns

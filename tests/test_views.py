@@ -219,6 +219,28 @@ class ListViewContract(unittest.TestCase):
         self.assertTrue(raw)
         self.assertLessEqual(max(map(len, raw)), 100)
 
+    def test_one_headline_then_indented_details(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _grid(tmp)
+            code, out = _run("--data", tmp, "list", "--source", "all")
+        self.assertEqual(code, 0)
+        lines = out.splitlines()
+        headline = next(l for l in lines if l.startswith("Listing "))
+        at = lines.index(headline)
+        # the counts, the ordering and the filter share one line, so a
+        # reader gets the whole summary before any detail
+        self.assertIn(" out of ", headline)
+        self.assertIn("models ranked by score per $", headline)
+        self.assertIn("(add --all for full catalog)", headline)
+        self.assertNotIn("best value first", headline)  # the rule says it
+        # the details follow, demoted under the headline, one topic each
+        cost, grade, blank = lines[at + 1], lines[at + 2], lines[at + 3]
+        self.assertTrue(cost.startswith("  "), repr(cost))
+        self.assertIn("¢/req", cost)
+        self.assertTrue(grade.startswith("  Grade: "), repr(grade))
+        self.assertNotIn("GRADE", out)  # never shouted
+        self.assertEqual(blank, "")
+
     def test_best_value_runs_by_score_per_dollar(self):
         with tempfile.TemporaryDirectory() as tmp:
             _grid(tmp)
@@ -306,7 +328,7 @@ class ScoresViewContract(unittest.TestCase):
             for l in out.splitlines()
             if len(l.split()) > 3
             and l.split()[1] in ("++", "+", "o", "--", "·", "-")
-            and not l.strip().startswith("GRADE:")
+            and not l.strip().startswith("Grade:")
         ]
         names = [l.split()[0] for l in body]
         grades = [l.split()[1] for l in body]
@@ -352,7 +374,7 @@ class ScoresViewContract(unittest.TestCase):
             for l in out.splitlines()
             if len(l.split()) >= 3
             and l.split()[1] in ("++", "+", "o", "--", "·", "-")
-            and not l.strip().startswith("GRADE:")
+            and not l.strip().startswith("Grade:")
         ]
         self.assertEqual([l.split()[0] for l in rows], ["M1"])
         self.assertLess(max(map(len, rows)), len(long_name))

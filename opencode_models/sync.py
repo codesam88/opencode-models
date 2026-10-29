@@ -45,7 +45,7 @@ def _count_models(path: Path) -> int | None:
     return len(models)
 
 
-def refresh_plan(data_dir, tier, get=None, force: bool = False):
+def refresh_plan(data_dir, tier, get=None, force: bool = False, on_stale=None):
     """Ensure one plan tier's snapshot is fresh; refresh if stale.
 
     Returns ``(status, messages, age)`` where *status* is ``"fresh"``,
@@ -54,6 +54,11 @@ def refresh_plan(data_dir, tier, get=None, force: bool = False):
     Shared by ``sync`` and the read paths so refresh reporting stays one
     implementation. *get* is an optional transport override (tests); defaults
     to the module's own fetcher. *force* refreshes regardless of age.
+
+    *on_stale*, when given, is called with the snapshot's age as soon as
+    the tier is known to be stale and before anything is fetched or
+    printed — that is the one moment a caller can open a report ahead of
+    the refresh's own lines. A fresh tier never calls it.
     """
     from pathlib import Path
 
@@ -65,6 +70,8 @@ def refresh_plan(data_dir, tier, get=None, force: bool = False):
     age = snapshot_age(data_dir, source)
     if not force and age is not None and age <= PLANS_MAX_AGE:
         return "fresh", (f"{source}: up-to-date ({_age_str(age)})",), age
+    if on_stale is not None:
+        on_stale(age)
     try:
         if get is None:
             module.refresh(data_dir)
@@ -85,6 +92,41 @@ def refresh_plan(data_dir, tier, get=None, force: bool = False):
     else:
         msg = f"{source}: refreshed ({count} models)"
     return "refreshed", (msg,), age
+
+
+def refresh_plan_as_job(data_dir, tiers, get=None) -> None:
+    """Refresh every stale plan tier as one labelled job.
+
+    A read command refreshes a stale snapshot on its own, and its report
+    lines used to land in the command's output with nothing marking where
+    the background work began or where it ended. This opens with a header
+    naming the job and how stale the data was, prints each tier's report
+    as that tier runs, and closes with a blank line — so whatever the
+    caller prints next starts a block of its own.
+
+    Nothing is returned: the report belongs to the job, not to the
+    caller's warning list. A run with nothing stale prints nothing at
+    all, header and separator included.
+    """
+
+    def _open(age) -> None:
+        if getattr(_open, "started", False):
+            return
+        _open.started = True  # one header for the whole job
+        if age is None:
+            print("Checking models...")
+        else:
+            print(f"Checking models... (last update: {_age_str(age)})")
+
+    for tier in tiers:
+        status, messages, _age = refresh_plan(
+            Path(data_dir), tier, get=get, on_stale=_open
+        )
+        if status != "fresh":
+            for line in messages:
+                print(line)
+    if getattr(_open, "started", False):
+        print()
 
 
 def sync(data_dir: Path, get=None, force: bool = False) -> int:
@@ -190,5 +232,6 @@ __all__ = [
     "PLANS_MAX_AGE",
     "check_snapshots",
     "refresh_plan",
+    "refresh_plan_as_job",
     "sync",
 ]

@@ -698,16 +698,27 @@ class RowsForPlanRefreshTest(unittest.TestCase):
         )
 
     def test_stale_plans_refresh_from_docs_fixtures(self):
+        import contextlib
+        import io
+
+        job = io.StringIO()
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
             self._stale_snapshot(d, "zen", 30)
             with mock.patch.object(
                 zen_pricing, "_fetch", return_value=zen_fixture.FIXTURE_HTML
             ):
-                result = rows_for(d, ["zen"], price="fix", all_models=True)
+                with contextlib.redirect_stdout(job):
+                    result = rows_for(d, ["zen"], price="fix", all_models=True)
             doc = json.loads((d / "plans" / "zen.json").read_text())
             self.assertIn("model-a", doc["models"])
-            self.assertTrue(any("refreshed" in w for w in result.warnings))
+        # the refresh reports itself as a labelled job: header first, then
+        # the report — and nothing of it joins the caller's warning list
+        text = job.getvalue()
+        self.assertTrue(text.startswith("Checking models..."), repr(text))
+        self.assertIn("plans/zen: refreshed", text)
+        self.assertEqual(len(text) - len(text.rstrip("\n")), 2, repr(text))
+        self.assertFalse(any("refreshed" in w for w in result.warnings))
 
     def test_fresh_plans_perform_no_fetch(self):
         with tempfile.TemporaryDirectory() as tmp:

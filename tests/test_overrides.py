@@ -611,5 +611,50 @@ class SyntheticMergeTest(unittest.TestCase):
         self.assertEqual(by_id["l/m"].scores.get("Terminal-Bench 2.1"), 60.0)
 
 
+class DeepSeekV41FlashOverrideTest(unittest.TestCase):
+    """deepseek-v4.1-flash serves the 1017 weights and ranks above mimo-v2.6-flash.
+
+    The opencode slug defaults to the newer 1017 variant under the hood
+    (1017 is a minor update to Flash per its model card), so the override
+    pins the 1017 card's TB 4.0 and DeepSWE numbers onto the base record.
+    With those applied the curated final lands above mimo-v2.6-flash.
+    """
+
+    FILENAME = "deepseek__deepseek-v4-1-flash.json"
+    SOURCE_1017 = "https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017"
+
+    def _payload(self):
+        root = Path(__file__).resolve().parent.parent / "data" / "overrides"
+        return json.loads((root / self.FILENAME).read_text())["model"]
+
+    def test_it_pins_the_1017_tb40_and_deepswe_cells(self):
+        payload = self._payload()
+        self.assertEqual(payload["id"], "deepseek/deepseek-v4.1-flash")
+        self.assertIn("1017", payload.get("note", ""))
+        got = {(e["name"], e.get("version")): e for e in payload["benchmarks"]}
+        self.assertEqual(set(got), {("Terminal-Bench", "4.0"), ("DeepSWE", "1.1")})
+        self.assertEqual(got[("Terminal-Bench", "4.0")]["score"], 42.3)
+        self.assertEqual(got[("DeepSWE", "1.1")]["score"], 77.0)
+        for entry in got.values():
+            self.assertIn("1017", entry.get("source", ""))
+            self.assertIn("huggingface.co", entry.get("source", ""))
+
+    def test_curated_final_lands_above_mimo_v26_flash(self):
+        from opencode_models.catalog import load_catalog
+        from opencode_models.scoring import combined, derived_scores, scales
+
+        root = Path(__file__).resolve().parent.parent / "data"
+        models, *_ = load_catalog(root)
+        table = scales(models)
+        by_id = {m.model_id: m for m in models}
+        deepseek = combined(
+            derived_scores(by_id["deepseek/deepseek-v4.1-flash"], table)
+        )
+        mimo = combined(derived_scores(by_id["xiaomi/mimo-v2.6-flash"], table))
+        self.assertIsNotNone(deepseek)
+        self.assertIsNotNone(mimo)
+        self.assertGreater(deepseek, mimo)
+
+
 if __name__ == "__main__":
     unittest.main()

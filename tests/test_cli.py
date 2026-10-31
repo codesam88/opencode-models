@@ -1695,7 +1695,7 @@ class CliTest(unittest.TestCase):
             line = next(l for l in out.splitlines() if l.rstrip().endswith("M1"))
             self.assertRegex(line, r"\s100\s+66\s+2\s+zen\s+M1$")
 
-    def test_list_gives_each_priced_variant_its_own_line(self):
+    def test_list_shows_only_the_valid_time_tier_unless_all(self):
         import json
 
         import opencode_models.availability as availability
@@ -1761,14 +1761,27 @@ class CliTest(unittest.TestCase):
             orig = availability.load_roster
             availability.load_roster = lambda _d, name: {"ds"}
             try:
-                code, out = self._run(
+                code, default = self._run(
                     "--data", tmp, "list", "--tables", "all", "--source", "go"
+                )
+                code_all, every = self._run(
+                    "--data",
+                    tmp,
+                    "list",
+                    "--tables",
+                    "all",
+                    "--source",
+                    "go",
+                    "--all",
                 )
             finally:
                 availability.load_roster = orig
-        self.assertEqual(code, 0)
-        self.assertIn("(Off-Peak)", out)
-        self.assertIn("(Peak)", out)
+        self.assertEqual((code, code_all), (0, 0))
+        # no peak rule in the snapshot: fail safe to the expensive line
+        self.assertIn("(Peak)", default)
+        self.assertNotIn("(Off-Peak)", default)
+        self.assertIn("(Off-Peak)", every)
+        self.assertIn("(Peak)", every)
 
     if __name__ == "__main__":
         unittest.main()

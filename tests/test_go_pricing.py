@@ -13,6 +13,7 @@ no test touches the network.
 import json
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest import mock
 
@@ -26,7 +27,9 @@ from opencode_models import go_pricing
 # whose labels carry a parenthetical suffix but share one monthly limit,
 # a free row ("Free" prices, "Unlimited" limit + small badge), and a
 # "2x limited time" row whose current values sit in <strong> next to
-# struck-through originals in <del>.
+# struck-through originals in <del>. Two paragraphs sit outside the tables:
+# an unrelated billing note that must be ignored, and the DeepSeek peak
+# note the snapshot stores as a validity rule.
 FIXTURE_HTML = """<!DOCTYPE html>
 <html><body>
 <h2 id="usage-limits">Usage limits</h2>
@@ -88,6 +91,8 @@ FIXTURE_HTML = """<!DOCTYPE html>
 <tr><td>Free Model</td><td><code>free-model</code></td><td><code>https://example/free-model</code></td><td><code>@ai-sdk/x</code></td></tr>
 <tr><td>Gemini 4 Argon Contributor</td><td><code>gemini-4-argon-contributor</code></td><td><code>https://example/model-d</code></td><td><code>@ai-sdk/x</code></td></tr>
 </tbody></table>
+<p>Beam usage is billed at the same token rates.</p>
+<p><strong>Model B / Model C:</strong> Peak hours are 01:00-04:00 and 06:00-10:00 UTC, Monday through Friday; all other hours, including weekends, are Off-Peak.</p>
 </body></html>
 """
 
@@ -98,7 +103,7 @@ def parse_fixture():
 
 class ParseTest(unittest.TestCase):
     def test_parses_priced_model(self):
-        models, _ = parse_fixture()
+        models, _, _ = parse_fixture()
         self.assertEqual(
             sorted(models),
             [
@@ -131,7 +136,7 @@ class ParseTest(unittest.TestCase):
         )
 
     def test_tiered_rows_collapse_to_one_slug_with_shared_limit(self):
-        models, _ = parse_fixture()
+        models, _, _ = parse_fixture()
         b = models["model-b"]
         self.assertEqual(b["name"], "Model B")
         self.assertEqual(len(b["tiers"]), 2)
@@ -143,7 +148,7 @@ class ParseTest(unittest.TestCase):
         self.assertEqual(b["requests_per_month"], {"go": 21600, "go_plus": 64800})
 
     def test_shared_assumption_bullet_applies_to_both_models(self):
-        models, _ = parse_fixture()
+        models, _, _ = parse_fixture()
         self.assertEqual(
             models["model-c"]["assumptions"], models["model-b"]["assumptions"]
         )
@@ -167,14 +172,15 @@ class ParseTest(unittest.TestCase):
             FIXTURE_HTML.replace("Model B/Model C &mdash;", "Model B/B-C &mdash;")
             .replace("<td><code>model-c</code></td>", "<td><code>model-b-c</code></td>")
             .replace("<tr><td>Model C</td>", "<tr><td>Model B-C</td>")
+            .replace("Model B / Model C:", "Model B / Model B-C:")
         )
-        models, _ = go_pricing.parse_page(html)
+        models, _, _ = go_pricing.parse_page(html)
         self.assertEqual(
             models["model-b-c"]["assumptions"], models["model-b"]["assumptions"]
         )
 
     def test_free_model_has_no_limits_or_estimates(self):
-        models, _ = parse_fixture()
+        models, _, _ = parse_fixture()
         free = models["free-model"]
         self.assertTrue(free["free"])
         self.assertEqual(free["tiers"], [])
@@ -185,7 +191,7 @@ class ParseTest(unittest.TestCase):
     def test_strikethrough_keeps_current_values(self):
         # "2x limited time" rows show the superseded number in <del>; the
         # live value is the sibling <strong>.
-        models, warnings = parse_fixture()
+        models, _, warnings = parse_fixture()
         d = models["gemini-4-argon-contributor"]
         self.assertEqual(d["limits"], {"go": 60, "go_plus": 240})
         self.assertEqual(d["requests_per_month"], {"go": 2120, "go_plus": 8480})
@@ -198,6 +204,115 @@ class ParseTest(unittest.TestCase):
         )
         with self.assertRaises(ValueError):
             go_pricing.parse_page(broken)
+
+
+class PeakNoteTest(unittest.TestCase):
+    """The DeepSeek peak note becomes a normalized validity rule."""
+
+    def test_note_is_captured_and_normalized(self):
+        _, peak, _ = parse_fixture()
+        self.assertEqual(peak["slugs"], ["model-b", "model-c"])
+        self.assertEqual(peak["windows"], [["01:00", "04:00"], ["06:00", "10:00"]])
+        self.assertEqual(peak["weekdays"], ["Mon", "Tue", "Wed", "Thu", "Fri"])
+        self.assertEqual(peak["tz"], "UTC")
+        self.assertEqual(
+            peak["raw"],
+            "Model B / Model C: Peak hours are 01:00-04:00 and 06:00-10:00"
+            " UTC, Monday through Friday; all other hours, including"
+            " weekends, are Off-Peak.",
+        )
+
+    def test_unrelated_paragraphs_are_ignored(self):
+        _, peak, _ = parse_fixture()
+        self.assertNotIn("Beam", peak["raw"])
+
+    def test_abbreviated_targets_expand_from_first_name(self):
+        # The live note writes "DeepSeek V4.1 Flash / V4 Pro"; the second
+        # entry shares only the trailing words with the first.
+        endpoints = {
+            "DeepSeek V4.1 Flash": "deepseek-v4.1-flash",
+            "DeepSeek V4 Pro": "deepseek-v4-pro",
+        }
+        self.assertEqual(
+            go_pricing._assumption_targets("DeepSeek V4.1 Flash / V4 Pro", endpoints),
+            ["deepseek-v4.1-flash", "deepseek-v4-pro"],
+        )
+
+    def test_absent_note_yields_no_rule(self):
+        html = FIXTURE_HTML.replace(
+            "<p><strong>Model B / Model C:</strong> Peak hours are"
+            " 01:00-04:00 and 06:00-10:00 UTC, Monday through Friday; all"
+            " other hours, including weekends, are Off-Peak.</p>",
+            "",
+        )
+        _, peak, _ = go_pricing.parse_page(html)
+        self.assertIsNone(peak)
+
+    def test_unresolvable_note_models_yield_no_rule_not_an_error(self):
+        html = FIXTURE_HTML.replace("Model B / Model C:", "Phantom X / Phantom Y:")
+        models, peak, _ = go_pricing.parse_page(html)
+        self.assertIsNone(peak)
+        self.assertTrue(models)
+
+
+class PeakSnapshotTest(unittest.TestCase):
+    def test_refresh_stores_the_rule(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            go_pricing.refresh(Path(tmp), get=lambda url: FIXTURE_HTML)
+            doc = json.loads((Path(tmp) / "plans" / "go.json").read_text())
+        self.assertEqual(doc["peak"]["slugs"], ["model-b", "model-c"])
+        self.assertEqual(
+            doc["peak"]["windows"], [["01:00", "04:00"], ["06:00", "10:00"]]
+        )
+
+
+class TimeTierTest(unittest.TestCase):
+    """Peak validity: windows are half-open, weekdays Mon-Fri, UTC."""
+
+    WINDOWS = [["01:00", "04:00"], ["06:00", "10:00"]]
+    WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"]
+
+    def _tier(self, day, hour, minute, second=0, month=10):
+        now = datetime(2026, month, day, hour, minute, second, tzinfo=timezone.utc)
+        return go_pricing.active_time_tier(self.WINDOWS, self.WEEKDAYS, now)
+
+    def test_window_start_is_peak(self):
+        # Friday 2026-10-30
+        self.assertEqual(self._tier(30, 1, 0), "Peak")
+        self.assertEqual(self._tier(30, 6, 0), "Peak")
+
+    def test_window_end_is_off_peak(self):
+        self.assertEqual(self._tier(30, 4, 0), "Off-Peak")
+        self.assertEqual(self._tier(30, 10, 0), "Off-Peak")
+
+    def test_last_second_inside_each_window_is_peak(self):
+        self.assertEqual(self._tier(30, 3, 59, 59), "Peak")
+        self.assertEqual(self._tier(30, 9, 59, 59), "Peak")
+
+    def test_gaps_and_utc_midnight_are_off_peak(self):
+        self.assertEqual(self._tier(30, 0, 0), "Off-Peak")
+        self.assertEqual(self._tier(30, 0, 59, 59), "Off-Peak")
+        self.assertEqual(self._tier(30, 4, 30), "Off-Peak")
+        self.assertEqual(self._tier(30, 10, 0), "Off-Peak")
+        self.assertEqual(self._tier(30, 23, 59), "Off-Peak")
+
+    def test_weekend_is_off_peak_all_day(self):
+        # Saturday 2026-10-31 and Sunday 2026-11-01
+        for month, day in ((10, 31), (11, 1)):
+            for hour in (1, 2, 6, 9):
+                with self.subTest(month=month, day=day, hour=hour):
+                    self.assertEqual(self._tier(day, hour, 0, month=month), "Off-Peak")
+
+    def test_monday_midnight_is_off_peak(self):
+        # 2026-11-02 is a Monday: the weekday begins before the window
+        self.assertEqual(self._tier(2, 0, 0, month=11), "Off-Peak")
+        self.assertEqual(self._tier(2, 1, 0, month=11), "Peak")
+
+    def test_unknown_rule_fails_safe_to_peak(self):
+        now = datetime(2026, 10, 30, 0, 0, tzinfo=timezone.utc)
+        self.assertEqual(go_pricing.active_time_tier(None, None, now), "Peak")
+        self.assertEqual(go_pricing.active_time_tier([], [], now), "Peak")
+        self.assertEqual(go_pricing.active_time_tier([], ["Mon"], now), "Peak")
 
 
 def _legacy_models():
@@ -245,7 +360,7 @@ class MergeTest(unittest.TestCase):
         return json.loads(self.path.read_text())["models"]
 
     def test_update_add_and_keep_dropped_never_delete(self):
-        parsed, _ = parse_fixture()
+        parsed, _, _ = parse_fixture()
         merged, counts, warnings = go_pricing.merge(self._existing(), parsed)
         self.assertEqual(counts, {"added": 4, "updated": 1, "dropped": 1})
         # updated: model-a picked up the page's new limits
@@ -261,7 +376,7 @@ class MergeTest(unittest.TestCase):
         self.assertTrue(any("model-legacy" in w for w in warnings))
 
     def test_rerun_is_idempotent(self):
-        parsed, _ = parse_fixture()
+        parsed, _, _ = parse_fixture()
         once, _, _ = go_pricing.merge(self._existing(), parsed)
         twice, counts, warnings = go_pricing.merge(once, parsed)
         self.assertEqual(counts, {"added": 0, "updated": 0, "dropped": 0})
@@ -269,7 +384,7 @@ class MergeTest(unittest.TestCase):
         self.assertTrue(any("model-legacy" in w for w in warnings))
 
     def test_returning_dropped_slug_clears_flag(self):
-        parsed, _ = parse_fixture()
+        parsed, _, _ = parse_fixture()
         once, _, _ = go_pricing.merge(self._existing(), parsed)
         self.assertTrue(once["model-legacy"]["dropped"])
         # the model reappears on the page with unchanged data: flag cleared
@@ -283,7 +398,7 @@ class MergeTest(unittest.TestCase):
 
 class GateTest(unittest.TestCase):
     def test_gate_passes_on_good_data(self):
-        models, _ = parse_fixture()
+        models, _, _ = parse_fixture()
         errors, _, _ = go_pricing.validate(models)
         self.assertEqual(errors, [])
 
@@ -328,13 +443,13 @@ class GateTest(unittest.TestCase):
         self.assertNotIn("fallback", hint)
 
     def test_gate_fails_on_corrupted_limit(self):
-        models, _ = parse_fixture()
+        models, _, _ = parse_fixture()
         models["model-a"]["limits"]["go"] = 600
         errors, _, _ = go_pricing.validate(models)
         self.assertTrue(any("model-a" in e for e in errors))
 
     def test_gate_fails_on_corrupted_published_estimate(self):
-        models, _ = parse_fixture()
+        models, _, _ = parse_fixture()
         models["model-b"]["requests_per_month"]["go_plus"] = 100
         errors, _, _ = go_pricing.validate(models)
         self.assertTrue(any("model-b" in e for e in errors))
@@ -368,7 +483,7 @@ class GateTest(unittest.TestCase):
         # without token assumptions reproduction is impossible by
         # definition, so it can never signal a broken parser: warn loudly,
         # keep the model with assumptions None, and let the refresh land.
-        models, _ = parse_fixture()
+        models, _, _ = parse_fixture()
         errors, warnings, _ = go_pricing.validate(models)
         self.assertEqual(errors, [])
         self.assertTrue(any("gemini-4-argon-contributor" in w for w in warnings))

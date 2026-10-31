@@ -89,28 +89,49 @@ _ASSUMPTION = re.compile(
     r" per request$"
 )
 
+#: Tier labels carrying a time-of-day rate, not a request-size band.
+PEAK_LABEL = "Peak"
+OFF_PEAK_LABEL = "Off-Peak"
+#: Day names as written in the note, mapped to ISO weekday numbers.
+_DAY_NAMES = {
+    "monday": 1,
+    "tuesday": 2,
+    "wednesday": 3,
+    "thursday": 4,
+    "friday": 5,
+    "saturday": 6,
+    "sunday": 7,
+}
+_DAY_ABBR = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+_PEAK_WINDOW = re.compile(r"(\d{1,2}:\d{2})\s*[-\u2013\u2014]\s*(\d{1,2}:\d{2})")
+_PEAK_DAY_RANGE = re.compile(r"([A-Z][a-z]+)\s+through\s+([A-Z][a-z]+)")
+_PEAK_NOTE = re.compile(r"^(?P<models>[^:]+):\s*\S", re.S)
+
 
 def _clean(parts):
     return " ".join("".join(parts).split())
 
 
 class _SectionParser(HTMLParser):
-    """Collects tables (tagged with their plan tab) and <li> texts.
+    """Collects tables (tagged with their plan tab), <li> and <p> texts.
 
     Content inside <del> (superseded values on discounted rows) and
     <small> (annotation badges) is dropped; the live value in a cell is
-    the remaining text.
+    the remaining text. Paragraphs matter for the peak note, which is
+    plain prose between the tables rather than a list item.
     """
 
     def __init__(self):
         super().__init__(convert_charrefs=True)
         self.tables = []  # (plan panel, header row, body rows)
         self.items = []  # <li> texts
+        self.paragraphs = []  # <p> texts
         self._panels = []
         self._table = None
         self._row = None
         self._cell = None
         self._item = None
+        self._para = None
         self._skip = 0
 
     def handle_starttag(self, tag, attrs):
@@ -132,6 +153,8 @@ class _SectionParser(HTMLParser):
             self._skip += 1
         elif tag == "li":
             self._item = []
+        elif tag == "p":
+            self._para = []
 
     def handle_endtag(self, tag):
         if tag == "div":
@@ -159,6 +182,12 @@ class _SectionParser(HTMLParser):
                 if text:
                     self.items.append(text)
             self._item = None
+        elif tag == "p":
+            if self._para is not None:
+                text = _clean(self._para)
+                if text:
+                    self.paragraphs.append(text)
+            self._para = None
 
     def handle_data(self, data):
         if self._skip:
@@ -167,6 +196,8 @@ class _SectionParser(HTMLParser):
             self._cell.append(data)
         elif self._item is not None:
             self._item.append(data)
+        elif self._para is not None:
+            self._para.append(data)
 
 
 def _num(text):
@@ -287,6 +318,9 @@ def _assumption_targets(name, endpoints):
             re.sub(r"\S+$", part, parts[0]),  # "Kimi K3/K2.7" -> "Kimi K2.7"
             re.sub(r"-[^-]*$", "-" + part, parts[0]),  # "GLM-5.3/5.2"
             f"{parts[0]} {part}",
+            # "DeepSeek V4.1 Flash / V4 Pro" -> "DeepSeek V4 Pro": a
+            # multi-word abbreviation replaces as many trailing words
+            " ".join(parts[0].split()[: -len(part.split())] + part.split()),
         )
         for candidate in candidates:
             if (
@@ -316,6 +350,141 @@ def _assumptions(items, endpoints):
     return found
 
 
+def _weekday_names(start, end):
+    """Expand "Monday through Friday" to abbreviated names, in order."""
+    first, last = _DAY_NAMES.get(start.lower()), _DAY_NAMES.get(end.lower())
+    if first is None or last is None:
+        return []
+    if first <= last:
+        return list(_DAY_ABBR[first - 1 : last])
+    return list(_DAY_ABBR[first - 1 :]) + list(_DAY_ABBR[:last])
+
+
+def _parse_peak_note(text, endpoints):
+    """Normalize the DeepSeek peak paragraph, or None for any other note.
+
+    The note names its scoped models, then the weekday windows in UTC.
+    Slug resolution reuses the assumption-bullet spelling rules, so an
+    abbreviated tail ("DeepSeek V4.1 Flash / V4 Pro") maps to both
+    Endpoints entries.
+    """
+    if "Peak hours" not in text or OFF_PEAK_LABEL not in text:
+        return None
+    match = _PEAK_NOTE.match(text)
+    if not match:
+        return None
+    windows = [[start, end] for start, end in _PEAK_WINDOW.findall(text)]
+    day_range = _PEAK_DAY_RANGE.search(text)
+    if not windows or not day_range or "UTC" not in text:
+        return None
+    weekdays = _weekday_names(day_range.group(1), day_range.group(2))
+    if not weekdays:
+        return None
+    return {
+        "slugs": _assumption_targets(match.group("models"), endpoints),
+        "windows": windows,
+        "weekdays": weekdays,
+        "tz": "UTC",
+        "raw": text,
+    }
+
+
+def _day_number(name):
+    """ISO weekday number for a full or abbreviated day name, else None."""
+    key = name.strip().lower()
+    if key in _DAY_NAMES:
+        return _DAY_NAMES[key]
+    for number, abbr in enumerate(_DAY_ABBR, start=1):
+        if abbr.lower() == key:
+            return number
+    return None
+
+
+def _clock_seconds(value):
+    hours, minutes = value.split(":")
+    return int(hours) * 3600 + int(minutes) * 60
+
+
+def active_time_tier(windows, weekdays, now):
+    """The time tier valid at *now*: ``Peak`` or ``Off-Peak``.
+
+    Windows are half-open ``[start, end)`` on a UTC clock, so a line
+    starting at 01:00 is peak at 01:00:00 and off-peak at 04:00:00.
+    Unknown or empty windows fail safe to the more expensive ``Peak``
+    tier, never the cheap one.
+    """
+    if not windows or not weekdays:
+        return PEAK_LABEL
+    days = {_day_number(day) for day in weekdays}
+    days.discard(None)
+    if not days:
+        return PEAK_LABEL
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+    else:
+        now = now.astimezone(timezone.utc)
+    if now.isoweekday() not in days:
+        return OFF_PEAK_LABEL
+    second = now.hour * 3600 + now.minute * 60 + now.second
+    for start, end in windows:
+        if _clock_seconds(start) <= second < _clock_seconds(end):
+            return PEAK_LABEL
+    return OFF_PEAK_LABEL
+
+
+def time_tier_for(peak, slug, now):
+    """The active time tier for *slug*: Peak unless the rule names it.
+
+    The published windows are scoped to the slugs the note lists. A slug
+    outside that scope has no known window, so it fails safe to Peak.
+    """
+    if not isinstance(peak, dict) or slug not in (peak.get("slugs") or []):
+        return PEAK_LABEL
+    return active_time_tier(peak.get("windows"), peak.get("weekdays"), now)
+
+
+def filter_time_tiers(records, peak, now):
+    """Keep only the currently-valid time tier on each record.
+
+    A record carrying an Off-Peak/Peak label loses the inactive line;
+    request-size tiers (``≤/>N tokens``) are never touched. Records with
+    no time labels pass through unchanged.
+    """
+    out = {}
+    for slug, rec in records.items():
+        if not isinstance(rec, dict):
+            out[slug] = rec
+            continue
+        tiers = rec.get("tiers") or []
+        labels = [tier.get("label") for tier in tiers]
+        if PEAK_LABEL not in labels and OFF_PEAK_LABEL not in labels:
+            out[slug] = rec
+            continue
+        active = time_tier_for(peak, slug, now)
+        inactive = OFF_PEAK_LABEL if active == PEAK_LABEL else PEAK_LABEL
+        kept = [tier for tier in tiers if tier.get("label") != inactive]
+        out[slug] = {**rec, "tiers": kept or tiers}
+    return out
+
+
+def _find_peak(paragraphs, endpoints):
+    """First resolvable peak note, plus whether one named unknown models.
+
+    Returns ``(peak, unresolved)``: an unresolvable note is an unknown
+    rule, never a broken page.
+    """
+    unresolved = False
+    for text in paragraphs:
+        try:
+            peak = _parse_peak_note(text, endpoints)
+        except ValueError:
+            unresolved = True
+            continue
+        if peak is not None:
+            return peak, unresolved
+    return None, unresolved
+
+
 def _collect_endpoints(tables):
     endpoints = {}
     for _plan, header, rows in tables:
@@ -329,7 +498,11 @@ def _collect_endpoints(tables):
 
 
 def parse_page(html):
-    """Parse a saved Go docs page into (models by slug, warnings)."""
+    """Parse a saved Go docs page into (models by slug, peak rule, warnings).
+
+    *peak* is the normalized time-validity rule, or None when the page
+    publishes no such note; an absent rule is unknown, not open-ended.
+    """
     parser = _SectionParser()
     parser.feed(html)
     pricing = {plan: None for plan in PLANS}
@@ -356,7 +529,12 @@ def parse_page(html):
     if set(est_by_plan[first]) != set(by_plan[first]):
         raise ValueError("pricing and requests tables list different models")
     assumptions = _assumptions(parser.items, endpoints)
+    peak, peak_unresolved = _find_peak(parser.paragraphs, endpoints)
     warnings = []
+    if peak_unresolved and peak is None:
+        warnings.append(
+            "peak note names models outside the Endpoints table — peak windows unknown"
+        )
     models = {}
     for slug, g in by_plan[first].items():
         p = by_plan[second][slug]
@@ -397,7 +575,7 @@ def parse_page(html):
     for slug in endpoints.values():
         if slug not in models:
             warnings.append(f"{slug}: in Endpoints but not in pricing tables")
-    return models, warnings
+    return models, peak, warnings
 
 
 def merge(existing, parsed):
@@ -547,7 +725,7 @@ def refresh(directory, get=None):
         html = get(PAGE_URL)
     except Exception as exc:  # noqa: BLE001
         raise OSError(exc) from exc
-    parsed, parse_warnings = parse_page(html)
+    parsed, peak, parse_warnings = parse_page(html)
     raw = html.encode("utf-8")
     existing = {}
     if out.exists():
@@ -576,6 +754,7 @@ def refresh(directory, get=None):
             "plans": list(PLANS),
         },
         "windows": dict(WINDOWS),
+        "peak": peak,
         "models": {slug: merged[slug] for slug in sorted(merged)},
     }
     out.write_text(json.dumps(doc, indent=2, ensure_ascii=False) + "\n")

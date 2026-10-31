@@ -13,9 +13,10 @@ not render, grade or partition -- those stay with the commands.
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
+from datetime import datetime, timezone
 from pathlib import Path
 
-from . import availability, modelsdev
+from . import availability, go_pricing, modelsdev
 from . import sync as sync_mod
 from .catalog import load_catalog
 from .ranking import build_rows, dedupe_providers, merge_rows
@@ -40,6 +41,7 @@ def rows_for(
     selected,
     price: str = "est",
     all_models: bool = False,
+    now=None,
 ) -> RowsResult:
     """Build, merge and dedupe the rows for *selected* providers.
 
@@ -51,8 +53,12 @@ def rows_for(
     the plans dropped is neither listed nor scored. The scales are still
     built over the whole catalog, so a score does not move when a plan
     changes what it sells.
+
+    Time-tiered Go lines (Off-Peak/Peak) keep only the line valid at *now*
+    (default: current UTC) unless *all_models* shows both.
     """
     data_dir = Path(data_dir)
+    now = now or datetime.now(timezone.utc)
     models, curated, _board_conflicts, merge_warnings = load_catalog(data_dir)
     # The models.dev slice is this data dir's go/zen catalog. Without it
     # (fresh clone, offline) the cards decide, as they did before.
@@ -64,6 +70,13 @@ def rows_for(
     # report opens with a header and closes with a blank line, so it is
     # separated from this command's output instead of joining its warnings
     sync_mod.refresh_plan_as_job(data_dir, [p for p in selected if p in ("go", "zen")])
+    # read after the refresh: a first run on an old snapshot must filter
+    # with the rule that same refresh stored, not the previous one
+    peak = (
+        availability.load_plan_snapshot(data_dir)[0].get("peak")
+        if "go" in selected and not all_models
+        else None
+    )
     avail = availability.current_offered(data_dir, bypass=all_models)
     on_offer = avail.offered
     warnings: list[str] = list(avail.warnings) + merge_warnings
@@ -140,6 +153,8 @@ def rows_for(
             # each row carries the flag. The snapshot on disk is
             # untouched; validation keeps reading the raw files.
             plan_models, filled = availability.plan_records(data_dir, provider)
+            if provider == "go" and not all_models:
+                plan_models = go_pricing.filter_time_tiers(plan_models, peak, now)
         else:
             plan_models = {}
             filled = set()

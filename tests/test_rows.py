@@ -7,11 +7,13 @@ import json
 import os
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest import mock
 
 import opencode_models.availability as availability
 from opencode_models import go_pricing, zen_pricing
+from opencode_models import sync as sync_mod
 from opencode_models.catalog import load_catalog
 from opencode_models.rows import rows_for
 from tests import test_zen_pricing as zen_fixture
@@ -445,6 +447,164 @@ class EstPricesEveryVariantTest(unittest.TestCase):
         # the record publishes the mix, so neither line is a median one
         self.assertNotIn("median", off.markers)
         self.assertNotIn("median", peak.markers)
+
+
+class RowsForTimeTierFilterTest(unittest.TestCase):
+    """Off-Peak/Peak lines follow the snapshot's published windows."""
+
+    PEAK = {
+        "slugs": ["ds"],
+        "windows": [["01:00", "04:00"], ["06:00", "10:00"]],
+        "weekdays": ["Mon", "Tue", "Wed", "Thu", "Fri"],
+        "tz": "UTC",
+        "raw": "DS: Peak hours are 01:00-04:00 and 06:00-10:00 UTC, ...",
+    }
+    TIME_TIERS = [
+        {
+            "label": "Off-Peak",
+            "in": 0.66,
+            "out": 1.98,
+            "cached": 0.022,
+            "cached_write": None,
+        },
+        {
+            "label": "Peak",
+            "in": 1.32,
+            "out": 3.96,
+            "cached": 0.044,
+            "cached_write": None,
+        },
+    ]
+    SIZE_TIERS = [
+        {
+            "label": "≤ 256K tokens",
+            "in": 0.4,
+            "out": 1.6,
+            "cached": 0.04,
+            "cached_write": None,
+        },
+        {
+            "label": "> 256K tokens",
+            "in": 1.2,
+            "out": 4.8,
+            "cached": 0.12,
+            "cached_write": None,
+        },
+    ]
+
+    def _snapshot(self, d: Path, peak=PEAK):
+        _write_model(d, "l/ds")
+        _write_model(d, "l/size")
+        (d / "plans").mkdir(parents=True, exist_ok=True)
+        doc = {
+            "meta": {
+                "source": "test",
+                "fetched_at": "2099-01-01T00:00:00+00:00",
+                "schema_rev": 1,
+                "plans": ["go"],
+            },
+            "models": {
+                "ds": {
+                    "name": "DS",
+                    "free": False,
+                    "tiers": list(self.TIME_TIERS),
+                    "limits": None,
+                    "requests_per_month": None,
+                    "assumptions": None,
+                },
+                "size": {
+                    "name": "SIZE",
+                    "free": False,
+                    "tiers": list(self.SIZE_TIERS),
+                    "limits": None,
+                    "requests_per_month": None,
+                    "assumptions": None,
+                },
+            },
+        }
+        if peak is not None:
+            doc["peak"] = peak
+        (d / "plans" / "go.json").write_text(json.dumps(doc))
+
+    def _rows(self, d, now, all_models=False):
+        roster = {"ds", "size"}
+        orig_roster = availability.load_roster
+        orig_offered = availability.current_offered
+        availability.load_roster = lambda _d, _t: set(roster)
+        availability.current_offered = lambda _d, bypass=False: type(
+            "R", (), {"offered": set(roster), "warnings": ()}
+        )()
+        try:
+            return rows_for(d, ["go"], price="fix", all_models=all_models, now=now).rows
+        finally:
+            availability.load_roster = orig_roster
+            availability.current_offered = orig_offered
+
+    @staticmethod
+    def _at(month, day, hour, minute=0):
+        return datetime(2026, month, day, hour, minute, tzinfo=timezone.utc)
+
+    def _names(self, rows):
+        return {r.name for r in rows}
+
+    def test_off_peak_window_keeps_only_the_off_peak_line(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            self._snapshot(d)
+            names = self._names(self._rows(d, self._at(10, 30, 5)))
+        self.assertIn("DS (Off-Peak)", names)
+        self.assertNotIn("DS (Peak)", names)
+
+    def test_peak_window_keeps_only_the_peak_line(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            self._snapshot(d)
+            names = self._names(self._rows(d, self._at(10, 30, 2)))
+        self.assertIn("DS (Peak)", names)
+        self.assertNotIn("DS (Off-Peak)", names)
+
+    def test_all_models_shows_both_time_lines(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            self._snapshot(d)
+            names = self._names(self._rows(d, self._at(10, 30, 2), all_models=True))
+        self.assertIn("DS (Off-Peak)", names)
+        self.assertIn("DS (Peak)", names)
+
+    def test_unknown_rule_fails_safe_to_the_peak_line(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            self._snapshot(d, peak=None)
+            names = self._names(self._rows(d, self._at(10, 30, 5)))
+        self.assertIn("DS (Peak)", names)
+        self.assertNotIn("DS (Off-Peak)", names)
+
+    def test_token_window_tiers_are_never_filtered(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            self._snapshot(d)
+            for now in (self._at(10, 30, 2), self._at(10, 30, 5)):
+                names = self._names(self._rows(d, now))
+                with self.subTest(now=now):
+                    self.assertIn("SIZE (≤ 256K tokens)", names)
+                    self.assertIn("SIZE (> 256K tokens)", names)
+
+    def test_rule_written_by_the_same_run_refresh_is_applied(self):
+        # The read path refreshes a stale snapshot and then filters with it;
+        # reading the rule before the refresh would miss it for one run.
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            self._snapshot(d, peak=None)
+
+            def refresh(_data_dir, _tiers, get=None):
+                doc = json.loads((d / "plans" / "go.json").read_text())
+                doc["peak"] = self.PEAK
+                (d / "plans" / "go.json").write_text(json.dumps(doc))
+
+            with mock.patch.object(sync_mod, "refresh_plan_as_job", refresh):
+                names = self._names(self._rows(d, self._at(10, 30, 5)))
+        self.assertIn("DS (Off-Peak)", names)
+        self.assertNotIn("DS (Peak)", names)
 
 
 class RowsForAliasMergeTest(unittest.TestCase):

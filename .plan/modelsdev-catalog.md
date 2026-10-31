@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: done
 type: feature
 priority: high
 area: backend
@@ -60,6 +60,7 @@ plan snapshots use, and it is what keeps the fixture suite on one path.
 
 ## Progress
 
+- 2026-10-31: done. Verified against tree: `modelsdev.py` exposes `API_URL`/`PROVIDERS`/`refresh`/`load`/`to_models` (`load` returns tier-scoped records, covering the planned `tier_records` step), `MODELSDEV_MAX_AGE` (24h) + `sync` report line + `--force` present, `_synthesize_roster_models` and `is_internal` absent everywhere, `data/modelsdev.json` gitignored, README documents the source, roster-coverage fixtures carry slice entries. Full suite 730 green, `just lint` clean (ruff + zizmor; vermin file-combine notice on `test_cli.py` only). The 2026-10-26 prose-pinned failure noted below is resolved by `37b7514`.
 - 2026-10-26: landed `modelsdev.py` (fetch/slice/load/to_models), the
   `modelsdev` freshness layer (`MODELSDEV_MAX_AGE`, 24h) and the `sync`
   report line. Slice on disk after `sync`: 167 records / 187,890 bytes.

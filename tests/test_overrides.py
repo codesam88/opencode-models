@@ -643,8 +643,81 @@ class DeepSeekV41FlashOverrideTest(unittest.TestCase):
         from opencode_models.catalog import load_catalog
         from opencode_models.scoring import combined, derived_scores, scales
 
-        root = Path(__file__).resolve().parent.parent / "data"
-        models, *_ = load_catalog(root)
+        # Hermetic: the ranking comes from the override file plus two
+        # fixture cards, never from the fetched data/ tree (absent on CI —
+        # loading it here was a KeyError on a fresh clone). Mimo's cells
+        # are a snapshot of its 2026-10-30 card.
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            cards = d / "opencode"
+            cards.mkdir(parents=True)
+            (cards / "deepseek__deepseek-v4-1-flash.json").write_text(
+                json.dumps(
+                    {
+                        "model": {
+                            "id": "deepseek/deepseek-v4.1-flash",
+                            "name": "DeepSeek V4.1 Flash",
+                            "lab": "deepseek",
+                            "priceUsdPer1M": {
+                                "input": 1.0,
+                                "output": None,
+                                "cachedInput": None,
+                            },
+                            "benchmarks": [],
+                        }
+                    }
+                )
+            )
+            (cards / "xiaomi__mimo-v2-6-flash.json").write_text(
+                json.dumps(
+                    {
+                        "model": {
+                            "id": "xiaomi/mimo-v2.6-flash",
+                            "name": "MiMo V2.6 Flash",
+                            "lab": "xiaomi",
+                            "priceUsdPer1M": {
+                                "input": 1.0,
+                                "output": None,
+                                "cachedInput": None,
+                            },
+                            "benchmarks": [
+                                {
+                                    "name": "Terminal-Bench",
+                                    "version": "2.1",
+                                    "score": 87.6,
+                                    "metric": "acc",
+                                    "source": "https://huggingface.co/XiaomiMiMo/MiMo-V2.6-Flash-RL",
+                                },
+                                {
+                                    "name": "Terminal-Bench",
+                                    "version": "4.0",
+                                    "score": 28.8,
+                                    "metric": "acc",
+                                    "source": "https://huggingface.co/XiaomiMiMo/MiMo-V2.6-Flash-RL",
+                                },
+                                {
+                                    "name": "DeepSWE",
+                                    "version": "1.1",
+                                    "score": 67.9,
+                                    "metric": "acc",
+                                    "source": "https://huggingface.co/XiaomiMiMo/MiMo-V2.6-Flash-RL",
+                                },
+                            ],
+                        }
+                    }
+                )
+            )
+            out = d / "overrides"
+            out.mkdir()
+            (out / self.FILENAME).write_text(
+                (
+                    Path(__file__).resolve().parent.parent
+                    / "data"
+                    / "overrides"
+                    / self.FILENAME
+                ).read_text()
+            )
+            models, *_ = load_catalog(d)
         table = scales(models)
         by_id = {m.model_id: m for m in models}
         deepseek = combined(

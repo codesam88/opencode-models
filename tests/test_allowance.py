@@ -393,6 +393,20 @@ class CompareWindowPercentTests(unittest.TestCase):
         self.assertIsNone(out["max_model"])
         self.assertIsNone(out["spend_share"])
 
+    def test_sum_relative_is_sum_of_per_model_relative_usage(self):
+        # differs from both max_model (10.0) and spend_share (4.444...)
+        out = compare_window_percent(5.0, {"a": 3.0, "b": 1.0}, {"a": 30.0, "b": 60.0})
+        expected = 100 * 3.0 / 30.0 + 100 * 1.0 / 60.0
+        self.assertAlmostEqual(out["sum_relative"], expected, places=9)
+
+    def test_sum_relative_skips_spend_slug_with_no_cap(self):
+        out = compare_window_percent(None, {"a": 3.0, "b": 1.0}, {"a": 30.0})
+        self.assertAlmostEqual(out["sum_relative"], 100 * 3.0 / 30.0, places=9)
+
+    def test_empty_inputs_yield_sum_relative_none(self):
+        out = compare_window_percent(None, {}, {})
+        self.assertIsNone(out["sum_relative"])
+
 
 class MedianAssumptionsTests(unittest.TestCase):
     def test_median_of_published_mixes(self):

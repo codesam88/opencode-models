@@ -340,12 +340,22 @@ def compare_window_percent(
 ) -> dict:
     """API window percent beside spend-implied percents; never a verdict.
 
-    The mapping from the API's percent to per-model spend is unknown
-    (it matches neither the strongest model nor spend-vs-sum-of-limits),
-    so this reports all three numbers and labels the unknowns instead
-    of fudging a pass/fail. ``max_model`` is the strongest model's share
-    of its cap; ``spend_share`` is total spend over total caps, ignoring
-    uncapped models. ``note`` is set whenever ``api`` is missing.
+    ``sum_relative`` reports the raw sum of each model's relative usage:
+    ``sum(100 * spend[slug] / caps[slug])`` over the slugs present in
+    both ``spend`` and ``caps`` with a truthy cap. The sum-of-relative
+    rule is the verified enforcement rule at the monthly cap (the monthly
+    API percent tracks it; the Console displays it capped and rounded at
+    100). Shorter-window reconstruction from the daily export does not
+    reproduce the API percent (weekly and rolling diverge, and rolling is
+    further distorted because the export is daily while that window is 5h),
+    so the rule is settled only at the monthly cap and remains open for
+    the shorter windows. ``max_model`` is the strongest model's share of
+    its cap; ``spend_share`` is total spend over total caps, ignoring
+    uncapped models. Both are retained as context candidates. The caps come
+    from a periodically refreshed snapshot, so exact equality with ``api``
+    is not guaranteed even though the monthly window tracks the same rule.
+    ``note`` is set whenever ``api`` is missing. This reports numbers only;
+    it is never a verdict.
     """
     shares = [spend[slug] / cap for slug, cap in caps.items() if slug in spend and cap]
     total_spend = sum(spend.get(slug, 0.0) for slug in caps)
@@ -354,6 +364,7 @@ def compare_window_percent(
         "api": api_percent,
         "max_model": max(shares) * 100 if shares else None,
         "spend_share": total_spend / total_caps * 100 if total_caps else None,
+        "sum_relative": sum(shares) * 100 if shares else None,
         "note": (
             None
             if api_percent is not None

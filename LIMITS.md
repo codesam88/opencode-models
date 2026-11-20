@@ -266,12 +266,22 @@ Per-model remaining therefore needs a snapshot of the page's limits table
 as the denominator: `remaining = limit × {0.2, 0.5, 1.0} − export spend in
 window`. The model list itself IS in an API (`/inference/go/v1/models`,
 which the page documents).
-The plan-level `percent` from `/zen/go/v1/usage` is opaque: with
-(monthly 2%, weekly 4%) live, export-derived candidates give max-model
-19.4%/47.1% and sum-of-Go-limits 1.0%/2.8% — neither reproduces it, so the
-headline number cannot be independently derived. Per-model math from
-page + export is more informative than the API percent. Workspace plan
-(Go vs Plus, limits differ 2–4×) is not exposed by any endpoint.
+At the monthly cap, the plan-level `percent` from `/zen/go/v1/usage` tracks
+the sum of each model's relative usage,
+`100 * spend(model, window) / (monthly_limit(model) * window_fraction)`,
+capped/rounded at 100%; the API `status` flips to `rate-limited` at the cap.
+Evidence (2026-11-20): API monthly `percent: 100`, status `rate-limited`;
+raw sum of relative percents 99.13%; sum of the displayed rounded per-model
+cells 100%. The older export-derived candidates do not reproduce it:
+max-model share 45.88%, total-spend/total-caps 16.79%. The workspace-wide
+spend ceilings above ($60 per period on Go) also clamp the monthly figure to
+100, so this check alone does not separate the two mechanisms. Shorter-window
+reconstructions from the daily export do not reproduce the API percent and
+remain open: weekly 43.59% vs API 39, rolling 62.83% vs API 38 (rolling also
+overcounts: the export is daily and the window is 5h). Exact reproduction is
+limited by the periodically refreshed limits snapshot and the 30-day
+export's approximation of the month. Workspace plan (Go vs Plus, limits
+differ 2–4×) is not exposed by any endpoint.
 
 ### Exact metric shapes (verified live 2026-10-21, personal key, `https://opencode.ai` base)
 

@@ -84,8 +84,15 @@ mechanism: bulk discounts and reserved capacity per model.
 - **Within included usage:** the binding constraint is per-model
   req/window headroom (`remaining(m, w) / cpr(m)` requests left). Rank by
   benchmark score subject to headroom > 0; headroom needs the export
-  because the API's plan-level `percent` is opaque (live 2%/4% matches
-  neither max-model 47.1%/19.4% nor spend-vs-sum-of-limits 2.8%/1.0%).
+  (per-model remaining = limit × window fraction − spend in window). The
+  API's plan-level `percent` is the sum of each model's relative usage,
+  `100 * spend(model, window) /
+  (monthly_limit(model) * window_fraction)`, capped/rounded at 100% (status
+  `rate-limited` at the cap); verified at the monthly cap (2026-11-20:
+  100 / 99.13% raw / 100% rounded cells). Shorter-window reconstructions
+  from the daily export do not match: weekly 43.59% vs API 39, rolling
+  62.83% vs API 38 (the rolling window is 5h while the export is daily).
+  max-model (45.88%) and spend-vs-caps (16.79%) are rejected alternatives.
 - **Beyond included (credits):** rank by **`$/req` only** — the credit
   table in §3's order. It is plan-invariant (same token prices both
   plans); only caps scale.

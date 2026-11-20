@@ -22,7 +22,7 @@ import os
 import tempfile
 import unittest
 import urllib.error
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from unittest import mock
 
@@ -330,14 +330,15 @@ class HeaderTest(UsageCase):
     def test_sections_have_ruled_headers(self):
         code, out = self._run()
         self.assertEqual(code, 0)
-        self.assertRegex(out, r"(?m)^── Week \(")
-        self.assertRegex(out, r"(?m)^── Month \(")
+        self.assertRegex(out, r"(?m)^── Week · ")
+        self.assertRegex(out, r"(?m)^── Month · ")
 
     def test_windows_resets_plan_and_balance(self):
         code, out = self._run()
         self.assertEqual(code, 0)
         self.assertIn("Go plan", out)
-        self.assertIn("10-26 00:00", out)
+        self.assertIn("5-hour window", out)
+        self.assertIn("Resets in", out)
         self.assertIn("balance $2.41", out)
         self.assertIn("snapshot 2d old (local)", out)
         self.assertIn("Week", out)
@@ -350,41 +351,30 @@ class HeaderTest(UsageCase):
         self.assertEqual(code, 0)
         self.assertIn("40d old", out)
 
-    def test_clamped_window_is_marked_partial_in_header(self):
-        resets = dict(RESETS, monthly="2026-11-10T00:00:00.000Z")
-        payload = {
-            "usage": {
-                w: {"status": "ok", "percent": p, "resetsAt": resets[w]}
-                for w, p in (("rolling", 1), ("weekly", 5), ("monthly", 2))
-            }
-        }
-        self.get = _routes(
-            **{
-                cli_mod.GO_USAGE_URL: json.dumps(payload),
-                cli_mod.USAGE_EXPORT_URL: EXPORT_CSV,
-                cli_mod.GO_BILLING_URL: BILLING_PAYLOAD,
-            }
+    def test_window_start_clamps_to_the_exports_first_day(self):
+        # month starting 10-11, export only reaching back to 10-22: spend
+        # counts from the export's first day
+        self.assertEqual(
+            usage_cmd._window_start(
+                "2026-11-10T00:00:00.000Z", "monthly", date(2026, 10, 22)
+            ),
+            date(2026, 10, 22),
         )
-        code, out = self._run()
-        self.assertEqual(code, 0)
-        self.assertIn("partial", out)
+        # a window opening inside the export keeps its own start
+        self.assertEqual(
+            usage_cmd._window_start(
+                "2026-11-10T00:00:00.000Z", "monthly", date(2026, 10, 1)
+            ),
+            date(2026, 10, 11),
+        )
 
 
 class ModelTableTest(UsageCase):
     def test_spend_implied_percent_and_remaining(self):
         code, out = self._run()
         self.assertEqual(code, 0)
-        # Week section header (elapsed days tick with the real clock, so the
-        # expectation is computed the same way rather than hardcoded)
-        start = datetime(2026, 10, 19, tzinfo=timezone.utc)
-        elapsed = max(
-            0,
-            int((datetime.now(timezone.utc) - start).total_seconds() // 86400),
-        )
-        self.assertIn(
-            f"Week (~{elapsed} days since Monday 10-19 → resets 10-26 00:00 UTC)",
-            out,
-        )
+        # Week section header: model count and the window's per-model sum
+        self.assertIn("Week · 4 models · total spent 84.44%", out)
         # muse: weekly excludes the 10-18 day
         self.assertIn("10.80", out)
         self.assertIn("36%", out)
@@ -670,6 +660,77 @@ class SnapshotResolutionTest(unittest.TestCase):
         self.assertEqual(origin, "shipped")
         self.assertIn("models", snapshot)
         self.assertIn("meta", snapshot)
+
+
+class RelativeUsageHeaderTest(UsageCase):
+    """Section headers carry the window's total-spent sum."""
+
+    def test_headers_carry_the_total_spent_sum(self):
+        code, out = self._run()
+        self.assertEqual(code, 0)
+        self.assertIn("Week · 4 models · total spent 84.44%", out)
+        self.assertIn("Month · 4 models · total spent 55.75%", out)
+
+    def test_reset_note_and_total_rows_are_gone(self):
+        code, out = self._run()
+        self.assertEqual(code, 0)
+        self.assertNotIn("days since", out)
+        self.assertNotIn("→ resets", out)
+        self.assertNotIn("Σ per-model %", out)
+
+    def test_window_without_traffic_has_no_usage_sum(self):
+        sections = usage_cmd._sections({}, "go", {"weekly": {}, "monthly": {}})
+        self.assertEqual(
+            [title for title, _left, _right in sections],
+            ["Week · 0 models", "Month · 0 models"],
+        )
+
+
+class OfficialResetsTextTest(unittest.TestCase):
+    """`Resets in …` text from a window's `resetsAt` timestamp."""
+
+    NOW = datetime(2026, 11, 20, 12, 0, 0, tzinfo=timezone.utc)
+
+    def test_resets_text_reads_like_the_console(self):
+        for resets, expected in (
+            ("2026-11-22T11:00:00Z", "1d 23h"),
+            ("2026-11-20T13:35:00Z", "1h 35m"),
+            ("2026-11-21T02:24:00Z", "14h 24m"),
+            ("2026-11-20T12:45:00Z", "45m"),
+            ("2026-11-20T12:00:30Z", "<1m"),
+            ("2026-11-20T09:00:00Z", "now"),
+            ("not-a-date", "?"),
+            (None, "?"),
+        ):
+            with self.subTest(resets=resets):
+                self.assertEqual(usage_cmd._resets_in_text(resets, self.NOW), expected)
+
+
+class OfficialUsageHeaderTest(UsageCase):
+    """Console-reported window figures, at the top of the view."""
+
+    def test_block_sits_below_the_headline_and_above_the_week_table(self):
+        code, out = self._run()
+        self.assertEqual(code, 0)
+        lines = out.splitlines()
+        head_idx = next(i for i, l in enumerate(lines) if l.startswith("Go plan"))
+        week_idx = next(i for i, l in enumerate(lines) if l.startswith("── Week"))
+        block = lines[head_idx + 1 : week_idx]
+        for label, percent in (
+            ("5-hour window", "1%"),
+            ("Weekly", "5%"),
+            ("Monthly", "2%"),
+        ):
+            hits = [l for l in block if label in l and percent in l]
+            self.assertEqual(len(hits), 1, f"{label} row missing from the block")
+
+    def test_official_lines_are_indented_two_spaces(self):
+        code, out = self._run()
+        self.assertEqual(code, 0)
+        official = [l for l in out.splitlines() if "used · Resets in" in l]
+        self.assertEqual(len(official), 3)
+        for line in official:
+            self.assertTrue(line.startswith("  "), repr(line))
 
 
 class UsageWidthTest(unittest.TestCase):

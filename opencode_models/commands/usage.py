@@ -41,6 +41,14 @@ GO_BILLING_URL = "https://opencode.ai/console/api/billing/status"
 GO_HISTORY_NAME = "go_windows.jsonl"
 GO_HISTORY_MAX_LINES = 200
 
+#: The Console's names for the three plan-level windows, keyed by the
+#: API payload's window names (the first one is ``rolling``).
+WINDOW_LABELS = {
+    "rolling": "5-hour window",
+    "weekly": "Weekly",
+    "monthly": "Monthly",
+}
+
 #: Nominal window lengths — the page publishes the fractions (20/50/100%
 #: of the monthly limit), not the clock, so a window's spend starts at
 #: ``resetsAt`` minus this length. The 720h month is a 30-day
@@ -69,6 +77,51 @@ def _age_text(past: datetime, now: datetime) -> str:
     if seconds < 86400:
         return f"{int(seconds // 3600)}h"
     return f"{int(seconds // 86400)}d"
+
+
+def _resets_in_text(resets_at, now: datetime) -> str:
+    """`Resets in …` from a window's ``resetsAt``, in the Console's style.
+
+    Days once the reset is a day or more out (the week/month horizon),
+    hours plus minutes inside a day, ``<1m`` under a minute out and
+    ``now`` once the reset has passed; an unparseable timestamp reads
+    ``?`` rather than a stale countdown.
+    """
+    resets = _parse_iso(resets_at)
+    if resets is None:
+        return "?"
+    seconds = (resets - now).total_seconds()
+    if seconds <= 0:
+        return "now"
+    if seconds < 60:
+        return "<1m"
+    minutes = int(seconds // 60)
+    if minutes >= 1440:
+        return f"{minutes // 1440}d {(minutes % 1440) // 60}h"
+    if minutes >= 60:
+        return f"{minutes // 60}h {minutes % 60}m"
+    return f"{minutes}m"
+
+
+def _official_usage_lines(record, now: datetime) -> list[str]:
+    """The Console's own figures for each window, one line each.
+
+    ``percent`` and ``resetsAt`` come from the plan-level usage payload,
+    so these lines report what the Console enforces rather than the
+    export-derived totals below. A window the payload did not report is
+    skipped instead of rendered with a blank percent.
+    """
+    lines = []
+    for window, label in WINDOW_LABELS.items():
+        state = record.get(window) or {}
+        percent = state.get("percent")
+        if percent is None:
+            continue
+        lines.append(
+            f"  {label:<14}{percent:>3}% used · Resets in "
+            f"{_resets_in_text(state.get('resetsAt'), now)}"
+        )
+    return lines
 
 
 def _poll_reason(exc: BaseException) -> str:
@@ -182,20 +235,20 @@ def _append_usage_history(data_dir: Path, windows: dict) -> dict:
 
 
 def _window_start(resets_at, window: str, first_day):
-    """(first day counted, clamped, true start): where spend starts.
+    """First day counted: where the window's spend starts.
 
     The export is trailing 30d, so a window that opened before its first
     day is only partially observable — spend counts from the export's
-    first day, clamped, and the caller marks it partial in the section
-    header rather than silently under-counting.
+    first day rather than the window's true start, which no view line
+    reports. An unparseable reset falls back to the export's first day.
     """
     resets = _parse_iso(resets_at)
     if resets is None:
-        return first_day, first_day is not None, None
+        return first_day
     start = (resets - timedelta(hours=GO_WINDOW_HOURS[window])).date()
     if first_day is None or start >= first_day:
-        return start, False, start
-    return first_day, True, start
+        return start
+    return first_day
 
 
 def _window_totals(rows: list[dict], start_day) -> dict:
@@ -229,30 +282,6 @@ def _window_totals(rows: list[dict], start_day) -> dict:
         acc["output_tokens"] += row.get("output_tokens", 0)
         acc["rows"].append(row)
     return totals
-
-
-def _window_section_header(window: str, resets_at, now, partial: bool = False) -> str:
-    """`Week (~3 days since Monday 10-19 → resets 10-26 00:00 UTC)` header.
-
-    The start is ``resetsAt`` minus the nominal window length (the page
-    publishes fractions, not the clock); elapsed days are ``now`` minus
-    that start. All timestamps are UTC (API, export days and ``now``);
-    the reset time carries the UTC marker so it is never read as local.
-    Unparseable resets fall back to ``→?``.
-    """
-    title = "Week" if window == "weekly" else "Month"
-    resets = _parse_iso(resets_at)
-    reset_text = resets.strftime("%m-%d %H:%M UTC") if resets else "?"
-    if resets is None:
-        return f"{title} (resets →?)"
-    start = resets - timedelta(hours=GO_WINDOW_HOURS[window])
-    elapsed = max(0, int((now - start).total_seconds() // 86400))
-    if window == "weekly":
-        since = f"{start.strftime('%A')} {start.strftime('%m-%d')}"
-    else:
-        since = start.strftime("%m-%d")
-    tail = " · partial" if partial else ""
-    return f"{title} (~{elapsed} days since {since} → resets {reset_text}{tail})"
 
 
 def _window_model_rows(
@@ -344,8 +373,15 @@ def _format_off(row: dict) -> str:
     return f"{est * 100:.2f}"
 
 
-def _sections(models, plan, spend, record, starts, now) -> list:
-    """One (title, left rows, right rows) per window, Week then Month."""
+def _sections(models, plan, spend) -> list:
+    """One (title, left rows, right rows) per window, Week then Month.
+
+    The title names the window, the model rows that follow, and — when
+    there is any traffic — ``total spent``: the raw sum of each model's
+    ``use`` (spend over that model's own cap, so a percent of the window
+    caps rather than a dollar amount), free and uncapped models
+    contributing nothing.
+    """
     sections = []
     for window in ("weekly", "monthly"):
         rows = _window_model_rows(models, plan, window, spend[window])
@@ -366,13 +402,12 @@ def _sections(models, plan, spend, record, starts, now) -> list:
                     _format_off(row),
                 ]
             )
-        title = _window_section_header(
-            window,
-            (record.get(window) or {}).get("resetsAt"),
-            now,
-            partial=starts[window][1],
-        )
-        sections.append((f"{title} · {len(left_rows)} models", left_rows, right_rows))
+        title = "Week" if window == "weekly" else "Month"
+        section_title = f"{title} · {len(rows)} models"
+        if rows:
+            sum_relative = sum(row["use"] for row in rows if row["use"] is not None)
+            section_title += f" · total spent {sum_relative * 100:.2f}%"
+        sections.append((section_title, left_rows, right_rows))
     return sections
 
 
@@ -432,8 +467,7 @@ def run(args: argparse.Namespace) -> int:
         for w in ("weekly", "monthly")
     }
     spend = {
-        w: _window_totals(rows_export or [], starts[w][0])
-        for w in ("weekly", "monthly")
+        w: _window_totals(rows_export or [], starts[w]) for w in ("weekly", "monthly")
     }
 
     fetched = _parse_iso((snapshot.get("meta") or {}).get("fetched_at"))
@@ -444,6 +478,7 @@ def run(args: argparse.Namespace) -> int:
         f"{label} plan · snapshot {snapshot_age} old ({origin}) · "
         f"balance {balance_text}"
     )
+    lines.extend(_official_usage_lines(record, now))
     if getattr(args, "plan", None) is None and stored is None and rows_export:
         monthly = spend.get("monthly", {})
         limits = {slug: (rec.get("limits") or {}) for slug, rec in models.items()}
@@ -458,7 +493,7 @@ def run(args: argparse.Namespace) -> int:
             )
     lines.extend(
         format_usage_tables(
-            sections := _sections(models, plan, spend, record, starts, now),
+            sections := _sections(models, plan, spend),
             USAGE_LEFT_HEADERS,
             USAGE_RIGHT_HEADERS,
         )
@@ -466,6 +501,11 @@ def run(args: argparse.Namespace) -> int:
     lines.append("")
     lines.append("¢/req: measured average from reported usage (spend ÷ requests)")
     lines.append("Est.: estimated average ¢/req from opencode.ai page assumptions")
+    lines.append(
+        "total spent: each model's spend ÷ its own cap, summed — a percent "
+        "of the window caps, not dollars (the Console's monthly figure "
+        "caps at 100%)"
+    )
     shown = {row[0] for _, left, _ in sections for row in left}
     marked = sorted(filled & shown)
     if marked:
